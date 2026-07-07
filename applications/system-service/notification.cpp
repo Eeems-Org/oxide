@@ -234,24 +234,22 @@ Notification::paintNotification() {
     this,
     &Notification::removed,
     this,
-    [this, window]() { nextNotification(window); },
+    [this]() { nextNotification(); },
     Qt::SingleShotConnection
   ));
   O_INFO("Painted notification" << identifier());
   emit displayed();
-  QTimer::singleShot(
-    notificationAPI->displayTime() * 1000, [this, window, connection] {
-      if (!QObject::disconnect(*connection)) {
-        return;
-      }
-      nextNotification(window);
+  QTimer::singleShot(notificationAPI->displayTime() * 1000, [this, connection] {
+    if (QObject::disconnect(*connection)) {
+      nextNotification();
     }
-  );
+  });
 }
 
 void
-Notification::nextNotification(QQuickWindow* window) {
+Notification::nextNotification() {
   O_INFO("Finished displaying notification" << identifier());
+  auto* window = notificationAPI->m_window;
   if (window != nullptr) {
     disconnect(window, SIGNAL(clicked(QString)), nullptr, nullptr);
   }

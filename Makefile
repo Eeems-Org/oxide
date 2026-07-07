@@ -11,10 +11,10 @@ BUILDNAME?=oxide
 TOOLCHAIN?=5.7.119
 
 ifneq ($(filter debug,$(FEATURES)),)
-DEFINES += CONFIG+="debug"
+CONFIG += CONFIG+="debug"
 endif
 ifneq ($(filter sentry,$(FEATURES)),)
-DEFINES += DEFINES+=SENTRY
+CONFIG += DEFINES+=SENTRY
 endif
 
 OBJ = oxide.pro
@@ -207,7 +207,7 @@ $(BUILD)/$(BUILDNAME): $(BUILD)/.nobackup
 	mkdir -p $(BUILD)/$(BUILDNAME)
 
 $(BUILD)/$(BUILDNAME)/Makefile: $(BUILD)/$(BUILDNAME)
-	cd $(BUILD)/$(BUILDNAME) && qmake -r $(DEFINES) $(CURDIR)
+	cd $(BUILD)/$(BUILDNAME) && qmake -r $(CONFIG) $(CURDIR)
 
 $(BUILD)/package:
 	mkdir -p $(BUILD)/package

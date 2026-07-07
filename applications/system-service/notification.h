@@ -78,7 +78,7 @@ private:
 
   bool
   hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
-  void nextNotification(QQuickWindow* window);
+  void nextNotification();
 };
 
 #endif // NOTIFICATION_H

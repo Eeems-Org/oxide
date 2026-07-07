@@ -41,8 +41,9 @@ public:
   QQmlApplicationEngine* engine();
 
   int tarnishPid();
-  void startup(QQmlApplicationEngine* engine);
+  void startup();
   void exit(int exitCode);
+  void reload();
 
 public slots:
   QDBusObjectPath requestAPI(QString name, QDBusMessage message);
@@ -69,6 +70,9 @@ private:
   QMap<QString, APIEntry> apis;
   bool m_exiting;
   int m_watchdogTimer;
+
+  bool initializeEngine(QQmlApplicationEngine* engine);
+  bool loadSystemOverlay(QQmlApplicationEngine* engine);
 };
 
 #endif // DBUSSERVICE_H

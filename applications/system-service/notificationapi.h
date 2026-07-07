@@ -9,6 +9,7 @@
 #include <QtDBus>
 
 #include "apibase.h"
+#include "dbusservice.h"
 #include "notification.h"
 
 #define notificationAPI NotificationAPI::singleton()
@@ -25,6 +26,8 @@ class NotificationAPI : public APIBase {
     uint displayTime READ displayTime WRITE setDisplayTime NOTIFY
       displayTimeChanged
   )
+  friend class DBusService;
+  friend class Notification;
 
 public:
   static NotificationAPI* singleton(NotificationAPI* self = nullptr);
@@ -85,6 +88,7 @@ private:
   QQuickWindow* m_window = nullptr;
 
   QString getPath(QString id);
+  QQuickWindow* loadNotificationOverlay(QQmlApplicationEngine* engine);
 };
 
 #endif // NOTIFICATIONAPI_H

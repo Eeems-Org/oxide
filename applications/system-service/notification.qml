@@ -23,6 +23,24 @@ Window{
     height: 500
     function orientationWidth(){ return landscape ? height : width; }
     function orientationHeight(){ return landscape ? width : height; }
+    function getState(){
+        return {
+            "text": text.text,
+            "image": image.source,
+            "notificationVisible": notification.visible,
+            "actions": actions
+        };
+    }
+    function setState(state){
+        text.text = state['text'];
+        image.source = state['image'];
+        notification.visible = state['notificationVisible'];
+        actions = state['actions'];
+        if(notification.visible){
+            window.show();
+            window.raise();
+        }
+    }
     contentOrientation: landscape ? Qt.LandscapeOrientation : Qt.PortraitOrientation
     color: "transparent"
 

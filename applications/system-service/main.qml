@@ -13,6 +13,18 @@ Window{
     visible: true
     color: powerMenu.opened ? "white" : "transparent"
     property bool enableHeldKeys: controller.deviceName === "reMarkable 1"
+    function getState(){
+        return {
+            "powerMenu": powerMenu.opened
+        };
+    }
+    function setState(state){
+        window.raise()
+        window.show()
+        if(state['powerMenu']){
+            powerMenu.open()
+        }
+    }
 
     Connections{
         target: controller
