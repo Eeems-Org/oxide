@@ -90,10 +90,12 @@ NotificationAPI::loadNotificationOverlay(QQmlApplicationEngine* engine) {
     }
   }
   auto buffer = Oxide::QML::getSurfaceForWindow(window);
-  getCompositorDBus()->setFlags(
-    QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
-    QStringList() << "system"
-  );
+  if (buffer != nullptr) {
+    getCompositorDBus()->setFlags(
+      QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
+      QStringList() << "system"
+    );
+  }
   window->setProperty("notificationVisible", false);
   window->lower();
   return window;

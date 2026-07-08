@@ -367,7 +367,9 @@ DBusService::reload() {
   auto* overlayWindow =
     qobject_cast<QQuickWindow*>(engine->rootObjects().first());
   if (!transferState(
-        qobject_cast<QQuickWindow*>(m_engine->rootObjects().first()),
+        m_engine != nullptr
+          ? qobject_cast<QQuickWindow*>(m_engine->rootObjects().first())
+          : nullptr,
         overlayWindow
       )) {
     delete engine;
@@ -420,10 +422,12 @@ DBusService::loadSystemOverlay(QQmlApplicationEngine* engine) {
     }
   }
   auto buffer = Oxide::QML::getSurfaceForWindow(window);
-  getCompositorDBus()->setFlags(
-    QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
-    QStringList() << "system"
-  );
+  if (buffer != nullptr) {
+    getCompositorDBus()->setFlags(
+      QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
+      QStringList() << "system"
+    );
+  }
   window->raise();
   window->show();
   return true;
