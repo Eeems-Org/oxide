@@ -63,6 +63,7 @@ Background Service (tarnish)
   * Ctrl+Shift+1
 
 * Press the power button to suspend the device.
+* Long press the power button to open a power menu.
 * To take a screenshot:
 
   * Press and hold the right button on the rM1.
@@ -72,6 +73,28 @@ Background Service (tarnish)
 * Swipe from the top of the screen to enable/disable swipe gestures.
 * Opt+L to lock the screen.
 * Ctrl+Alt+T to open yaft or fingerterm if installed
+
+Customizing gestures, shortcuts, and power menu
+-----------------------------------------------
+
+The background service renders a QML overlay on top of applications to handle gesture detection areas, the power menu, keyboard shortcuts, and the application switcher. You can override this with your own QML file.
+
+.. code-block:: bash
+
+  xdg-settings set systemOverlay /home/root/my-overlay.qml
+
+You can use the built in QML file as a reference: https://github.com/Eeems-Org/oxide/blob/master/applications/system-service/main.qml
+
+Customizing notification appearance
+------------------------------------
+
+The background service renders a QML overlay on top of applications for notification popups. You can override this with your own QML file.
+
+.. code-block:: bash
+
+  xdg-settings set notificationOverlay /home/root/my-notifications.qml
+
+You can use the built in QML file as a reference: https://github.com/Eeems-Org/oxide/blob/master/applications/system-service/notification.qml
 
 .. _erode:
 
