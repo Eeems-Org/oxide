@@ -313,7 +313,21 @@ namespace Oxide {
       timer.setInterval(30 * 1000);
       timer.callOnTimeout([&loop]() { loop.exit(1); });
       QTimer::singleShot(0, [&engine, &url, &timer]() {
-        engine->load(url);
+        if (!url.isLocalFile()) {
+          engine->load(url);
+        } else {
+          QFile file(url.toLocalFile());
+          if (
+            file.open(
+              QIODeviceBase::ReadOnly | QIODeviceBase::ExistingOnly |
+              QIODevice::Text
+            )
+          ) {
+            engine->loadData(file.readAll(), url);
+          } else {
+            engine->load(url);
+          }
+        }
         timer.start();
       });
       QMetaObject::Connection connection;

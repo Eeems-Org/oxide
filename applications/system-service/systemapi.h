@@ -128,6 +128,7 @@ public slots:
   void inhibitPowerOff(QDBusMessage message);
   void uninhibitPowerOff(QDBusMessage message);
   void toggleSwipes();
+  void reload(QDBusMessage message);
 
 signals:
   void leftAction();

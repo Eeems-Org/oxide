@@ -11,8 +11,7 @@ contains(DEFINES, SENTRY) {
             -DSENTRY_BUILD_SHARED_LIBS=ON \
             -DSENTRY_INTEGRATION_QT=ON \
             -DSENTRY_TRANSPORT=curl \
-            -DSENTRY_BACKEND=breakpad \
-            -DSENTRY_BREAKPAD_SYSTEM=OFF \
+            -DSENTRY_BACKEND=inproc \
             -DSENTRY_SDK_NAME=sentry.native
     QMAKE_EXTRA_TARGETS += sentry_makefile
 

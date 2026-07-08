@@ -1,9 +1,11 @@
 #include "dbusservice.h"
 
+#include <liboxide/oxideqml.h>
 #include <mutex>
 #include <systemd/sd-daemon.h>
 
 #include "appsapi.h"
+#include "controller.h"
 #include "notificationapi.h"
 #include "powerapi.h"
 #include "screenapi.h"
@@ -301,16 +303,152 @@ DBusService::APIs() {
 }
 
 void
-DBusService::startup(QQmlApplicationEngine* engine) {
+setSystemFlag(QQmlApplicationEngine* engine) {
+  for (auto* rootObject : engine->rootObjects()) {
+    auto* window = qobject_cast<QQuickWindow*>(rootObject);
+    if (window == nullptr) {
+      continue;
+    }
+    auto buffer = Oxide::QML::getSurfaceForWindow(window);
+    if (buffer == nullptr) {
+      continue;
+    }
+    getCompositorDBus()->setFlags(
+      QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
+      QStringList() << "system"
+    );
+  }
+}
+
+void
+DBusService::startup() {
 #ifdef SENTRY
   sentry_breadcrumb("dbusservice", "startup", "navigation");
 #endif
   sd_notify(0, "STATUS=startup");
+  auto* engine = new QQmlApplicationEngine();
+  if (!initializeEngine(engine)) {
+    O_WARNING("Failed to load main layout");
+    delete engine;
+    qApp->exit(EXIT_FAILURE);
+    return;
+  }
   m_engine = engine;
+  setSystemFlag(m_engine);
   notificationAPI->startup();
   appsAPI->startup();
   sd_notify(0, "STATUS=running");
   sd_notify(0, "READY=1");
+}
+
+bool
+transferState(QQuickWindow* oldWindow, QQuickWindow* newWindow) {
+  O_INFO("Transfering state" << oldWindow << "to" << newWindow);
+  if (newWindow == nullptr) {
+    O_WARNING("Cannot transfer state to nullptr");
+    return false;
+  }
+  if (oldWindow == nullptr) {
+    O_WARNING("No state to transfer in nullptr");
+    return true;
+  }
+  QVariant state;
+  if (!QMetaObject::invokeMethod(
+        oldWindow, "getState", Q_RETURN_ARG(QVariant, state)
+      )) {
+    O_WARNING(oldWindow << "getState method failed");
+    return true;
+  }
+  state = QVariant::fromValue(state.toMap());
+  O_INFO("State: " << state);
+  if (!QMetaObject::invokeMethod(
+        newWindow, "setState", Q_ARG(QVariant, state)
+      )) {
+    O_WARNING(newWindow << "setState method failed");
+    return false;
+  }
+  return true;
+}
+
+void
+DBusService::reload() {
+  auto* engine = new QQmlApplicationEngine();
+  if (!initializeEngine(engine)) {
+    O_WARNING("Failed to load main layout");
+    delete engine;
+    return;
+  }
+  auto* window = notificationAPI->loadNotificationOverlay(engine);
+  if (!transferState(notificationAPI->m_window, window)) {
+    delete engine;
+    return;
+  }
+  auto* overlayWindow =
+    qobject_cast<QQuickWindow*>(engine->rootObjects().first());
+  if (!transferState(
+        m_engine != nullptr
+          ? qobject_cast<QQuickWindow*>(m_engine->rootObjects().first())
+          : nullptr,
+        overlayWindow
+      )) {
+    delete engine;
+    return;
+  }
+  notificationAPI->m_window = window;
+  auto* oldEngine = m_engine;
+  m_engine = engine;
+  if (oldEngine != nullptr) {
+    for (auto* rootObject : oldEngine->rootObjects()) {
+      auto* window = qobject_cast<QQuickWindow*>(rootObject);
+      if (window == nullptr) {
+        continue;
+      }
+      window->lower();
+      if (!window->close()) {
+        O_WARNING("Failed to close" << window);
+      }
+    }
+    delete oldEngine;
+  }
+  if (overlayWindow != nullptr) {
+    overlayWindow->requestActivate();
+  }
+  setSystemFlag(m_engine);
+  O_INFO("Reload complete");
+}
+
+bool
+DBusService::initializeEngine(QQmlApplicationEngine* engine) {
+  engine->clearComponentCache();
+  Oxide::QML::registerQML(engine);
+  QQmlContext* context = engine->rootContext();
+  context->setContextProperty("controller", Controller::singleton());
+  auto url = QUrl::fromUserInput(
+    sharedSettings.systemOverlay(), QDir::currentPath(), QUrl::AssumeLocalFile
+  );
+  if (url.scheme().isEmpty()) {
+    url.setScheme("file");
+  }
+  QWindow* window = qobject_cast<QWindow*>(Oxide::QML::loadQML(engine, url));
+  if (window == nullptr) {
+    O_WARNING("Failed to load system overlay:" << url);
+    window = qobject_cast<QWindow*>(
+      Oxide::QML::loadQML(engine, QUrl(QStringLiteral("qrc:/main.qml")))
+    );
+    if (window == nullptr) {
+      return false;
+    }
+  }
+  auto buffer = Oxide::QML::getSurfaceForWindow(window);
+  if (buffer != nullptr) {
+    getCompositorDBus()->setFlags(
+      QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
+      QStringList() << "system"
+    );
+  }
+  window->raise();
+  window->show();
+  return true;
 }
 
 void

@@ -2,6 +2,7 @@
 #include <libblight/connection.h>
 #include <liboxide.h>
 #include <liboxide/oxideqml.h>
+#include <liboxide/signalhandler.h>
 
 #include <QCommandLineParser>
 #include <QGuiApplication>
@@ -12,12 +13,12 @@
 #include <QWindow>
 #include <cstdlib>
 
-#include "controller.h"
 #include "dbusservice.h"
 
 using namespace std;
 using namespace Oxide::Sentry;
 using namespace Oxide::QML;
+using namespace Oxide;
 
 const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/oxide.pid";
@@ -222,31 +223,8 @@ main(int argc, char* argv[]) {
     painter.end();
     addSystemBuffer(buffer);
   }
-
-  QQmlApplicationEngine engine;
-  registerQML(&engine);
-  QTimer::singleShot(0, [&engine, &buffer] {
-    QQmlContext* context = engine.rootContext();
-    context->setContextProperty("controller", Controller::singleton());
-    auto url = QUrl::fromUserInput(
-      sharedSettings.systemOverlay(), QDir::currentPath(), QUrl::AssumeLocalFile
-    );
-    if (url.scheme().isEmpty()) {
-      url.setScheme("file");
-    }
-    QWindow* root = qobject_cast<QWindow*>(loadQML(&engine, url));
-    if (root == nullptr) {
-      O_WARNING("Failed to load system overlay:" << url);
-      root = qobject_cast<QWindow*>(
-        loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")))
-      );
-      if (root == nullptr) {
-        qWarning("Failed to load main layout");
-        qApp->exit(EXIT_FAILURE);
-        return;
-      }
-    }
-    dbusService->startup(&engine);
+  QTimer::singleShot(0, [&buffer] {
+    dbusService->startup();
     Blight::connection()->remove(buffer);
   });
   return app.exec();

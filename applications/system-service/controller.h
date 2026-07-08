@@ -4,10 +4,14 @@
 #include <liboxide/devicesettings.h>
 #include <liboxide/oxideqml.h>
 
+#include <QFileInfo>
+#include <QFileSystemWatcher>
 #include <QKeyEvent>
 #include <QList>
 #include <QObject>
 #include <QSocketNotifier>
+#include <QTimer>
+#include <QUrl>
 
 #include <cerrno>
 #include <fcntl.h>
@@ -183,12 +187,24 @@ signals:
   void penAttached();
   void penDetached();
 
+private slots:
+  void debouncedReload(const QString& path) {
+    Q_UNUSED(path);
+    m_reloadTimer.start();
+  }
+  void reload() {
+    updateFileWatches();
+    dbusService->reload();
+  }
+
 private:
   struct SwitchMonitor {
     int fd = -1;
     QSocketNotifier* notifier = nullptr;
   };
   QList<SwitchMonitor> m_switchMonitors;
+  QFileSystemWatcher m_fileWatcher;
+  QTimer m_reloadTimer;
 
   void readEvents() {
     auto notifier = qobject_cast<QSocketNotifier*>(sender());
@@ -286,8 +302,54 @@ private:
     return path.path() == "/" ? nullptr : appsAPI->getApplication(path);
   }
 
+  void updateFileWatches() {
+    QStringList files;
+    QStringList directories;
+    for (auto& path :
+         {sharedSettings.systemOverlay(),
+          sharedSettings.notificationOverlay()}) {
+      auto url =
+        QUrl::fromUserInput(path, QDir::currentPath(), QUrl::AssumeLocalFile);
+      if (url.scheme().isEmpty()) {
+        url.setScheme("file");
+      }
+      if (!url.isLocalFile()) {
+        continue;
+      }
+      QFileInfo info(url.toLocalFile());
+      if (info.exists()) {
+        files.append(info.filePath());
+      }
+      if (info.dir().exists()) {
+        directories.append(info.dir().path());
+      }
+    }
+    for (auto& path : m_fileWatcher.files()) {
+      if (!files.contains(path)) {
+        m_fileWatcher.removePath(path);
+      }
+    }
+    for (auto& path : m_fileWatcher.directories()) {
+      if (!directories.contains(path)) {
+        m_fileWatcher.removePath(path);
+      }
+    }
+    for (auto& path : files) {
+      if (!m_fileWatcher.files().contains(path)) {
+        m_fileWatcher.addPath(path);
+      }
+    }
+    for (auto& path : directories) {
+      if (!m_fileWatcher.directories().contains(path)) {
+        m_fileWatcher.addPath(path);
+      }
+    }
+  }
+
   explicit Controller(QObject* parent = nullptr)
-    : QObject(parent) {
+    : QObject(parent)
+    , m_fileWatcher{}
+    , m_reloadTimer{} {
     connect(
       systemAPI,
       &SystemAPI::swipeLengthChanged,
@@ -361,5 +423,33 @@ private:
     });
     inputDevicesChanged();
     deviceSettings.onInputDevicesChanged([this] { inputDevicesChanged(); });
+    m_reloadTimer.setSingleShot(true);
+    m_reloadTimer.setInterval(200);
+    connect(
+      &sharedSettings,
+      &Oxide::SharedSettings::systemOverlayChanged,
+      this,
+      &Controller::debouncedReload
+    );
+    connect(
+      &sharedSettings,
+      &Oxide::SharedSettings::notificationOverlayChanged,
+      this,
+      &Controller::debouncedReload
+    );
+    connect(
+      &m_fileWatcher,
+      &QFileSystemWatcher::fileChanged,
+      this,
+      &Controller::debouncedReload
+    );
+    connect(
+      &m_fileWatcher,
+      &QFileSystemWatcher::directoryChanged,
+      this,
+      &Controller::debouncedReload
+    );
+    connect(&m_reloadTimer, &QTimer::timeout, this, &Controller::reload);
+    updateFileWatches();
   }
 };

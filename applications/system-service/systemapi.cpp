@@ -7,6 +7,7 @@
 
 #include "appsapi.h"
 #include "controller.h"
+#include "dbusservice.h"
 #include "notificationapi.h"
 #include "powerapi.h"
 #include "wifiapi.h"
@@ -908,6 +909,13 @@ SystemAPI::uninhibitPowerOff(QDBusMessage message) {
     emit powerOffInhibitedChanged(false);
   }
 }
+
+void
+SystemAPI::reload(QDBusMessage message) {
+  O_INFO("Reloading overlays");
+  dbusService->reload();
+}
+
 void
 SystemAPI::suspendTimeout() {
   if (autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected) {
@@ -915,6 +923,7 @@ SystemAPI::suspendTimeout() {
     suspend();
   }
 }
+
 void
 SystemAPI::lockTimeout() {
   if (autoLock()) {
