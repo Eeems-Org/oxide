@@ -17,6 +17,12 @@ Here is an outdated video of it in action:
 
 You can find other (likely outdated) [videos here](https://github.com/Eeems/oxide/wiki/Videos).
 
+## Installing
+
+Oxide is available through https://vellum.delivery/
+
+Unstable builds can be found at https://apk.eeems.codes
+
 ## Building
 
 ### Binaries

@@ -15,7 +15,6 @@ Features
 - Multitasking / application switching
 - Notifications
 - Wifi managment
-- Chroot for applications that you don't fully trust
 - Optional lockscreen
 - Homescreen for launching applications
 - Process manager
@@ -27,21 +26,21 @@ Install Oxide
 .. raw:: html
 
   <div class="warning">
-    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://web.archive.org/web/20230616024159/https://remarkablewiki.com/tech/ssh">setup an SSH key</a>. This way you wont lose access to SSH if something goes wrong and your device soft-bricks.
+    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://remarkable.guide/guide/access/ssh.html#setting-up-a-ssh-key">setup an SSH key</a>. This way you wont lose access to SSH if something goes wrong and your device soft-bricks.
   </div>
   <p>
     Oxide is available in
-    <a href="https://toltec-dev.org/#install-toltec">
-      <img alt="toltec" src="_static/images/toltec-small.svg" class="sidebar-logo" style="width:24px;height:24px;"/>
+    <a href="https://vellum.delivery/">
+      <img alt="vellum" src="https://vellum.delivery/vellum-logo.svg" class="sidebar-logo" style="width:24px;height:24px;"/>
       toltec
     </a>. These instructions assume you already have it installed.
   </p>
 
-1. ``opkg install oxide``
+1. ``vellum add launcherctl-oxide``
 2. ``launcherctl switch-launcher --start oxide``
 
 Uninstall Oxide
 ===============
 
 1. ``launcherctl switch-launcher --start xochitl``
-2. ``opkg remove --force-removal-of-dependent-packages --autoremove liboxide``
+2. ``vellum del launcherctl-oxide``
