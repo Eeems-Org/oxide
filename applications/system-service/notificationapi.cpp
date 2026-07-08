@@ -85,7 +85,7 @@ NotificationAPI::loadNotificationOverlay(QQmlApplicationEngine* engine) {
       Oxide::QML::loadQML(engine, QUrl(QStringLiteral("qrc:/notification.qml")))
     );
     if (window == nullptr) {
-      qWarning("Failed to load notification overlay");
+      O_WARNING("Failed to load notification overlay");
       return nullptr;
     }
   }
