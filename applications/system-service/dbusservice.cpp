@@ -364,9 +364,11 @@ DBusService::reload() {
     delete engine;
     return;
   }
+  auto* overlayWindow =
+    qobject_cast<QQuickWindow*>(engine->rootObjects().first());
   if (!transferState(
         qobject_cast<QQuickWindow*>(m_engine->rootObjects().first()),
-        qobject_cast<QQuickWindow*>(engine->rootObjects().first())
+        overlayWindow
       )) {
     delete engine;
     return;
@@ -384,6 +386,9 @@ DBusService::reload() {
       window->close();
     }
     delete oldEngine;
+  }
+  if (overlayWindow != nullptr) {
+    overlayWindow->requestActivate();
   }
   O_INFO("Reload complete");
 }
