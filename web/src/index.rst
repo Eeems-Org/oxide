@@ -32,7 +32,7 @@ Install Oxide
     Oxide is available in
     <a href="https://vellum.delivery/">
       <img alt="vellum" src="https://vellum.delivery/vellum-logo.svg" class="sidebar-logo" style="width:24px;height:24px;"/>
-      toltec
+      vellum
     </a>. These instructions assume you already have it installed.
   </p>
 

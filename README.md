@@ -19,9 +19,9 @@ You can find other (likely outdated) [videos here](https://github.com/Eeems/oxid
 
 ## Installing
 
-Oxide is available through https://vellum.delivery/
+Oxide is available through <https://vellum.delivery/>
 
-Unstable builds can be found at https://apk.eeems.codes
+Unstable builds can be found at <https://apk.eeems.codes>
 
 ## Building
 
