@@ -303,6 +303,24 @@ DBusService::APIs() {
 }
 
 void
+setSystemFlag(QQmlApplicationEngine* engine) {
+  for (auto* rootObject : engine->rootObjects()) {
+    auto* window = qobject_cast<QQuickWindow*>(rootObject);
+    if (window == nullptr) {
+      continue;
+    }
+    auto buffer = Oxide::QML::getSurfaceForWindow(window);
+    if (buffer == nullptr) {
+      continue;
+    }
+    getCompositorDBus()->setFlags(
+      QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
+      QStringList() << "system"
+    );
+  }
+}
+
+void
 DBusService::startup() {
 #ifdef SENTRY
   sentry_breadcrumb("dbusservice", "startup", "navigation");
@@ -310,12 +328,13 @@ DBusService::startup() {
   sd_notify(0, "STATUS=startup");
   auto* engine = new QQmlApplicationEngine();
   if (!initializeEngine(engine)) {
-    qWarning("Failed to load main layout");
+    O_WARNING("Failed to load main layout");
     delete engine;
     qApp->exit(EXIT_FAILURE);
     return;
   }
   m_engine = engine;
+  setSystemFlag(m_engine);
   notificationAPI->startup();
   appsAPI->startup();
   sd_notify(0, "STATUS=running");
@@ -355,7 +374,7 @@ void
 DBusService::reload() {
   auto* engine = new QQmlApplicationEngine();
   if (!initializeEngine(engine)) {
-    qWarning("Failed to load main layout");
+    O_WARNING("Failed to load main layout");
     delete engine;
     return;
   }
@@ -385,26 +404,25 @@ DBusService::reload() {
         continue;
       }
       window->lower();
-      window->close();
+      if (!window->close()) {
+        O_WARNING("Failed to close" << window);
+      }
     }
     delete oldEngine;
   }
   if (overlayWindow != nullptr) {
     overlayWindow->requestActivate();
   }
+  setSystemFlag(m_engine);
   O_INFO("Reload complete");
 }
 
 bool
 DBusService::initializeEngine(QQmlApplicationEngine* engine) {
+  engine->clearComponentCache();
   Oxide::QML::registerQML(engine);
   QQmlContext* context = engine->rootContext();
   context->setContextProperty("controller", Controller::singleton());
-  return loadSystemOverlay(engine);
-}
-
-bool
-DBusService::loadSystemOverlay(QQmlApplicationEngine* engine) {
   auto url = QUrl::fromUserInput(
     sharedSettings.systemOverlay(), QDir::currentPath(), QUrl::AssumeLocalFile
   );

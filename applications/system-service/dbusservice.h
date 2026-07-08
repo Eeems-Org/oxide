@@ -72,7 +72,6 @@ private:
   int m_watchdogTimer;
 
   bool initializeEngine(QQmlApplicationEngine* engine);
-  bool loadSystemOverlay(QQmlApplicationEngine* engine);
 };
 
 #endif // DBUSSERVICE_H
