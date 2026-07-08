@@ -16,16 +16,17 @@ launcherctl-oxide:launcherctl_oxide
 pkgname=oxide
 pkgver="~VERSION~"
 pkgrel=~TIMESTAMP~
-upstream_author="Eeems-org"
+upstream_author="Eeems-Org"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
 license=MIT
 source='
 oxide.tar.gz
 '
+readmeurl="https://raw.githubusercontent.com/$upstream_author/oxide/refs/heads/master/README.md"
 pkgdesc="Launcher application"
 category="apps"
-options="!check !fhs !strip !tracedeps"
+arch="armv7 aarch64"
 depends="
 oxide-display=$pkgver-r$pkgrel
 liboxide=$pkgver-r$pkgrel
@@ -148,11 +149,11 @@ postosupgrade() {
 
 predeinstall() {
     set -e
-    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2>/dev/null)" -eq 1 ]; then
-        if systemctl --quiet is-active tarnish.service 2>/dev/null; then
+    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2> /dev/null)" -eq 1 ]; then
+        if systemctl --quiet is-active tarnish.service 2> /dev/null; then
             systemctl stop tarnish.service
         fi
-        if systemctl --quiet is-enabled tarnish.service 2>/dev/null; then
+        if systemctl --quiet is-enabled tarnish.service 2> /dev/null; then
             systemctl disable tarnish.service
         fi
     fi
@@ -174,6 +175,7 @@ oxide_display() {
     category="framework"
     depends="
     liboxide=$pkgver-r$pkgrel
+    remarkable-os>=3.27.1.0
     "
 
     package() {
@@ -229,11 +231,11 @@ oxide_display() {
 
     predeinstall() {
         set -e
-        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2>/dev/null)" -eq 1 ]; then
-            if systemctl --quiet is-active blight.service 2>/dev/null; then
+        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2> /dev/null)" -eq 1 ]; then
+            if systemctl --quiet is-active blight.service 2> /dev/null; then
                 systemctl stop blight.service
             fi
-            if systemctl --quiet is-enabled blight.service 2>/dev/null; then
+            if systemctl --quiet is-enabled blight.service 2> /dev/null; then
                 systemctl disable blight.service
             fi
         fi
@@ -646,7 +648,7 @@ launcherctl() {
     }
     postdeinstall() {
         set -e
-        if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2>/dev/null)" -ne 1 ]; then
+        if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2> /dev/null)" -ne 1 ]; then
             systemctl enable --now xochitl
         fi
     }
