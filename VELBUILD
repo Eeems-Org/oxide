@@ -149,11 +149,11 @@ postosupgrade() {
 
 predeinstall() {
     set -e
-    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2> /dev/null)" -eq 1 ]; then
-        if systemctl --quiet is-active tarnish.service 2> /dev/null; then
+    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2>/dev/null)" -eq 1 ]; then
+        if systemctl --quiet is-active tarnish.service 2>/dev/null; then
             systemctl stop tarnish.service
         fi
-        if systemctl --quiet is-enabled tarnish.service 2> /dev/null; then
+        if systemctl --quiet is-enabled tarnish.service 2>/dev/null; then
             systemctl disable tarnish.service
         fi
     fi
@@ -231,11 +231,11 @@ oxide_display() {
 
     predeinstall() {
         set -e
-        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2> /dev/null)" -eq 1 ]; then
-            if systemctl --quiet is-active blight.service 2> /dev/null; then
+        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2>/dev/null)" -eq 1 ]; then
+            if systemctl --quiet is-active blight.service 2>/dev/null; then
                 systemctl stop blight.service
             fi
-            if systemctl --quiet is-enabled blight.service 2> /dev/null; then
+            if systemctl --quiet is-enabled blight.service 2>/dev/null; then
                 systemctl disable blight.service
             fi
         fi
@@ -648,9 +648,7 @@ launcherctl() {
     }
     postdeinstall() {
         set -e
-        if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2> /dev/null)" -ne 1 ]; then
-            systemctl enable --now xochitl
-        fi
+        systemctl enable --now xochitl
     }
 }
 
