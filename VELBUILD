@@ -594,6 +594,7 @@ launcherctl() {
     depends="
     liboxide=$pkgver-r$pkgrel
     lockscreen_hook
+    !tripletap
     "
     package() {
         cd "$srcdir"/release

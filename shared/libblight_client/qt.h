@@ -60,6 +60,9 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
 __attribute__((visibility("default"))) void
 _ZN19EPFramebufferSwtcon4syncEv(void* this_ptr);
 
+__attribute__((visibility("default"))) void*
+_ZN13EPFramebuffer8instanceEv();
+
 __attribute__((visibility("default"))) void
 _ZN7QObjectC2EPS_(void* this_ptr, void* parent);
 __asm__(".symver _ZN7QObjectC2EPS_, _ZN7QObjectC2EPS_@Qt_6");
