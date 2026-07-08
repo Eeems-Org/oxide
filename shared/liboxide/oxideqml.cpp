@@ -318,10 +318,10 @@ namespace Oxide {
         } else {
           QFile file(url.toLocalFile());
           if (
-            file.exists() && file.open(
-                               QIODeviceBase::ReadOnly |
-                               QIODeviceBase::ExistingOnly | QIODevice::Text
-                             )
+            file.open(
+              QIODeviceBase::ReadOnly | QIODeviceBase::ExistingOnly |
+              QIODevice::Text
+            )
           ) {
             engine->loadData(file.readAll(), url);
           } else {
