@@ -6,7 +6,7 @@ is-active)
 	if [ "$pid" -eq 0 ]; then
 		exit 1
 	fi
-	! xargs --null --max-args=1 echo </proc/"$pid"/environ | grep LD_PRELOAD | grep -q xovi.so
+	! cat /proc/"$pid"/environ | tr '\0' '\n' | grep LD_PRELOAD | grep -q xovi.so
 	;;
 is-enabled | enable | disable | paused)
 	;;
