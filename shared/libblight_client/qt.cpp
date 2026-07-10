@@ -823,38 +823,89 @@ hook_swapBuffers_QRegion(
   }
   auto dit = begin_fn(region);
   auto dend = end_fn(region);
-  if (dit && dend) {
-    auto updateMode = (Blight::UpdateMode)flags;
-    for (; dit != dend; dit++) {
-      if (contentMap_screenModeMap) {
-        auto regions = static_cast<void* const*>(contentMap_screenModeMap);
-        auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
-        for (int modeId = Blight::WaveformMode::UltraFast;
-             modeId <= Blight::WaveformMode::Full;
-             modeId++) {
-          int slot = slot_remap[modeId];
-          auto region = regions[slot];
-          if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
-            continue;
-          }
-          Blight::ContentType contentType;
-          auto waveform = (Blight::WaveformMode)modeId;
-          switch (waveform) {
-            case Blight::WaveformMode::UltraFast:
-            case Blight::WaveformMode::Fast:
-            case Blight::WaveformMode::UI:
-              contentType = Blight::ContentType::Monochrome;
-              break;
-            case Blight::WaveformMode::Animate:
-            case Blight::WaveformMode::Content:
-            case Blight::WaveformMode::Full:
-              contentType = Blight::ContentType::Color;
-              break;
-          }
-          update_buffers(*dit);
-          repaint(dit, waveform, contentType, updateMode);
+  if (!dit || !dend) {
+    return;
+  }
+  auto updateMode = (Blight::UpdateMode)flags;
+  for (; dit != dend; dit++) {
+    if (contentMap_screenModeMap) {
+      auto regions = static_cast<void* const*>(contentMap_screenModeMap);
+      auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
+      for (int modeId = Blight::WaveformMode::UltraFast;
+           modeId <= Blight::WaveformMode::Full;
+           modeId++) {
+        int slot = slot_remap[modeId];
+        auto region = regions[slot];
+        if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
+          continue;
         }
+        Blight::ContentType contentType = Blight::ContentType::Color;
+        auto waveform = (Blight::WaveformMode)modeId;
+        switch (waveform) {
+          case Blight::WaveformMode::UltraFast:
+          case Blight::WaveformMode::Fast:
+          case Blight::WaveformMode::UI:
+            contentType = Blight::ContentType::Monochrome;
+            break;
+          case Blight::WaveformMode::Animate:
+          case Blight::WaveformMode::Content:
+          case Blight::WaveformMode::Full:
+            contentType = Blight::ContentType::Color;
+            break;
+        }
+        update_buffers(*dit);
+        repaint(dit, waveform, contentType, updateMode);
       }
+    }
+  }
+  dump_buffers();
+}
+
+void
+hook_swapBuffers_impl(
+  void* this_ptr,
+  const void* region,
+  const void* contentMap,
+  const void* modeMap,
+  int flags
+) {
+  _DEBUG("EPFramebuffer::swapBuffers_impl(QRegion, ...)");
+  auto begin_fn = Qt::qregion_begin();
+  auto end_fn = Qt::qregion_end();
+  if (begin_fn == nullptr || end_fn == nullptr) {
+    _DEBUG("swapBuffers: qregion_begin/end is NULL");
+    return;
+  }
+  auto dit = begin_fn(region);
+  auto dend = end_fn(region);
+  if (!dit || !dend || modeMap == nullptr) {
+    return;
+  }
+  auto updateMode = static_cast<Blight::UpdateMode>(flags);
+  for (; dit != dend; ++dit) {
+    for (int modeId = Blight::WaveformMode::UltraFast;
+         modeId <= Blight::WaveformMode::Full;
+         modeId++) {
+      auto* region = static_cast<const char*>(modeMap) + modeId * sizeof(void*);
+      if (region == nullptr || !Qt::region_rect_overlaps(dit, region)) {
+        continue;
+      }
+      Blight::ContentType contentType = Blight::ContentType::Color;
+      auto waveform = (Blight::WaveformMode)modeId;
+      switch (waveform) {
+        case Blight::WaveformMode::UltraFast:
+        case Blight::WaveformMode::Fast:
+        case Blight::WaveformMode::UI:
+          contentType = Blight::ContentType::Monochrome;
+          break;
+        case Blight::WaveformMode::Animate:
+        case Blight::WaveformMode::Content:
+        case Blight::WaveformMode::Full:
+          contentType = Blight::ContentType::Color;
+          break;
+      }
+      update_buffers(*dit);
+      repaint(dit, waveform, contentType, updateMode);
     }
   }
   dump_buffers();
@@ -906,6 +957,19 @@ _ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
     func(this_ptr, mode);
     return;
   }
+  void* epframebuffer = nullptr;
+  if (
+    !epframebufferInstance.compare_exchange_strong(
+      epframebuffer, this_ptr, std::memory_order_relaxed
+    ) &&
+    epframebuffer != this_ptr
+  ) {
+    _WARN(
+      "epframebufferInstance does not match this_ptr: %p != %p",
+      epframebuffer,
+      this_ptr
+    );
+  }
   _DEBUG("EPFramebuffer::ghostControl(mode=%d)", mode);
   if (Client::isGhostControlEnabled()) {
     Blight::ghostControl((Blight::GhostControlMode)mode);
@@ -933,6 +997,19 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
     }
     func(this_ptr, mode);
     return;
+  }
+  void* epframebuffer = nullptr;
+  if (
+    !epframebufferInstance.compare_exchange_strong(
+      epframebuffer, this_ptr, std::memory_order_relaxed
+    ) &&
+    epframebuffer != this_ptr
+  ) {
+    _WARN(
+      "epframebufferInstance does not match this_ptr: %p != %p",
+      epframebuffer,
+      this_ptr
+    );
   }
   _DEBUG("EPFramebufferAcep2::ghostControl(mode=%d)", mode);
   if (Client::isGhostControlEnabled()) {
@@ -962,6 +1039,19 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
     }
     func(this_ptr, rect, waveform, contentType, flags);
     return;
+  }
+  void* epframebuffer = nullptr;
+  if (
+    !epframebufferInstance.compare_exchange_strong(
+      epframebuffer, this_ptr, std::memory_order_relaxed
+    ) &&
+    epframebuffer != this_ptr
+  ) {
+    _WARN(
+      "epframebufferInstance does not match this_ptr: %p != %p",
+      epframebuffer,
+      this_ptr
+    );
   }
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
   update_buffers(rect);
@@ -1004,6 +1094,25 @@ _ZN19EPFramebufferSwtcon4syncEv(void* this_ptr) {
   }
   _DEBUG("EPFramebufferSwtcon::sync()");
   Blight::waitForNoRepaints();
+}
+
+void*
+_ZN13EPFramebuffer8instanceEv() {
+  static auto func = reinterpret_cast<void* (*)()>(
+    dlsym(RTLD_NEXT, "_ZN13EPFramebuffer8instanceEv")
+  );
+  if (!func) {
+    _CRIT("%s", "Failed to resolve real EPFramebuffer::instance via RTLD_NEXT");
+    std::exit(EXIT_FAILURE);
+  }
+  void* instance = func();
+  if (Client::isFbEnabled()) {
+    void* empty = nullptr;
+    epframebufferInstance.compare_exchange_strong(
+      empty, instance, std::memory_order_relaxed
+    );
+  }
+  return instance;
 }
 
 void
@@ -1081,52 +1190,57 @@ hook_check_candidate() {
         func_swapBuffers_qregion,
         reinterpret_cast<void*>(&hook_swapBuffers_QRegion)
       );
-      _DEBUG(
-        "Hooked swapBuffers(QRegion,...) at %p with offset=0x%x",
+    } else {
+      install_hook(
         func_swapBuffers_qregion,
-        swapBuffersOffset()
+        reinterpret_cast<void*>(&hook_swapBuffers_impl)
       );
-      void** func_syncAfterUpdate = vtable_ptr(vtable, syncAfterUpdateOffset());
-      if (func_syncAfterUpdate != nullptr && *func_syncAfterUpdate != nullptr) {
-        install_hook(
-          *func_syncAfterUpdate, reinterpret_cast<void*>(&hook_syncAfterUpdate)
-        );
-        _DEBUG(
-          "Hooked syncAfterUpdate at %p with offset=0x%x",
-          func_syncAfterUpdate,
-          syncAfterUpdateOffset()
-        );
-      } else {
-        _WARN("syncAfterUpdate vtable entry is null, cannot hook");
-      }
-      void** func_ghostControl = vtable_ptr(vtable, ghostControlOffset());
-      if (func_ghostControl != nullptr && *func_ghostControl != nullptr) {
-        install_hook_ptr(
-          func_ghostControl, reinterpret_cast<void*>(hook_ghostControl)
-        );
-        _DEBUG(
-          "Hooked ghostControl at %p with offset=0x%x",
-          func_ghostControl,
-          ghostControlOffset()
-        );
-      } else {
-        _WARN("ghostControl vtable entry is null, skipping hook");
-      }
-      void** func_metacall = vtable_ptr(vtable, qtMetacallOffset());
-      if (func_metacall != nullptr && *func_metacall != nullptr) {
-        originalQtMetacall = *func_metacall;
-        install_hook_ptr(
-          func_metacall, reinterpret_cast<void*>(hook_qt_metacall)
-        );
-        _DEBUG(
-          "Hooked qt_metacall at %p with offset=0x%x and original=%p",
-          func_metacall,
-          qtMetacallOffset(),
-          originalQtMetacall
-        );
-      } else {
-        _WARN("qt_metacall vtable entry is null, skipping hook");
-      }
+    }
+    _DEBUG(
+      "Hooked swapBuffers(QRegion,...) at %p with offset=0x%x",
+      func_swapBuffers_qregion,
+      swapBuffersOffset()
+    );
+    void** func_syncAfterUpdate = vtable_ptr(vtable, syncAfterUpdateOffset());
+    if (func_syncAfterUpdate != nullptr && *func_syncAfterUpdate != nullptr) {
+      install_hook(
+        *func_syncAfterUpdate, reinterpret_cast<void*>(&hook_syncAfterUpdate)
+      );
+      _DEBUG(
+        "Hooked syncAfterUpdate at %p with offset=0x%x",
+        func_syncAfterUpdate,
+        syncAfterUpdateOffset()
+      );
+    } else {
+      _WARN("syncAfterUpdate vtable entry is null, cannot hook");
+    }
+    void** func_ghostControl = vtable_ptr(vtable, ghostControlOffset());
+    if (func_ghostControl != nullptr && *func_ghostControl != nullptr) {
+      install_hook_ptr(
+        func_ghostControl, reinterpret_cast<void*>(hook_ghostControl)
+      );
+      _DEBUG(
+        "Hooked ghostControl at %p with offset=0x%x",
+        func_ghostControl,
+        ghostControlOffset()
+      );
+    } else {
+      _WARN("ghostControl vtable entry is null, skipping hook");
+    }
+    void** func_metacall = vtable_ptr(vtable, qtMetacallOffset());
+    if (func_metacall != nullptr && *func_metacall != nullptr) {
+      originalQtMetacall = *func_metacall;
+      install_hook_ptr(
+        func_metacall, reinterpret_cast<void*>(hook_qt_metacall)
+      );
+      _DEBUG(
+        "Hooked qt_metacall at %p with offset=0x%x and original=%p",
+        func_metacall,
+        qtMetacallOffset(),
+        originalQtMetacall
+      );
+    } else {
+      _WARN("qt_metacall vtable entry is null, skipping hook");
     }
     void* empty = nullptr;
     epframebufferInstance.compare_exchange_strong(
@@ -1256,6 +1370,7 @@ _ZN6QImageC1Ev(void* this_ptr) {
     }
   }
 }
+
 void*
 __PREVIOUS_BUFFER() {
   void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);

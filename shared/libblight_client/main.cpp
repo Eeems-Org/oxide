@@ -462,7 +462,7 @@ __asm__(".globl  ioctl\n"
 __attribute__((visibility("default"))) int
 setenv(const char* name, const char* value, int overwrite) {
   if (
-    getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr &&
+    Client::forceQt() &&
     (strcmp(name, "QMLSCENE_DEVICE") == 0 ||
      strcmp(name, "QT_QUICK_BACKEND") == 0 ||
      strcmp(name, "QT_QPA_PLATFORM") == 0 ||
@@ -493,7 +493,7 @@ __attribute__((visibility("default"))) int
 unsetenv(const char* name) {
   if (
     strcmp(name, "OXIDE_PRELOAD_DEBUG") == 0 ||
-    (getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr &&
+    (Client::forceQt() &&
      (strcmp(name, "QMLSCENE_DEVICE") == 0 ||
       strcmp(name, "QT_QUICK_BACKEND") == 0 ||
       strcmp(name, "QT_QPA_PLATFORM") == 0 ||

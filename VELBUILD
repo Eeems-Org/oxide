@@ -16,16 +16,17 @@ launcherctl-oxide:launcherctl_oxide
 pkgname=oxide
 pkgver="~VERSION~"
 pkgrel=~TIMESTAMP~
-upstream_author="Eeems-org"
+upstream_author="Eeems-Org"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
 license=MIT
 source='
 oxide.tar.gz
 '
+readmeurl="https://raw.githubusercontent.com/$upstream_author/oxide/refs/heads/master/README.md"
 pkgdesc="Launcher application"
 category="apps"
-options="!check !fhs !strip !tracedeps"
+arch="armv7 aarch64"
 depends="
 oxide-display=$pkgver-r$pkgrel
 liboxide=$pkgver-r$pkgrel
@@ -174,6 +175,7 @@ oxide_display() {
     category="framework"
     depends="
     liboxide=$pkgver-r$pkgrel
+    remarkable-os>=3.27.1.0
     "
 
     package() {
@@ -592,6 +594,7 @@ launcherctl() {
     depends="
     liboxide=$pkgver-r$pkgrel
     lockscreen_hook
+    !tripletap
     "
     package() {
         cd "$srcdir"/release
@@ -646,9 +649,7 @@ launcherctl() {
     }
     postdeinstall() {
         set -e
-        if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2>/dev/null)" -ne 1 ]; then
-            systemctl enable --now xochitl
-        fi
+        systemctl enable --now xochitl
     }
 }
 
