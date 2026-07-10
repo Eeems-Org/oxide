@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <libblight/meta.h>
 #include <liboxide.h>
 
@@ -383,24 +384,55 @@ main(int argc, char* argv[]) {
       return qExit(EXIT_FAILURE);
     }
   } else if (action == "listen") {
-    if (
-      Oxide::DBusConnect(
-        qobject_cast<QDBusAbstractInterface*>(api),
-        QString(args.at(2).toStdString().c_str()),
-        [](QVariantList args) {
-          QTextStream qStdOut(stdout, QIODevice::WriteOnly);
-          if (args.size() > 1) {
-            qStdOut << toJson(args).toStdString().c_str() << Qt::endl;
-          } else if (args.size() == 1 && !args.first().isNull()) {
-            qStdOut << toJson(args.first()).toStdString().c_str() << Qt::endl;
-          } else {
-            qStdOut << "undefined" << Qt::endl;
+    bool connected = false;
+    auto signalName = QString(args.at(2).toStdString().c_str());
+    auto onMessage = [](QVariantList args) {
+      QTextStream qStdOut(stdout, QIODevice::WriteOnly);
+      if (args.size() > 1) {
+        qStdOut << toJson(args).toStdString().c_str() << Qt::endl;
+      } else if (args.size() == 1 && !args.first().isNull()) {
+        qStdOut << toJson(args.first()).toStdString().c_str() << Qt::endl;
+      } else {
+        qStdOut << "undefined" << Qt::endl;
+      }
+    };
+    if (iapi == nullptr) {
+      auto metaObject = api->metaObject();
+      for (int i = 0; i < metaObject->methodCount(); i++) {
+        auto method = metaObject->method(i);
+        if (
+          method.methodType() != QMetaMethod::Signal ||
+          method.name() != signalName
+        ) {
+          continue;
+        }
+        QStringList parameters;
+        for (auto& parameterType : method.parameterTypes()) {
+          parameters << QString::fromUtf8(parameterType);
+        }
+        auto handler = new Oxide::SlotHandler(
+          "", parameters, parser.isSet("once"), onMessage, []() {
+            qApp->exit(EXIT_SUCCESS);
           }
-        },
+        );
+        connected = QMetaObject::connect(
+          api,
+          method.methodIndex(),
+          handler,
+          handler->metaObject()->methodCount()
+        );
+        break;
+      }
+    } else {
+      connected = Oxide::DBusConnect(
+        iapi,
+        signalName,
+        onMessage,
         []() { qApp->exit(EXIT_SUCCESS); },
         parser.isSet("once")
-      )
-    ) {
+      );
+    }
+    if (connected) {
       return app.exec();
     }
     qDebug() << "Unable to listen to signal";
