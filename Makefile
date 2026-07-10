@@ -233,13 +233,17 @@ $(BUILD)/package/oxide.tar.gz: $(OBJ) $(BUILD)/package
 
 $(BUILD)/package/VELBUILD: $(BUILD)/package $(OBJ) VELBUILD
 	VERSION="$${VERSION:-$$(grep 'VERSION =' qmake/common.pri | awk '{print $$3}')}"
-	CODE_VERSION="$$(grep '^VERSION =' qmake/common.pri | awk '{print $$3}')"
 	version="$$(echo "$$VERSION" | sed 's/_.*//')"
-	if [ -n "$$CODE_VERSION" ] && [ "$$version" != "$$CODE_VERSION" ]; then
-		if [ "$$(printf '%s\n%s' "$$CODE_VERSION" "$$(echo "$$version" | cut -d. -f1-2)" | sort -V -u | wc -l)" -ne 1 ]; then
-			echo "Error: VERSION '$$version' does not match VERSION '$$CODE_VERSION' in qmake/common.pri"
-			exit 1
-		fi
+	CODE_VERSION="$$(grep '^VERSION =' qmake/common.pri | awk '{print $$3}')"
+	if [ -n "$$CODE_VERSION" ] && [ "$$(printf '%s\n%s' "$$version" "$$CODE_VERSION" | sort -V -u | wc -l)" -ne 1 ]; then
+		echo "Error: VERSION '$$version' does not match VERSION '$$CODE_VERSION' in qmake/common.pri"
+		exit 1
+	fi
+	version="$$(echo "$$version" | cut -d. -f1-2)"
+	OXIDE_VERSION="$$(grep '#define OXIDE_VERSION' shared/liboxide/meta.h | rev | cut -d' ' -f1 | rev | tr -d '"')"
+	if [ -n "$$OXIDE_VERSION" ] && [ "$$(printf '%s\n%s' "$$version" "$$OXIDE_VERSION" | sort -V -u | wc -l)" -ne 1 ]; then
+		echo "Error: VERSION '$$version' does not match OXIDE_VERSION '$$OXIDE_VERSION' in shared/liboxide/meta.h"
+		exit 1
 	fi
 	REV="$${REV-$$(TZ=UTC git show -s --date=format:'%Y%m%d' --format=%cd HEAD)}"
 	if [ -n "$$REV" ]; then
