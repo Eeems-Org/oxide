@@ -10,20 +10,25 @@ import subprocess
 import sys
 import time
 import struct
+
 import pytest
 
 from . import (
     is_feedback_envelope,
+    is_replay_envelope,
     make_dsn,
     run,
+    stage_replay,
     Envelope,
     split_log_request_cond,
+    REPLAY_ID,
 )
 from .assertions import (
     assert_breadcrumb,
     assert_debug_meta_images_do_not_overlap,
     assert_meta,
     assert_native_crash,
+    assert_replay_envelope,
     assert_session,
     is_valid_hex,
     wait_for_file,
@@ -81,6 +86,10 @@ def test_native_capture_crash(cmake, httpserver):
             env=dict(os.environ, SENTRY_DSN=make_dsn(httpserver)),
         )
     assert waiting.result
+
+    assert len(httpserver.log) >= 1
+    envelope = Envelope.deserialize(httpserver.log[0][0].get_data())
+    assert_native_crash(envelope)
 
 
 @pytest.mark.skipif(
@@ -1139,3 +1148,61 @@ def test_native_restart_on_crash(cmake, httpserver):
     for req in httpserver.log:
         envelope = Envelope.deserialize(req[0].get_data())
         assert_native_crash(envelope)
+
+
+def test_native_replay_envelope(cmake, httpserver):
+    """A staged replay referenced by the crash event's `contexts.replay` is
+    sent as a correctly structured `replay_video` envelope by the daemon."""
+    tmp_path = cmake(["sentry_example"], {"SENTRY_BACKEND": "native"})
+
+    replays, video = stage_replay(tmp_path)
+
+    # crash envelope + replay envelope
+    httpserver.expect_oneshot_request("/api/123456/envelope/").respond_with_data("OK")
+    httpserver.expect_oneshot_request("/api/123456/envelope/").respond_with_data("OK")
+
+    with httpserver.wait(timeout=10) as waiting:
+        run_crash(
+            tmp_path,
+            "sentry_example",
+            ["log", "stdout", "replay-context", "crash"] + SANITIZER_ARGS,
+            env=dict(os.environ, SENTRY_DSN=make_dsn(httpserver)),
+            wait_for_daemon=True,
+        )
+    assert waiting.result
+
+    replay_requests = [
+        req for req, _ in httpserver.log if is_replay_envelope(req.get_data())
+    ]
+    assert len(replay_requests) == 1, "expected exactly one replay_video envelope"
+    envelope = Envelope.deserialize(replay_requests[0].get_data())
+    assert_replay_envelope(envelope, video)
+
+    # the staged replay is consumed exactly once
+    assert not (replays / f"replay-{REPLAY_ID}.mp4").exists()
+    assert not (replays / f"replay-{REPLAY_ID}.json").exists()
+
+
+def test_native_replay_orphan_not_flushed(cmake, httpserver):
+    """A staged replay that the crash event does not reference is neither
+    sent nor consumed."""
+    tmp_path = cmake(["sentry_example"], {"SENTRY_BACKEND": "native"})
+
+    replays, _ = stage_replay(tmp_path)
+
+    httpserver.expect_oneshot_request("/api/123456/envelope/").respond_with_data("OK")
+
+    with httpserver.wait(timeout=10) as waiting:
+        run_crash(
+            tmp_path,
+            "sentry_example",
+            ["log", "stdout", "crash"] + SANITIZER_ARGS,
+            env=dict(os.environ, SENTRY_DSN=make_dsn(httpserver)),
+            wait_for_daemon=True,
+        )
+    assert waiting.result
+
+    for req, _ in httpserver.log:
+        assert not is_replay_envelope(req.get_data())
+    assert (replays / f"replay-{REPLAY_ID}.mp4").exists()
+    assert (replays / f"replay-{REPLAY_ID}.json").exists()

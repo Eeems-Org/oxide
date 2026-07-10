@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.15.3
+
+**Features**
+
+- Android: Expose app-hang detection through the NDK bindings via `NdkOptions.setEnableAppHangTracking()` and `NdkOptions.setAppHangTimeoutMillis()`. ([#1823](https://github.com/getsentry/sentry-native/pull/1823))
+- Windows: add wide-char versions of `sentry_capture_minidump` and `sentry_capture_minidump_n`. ([#1827](https://github.com/getsentry/sentry-native/pull/1827))
+- Add `sentry_update_context` to allow updating already set context objects with new key-value pairs, as well as new values for existing keys. ([#1835](https://github.com/getsentry/sentry-native/pull/1835))
+
+**Fixes**:
+
+- Native/Windows: ensure valid event IDs for fast-fail crash envelopes to fix launching of the external crash reporter for fast-fail crashes. ([#1832](https://github.com/getsentry/sentry-native/pull/1832))
+- Native/Linux: resolve symbols from split-debug files on Linux. ([#1836](https://github.com/getsentry/sentry-native/pull/1836))
+
 ## 0.15.2
 
 **Fixes**:

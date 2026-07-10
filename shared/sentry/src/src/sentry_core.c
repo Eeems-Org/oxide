@@ -100,7 +100,8 @@ generate_propagation_context(sentry_value_t propagation_context)
         sentry_value_get_by_key(propagation_context, "trace"));
 }
 
-#if defined(SENTRY_PLATFORM_NX) || defined(SENTRY_PLATFORM_PS)
+#if defined(SENTRY_PLATFORM_NX) || defined(SENTRY_PLATFORM_PS)                 \
+    || defined(SENTRY_PLATFORM_XBOX)
 int
 sentry__native_init(sentry_options_t *options)
 #else
@@ -1076,6 +1077,22 @@ sentry_set_context_n(const char *key, size_t key_len, sentry_value_t value)
 }
 
 void
+sentry_update_context(const char *key, sentry_value_t value)
+{
+    SENTRY_WITH_SCOPE_MUT (scope) {
+        sentry_scope_update_context(scope, key, value);
+    }
+}
+
+void
+sentry_update_context_n(const char *key, size_t key_len, sentry_value_t value)
+{
+    SENTRY_WITH_SCOPE_MUT (scope) {
+        sentry_scope_update_context_n(scope, key, key_len, value);
+    }
+}
+
+void
 sentry__set_propagation_context(const char *key, sentry_value_t value)
 {
     SENTRY_WITH_SCOPE_MUT (scope) {
@@ -1798,11 +1815,9 @@ sentry_capture_minidump(const char *path)
     return sentry_capture_minidump_n(path, sentry__guarded_strlen(path));
 }
 
-sentry_uuid_t
-sentry_capture_minidump_n(const char *path, size_t path_len)
+static sentry_uuid_t
+capture_minidump(sentry_path_t *dump_path)
 {
-    sentry_path_t *dump_path = sentry__path_from_str_n(path, path_len);
-
     if (!dump_path) {
         SENTRY_WARN(
             "sentry_capture_minidump() failed due to null path to minidump");
@@ -1877,6 +1892,13 @@ sentry_capture_minidump_n(const char *path, size_t path_len)
     sentry__path_free(dump_path);
 
     return sentry_uuid_nil();
+}
+
+sentry_uuid_t
+sentry_capture_minidump_n(const char *path, size_t path_len)
+{
+    sentry_path_t *dump_path = sentry__path_from_str_n(path, path_len);
+    return capture_minidump(dump_path);
 }
 
 static sentry_attachment_t *
@@ -1981,5 +2003,19 @@ sentry_attach_bytesw_n(const char *buf, size_t buf_len, const wchar_t *filename,
 {
     return add_attachment(sentry__attachment_from_buffer(
         buf, buf_len, sentry__path_from_wstr_n(filename, filename_len)));
+}
+
+sentry_uuid_t
+sentry_capture_minidumpw(const wchar_t *path)
+{
+    size_t path_len = path ? wcslen(path) : 0;
+    return sentry_capture_minidumpw_n(path, path_len);
+}
+
+sentry_uuid_t
+sentry_capture_minidumpw_n(const wchar_t *path, size_t path_len)
+{
+    sentry_path_t *dump_path = sentry__path_from_wstr_n(path, path_len);
+    return capture_minidump(dump_path);
 }
 #endif
