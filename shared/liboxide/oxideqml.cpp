@@ -306,6 +306,7 @@ namespace Oxide {
     }
 
     QObject* loadQML(QQmlApplicationEngine* engine, const QUrl& url) {
+      engine->trimComponentCache();
       QObject* rootObject = nullptr;
       QEventLoop loop;
       QTimer timer;
