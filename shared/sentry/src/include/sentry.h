@@ -101,7 +101,7 @@ extern "C" {
 #    endif
 #endif
 #ifndef SENTRY_SDK_VERSION
-#    define SENTRY_SDK_VERSION "0.15.2"
+#    define SENTRY_SDK_VERSION "0.15.3"
 #endif
 #define SENTRY_SDK_USER_AGENT SENTRY_SDK_NAME "/" SENTRY_SDK_VERSION
 
@@ -2158,6 +2158,16 @@ SENTRY_API sentry_uuid_t sentry_capture_minidump(const char *path);
 SENTRY_API sentry_uuid_t sentry_capture_minidump_n(
     const char *path, size_t path_len);
 
+#ifdef SENTRY_PLATFORM_WINDOWS
+/**
+ * Wide char versions of `sentry_capture_minidump` and
+ * `sentry_capture_minidump_n`.
+ */
+SENTRY_API sentry_uuid_t sentry_capture_minidumpw(const wchar_t *path);
+SENTRY_API sentry_uuid_t sentry_capture_minidumpw_n(
+    const wchar_t *path, size_t path_len);
+#endif
+
 /**
  * Captures a system-native exception that you retrieve when you manually handle
  * `POSIX` signals or `SEH` exceptions and want to keep using that handling
@@ -2289,6 +2299,19 @@ SENTRY_API void sentry_set_context_n(
 SENTRY_API void sentry_scope_set_context(
     sentry_scope_t *scope, const char *key, sentry_value_t value);
 SENTRY_API void sentry_scope_set_context_n(sentry_scope_t *scope,
+    const char *key, size_t key_len, sentry_value_t value);
+/**
+ * Updates a context object by merging the provided values into it.
+ * Keys in `value` take precedence over keys in the context, updating the
+ * existing values. Keys in the existing context that are not present in `value`
+ * are preserved. If the context object does not exist yet, it will be created.
+ */
+SENTRY_API void sentry_update_context(const char *key, sentry_value_t value);
+SENTRY_API void sentry_update_context_n(
+    const char *key, size_t key_len, sentry_value_t value);
+SENTRY_API void sentry_scope_update_context(
+    sentry_scope_t *scope, const char *key, sentry_value_t value);
+SENTRY_API void sentry_scope_update_context_n(sentry_scope_t *scope,
     const char *key, size_t key_len, sentry_value_t value);
 
 /**
@@ -2668,10 +2691,12 @@ SENTRY_EXPERIMENTAL_API int sentry_options_get_enable_app_hang_tracking(
 /**
  * Sets the app-hang detection timeout (in milliseconds). Defaults to 5000 ms.
  * If `enable_app_hang_tracking` is true and no heartbeat is received within
- * this window, an app-hang event is captured.
+ * this window, an app-hang event is captured. Detection is enabled/disabled via
+ * `enable_app_hang_tracking`, not via this timeout.
  *
- * Setting this to 0 while `enable_app_hang_tracking` is true is a
- * configuration error: the watchdog will log a warning and skip detection.
+ * The watchdog samples the heartbeat on a fixed internal interval, so timeouts
+ * shorter than 1000 ms cannot be resolved reliably. Values below that minimum
+ * are clamped up to it (with a warning).
  */
 SENTRY_EXPERIMENTAL_API void sentry_options_set_app_hang_timeout(
     sentry_options_t *opts, uint64_t app_hang_timeout);

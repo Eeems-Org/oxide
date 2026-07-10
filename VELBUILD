@@ -412,7 +412,6 @@ fbinfo() {
 liboxide() {
     pkgdesc="Shared library for oxide applications"
     category="framework"
-    depends=""
 
     package() {
         cd "$srcdir"/release

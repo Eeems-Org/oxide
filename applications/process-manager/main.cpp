@@ -26,7 +26,7 @@ main(int argc, char* argv[]) {
   sentry_init("erode", argv);
   app.setOrganizationName("Eeems");
   app.setOrganizationDomain(OXIDE_SERVICE);
-  app.setApplicationName("tarnish");
+  app.setApplicationName("erode");
   app.setApplicationDisplayName("Process Monitor");
   app.setApplicationVersion(APP_VERSION);
   QQmlApplicationEngine engine;

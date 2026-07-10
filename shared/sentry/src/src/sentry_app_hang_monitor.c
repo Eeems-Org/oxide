@@ -20,8 +20,11 @@ sentry__app_hang_make_event(void **ips, size_t frame_count, uint64_t freeze_ms)
 
     sentry_value_t event = sentry_value_new_event();
     sentry_value_set_by_key(event, "level", sentry_value_new_string("error"));
+
+    sentry_value_t message = sentry_value_new_object();
     sentry_value_set_by_key(
-        event, "message", sentry_value_new_string(value_buf));
+        message, "formatted", sentry_value_new_string(value_buf));
+    sentry_value_set_by_key(event, "message", message);
 
     sentry_value_t exc = sentry_value_new_exception("AppHang", value_buf);
 
@@ -58,8 +61,6 @@ static sentry_threadid_t g_thread;
 static sentry_mutex_t g_wait_mutex = SENTRY__MUTEX_INIT;
 static sentry_cond_t g_wait_cond;
 static uint64_t g_timeout_ms = 0;
-
-#    define SENTRY_APP_HANG_POLL_MS 500
 
 static size_t
 stackwalk_thread(uint64_t tid, void **ips, size_t max)
@@ -127,10 +128,6 @@ sentry__app_hang_monitor_start(const sentry_options_t *options)
     }
 
     g_timeout_ms = options->app_hang_timeout;
-    if (g_timeout_ms == 0) {
-        SENTRY_WARN("app-hang: `app_hang_timeout` is 0, hang detection is "
-                    "disabled");
-    }
     sentry__cond_init(&g_wait_cond);
     // Arm before spawning: the worker uses is_active() as its run condition, so
     // it must already be true when the new thread first evaluates the loop.

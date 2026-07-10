@@ -2,7 +2,7 @@ QT += quick
 QT += dbus
 
 CONFIG += c++11
-CONFIG += precompile_header# disables all the APIs deprecated before Qt 6.0.0
+CONFIG += precompile_header # disables all the APIs deprecated before Qt 6.0.0
 CONFIG(release, debug|release){
     CONFIG += qtquickcompiler
 }
