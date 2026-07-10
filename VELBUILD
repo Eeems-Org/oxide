@@ -31,7 +31,6 @@ depends="
 oxide-display=$pkgver-r$pkgrel
 liboxide=$pkgver-r$pkgrel
 "
-options="strip"
 
 _toolchain=5.7.119
 image() {
@@ -62,6 +61,11 @@ build() {
         ;;
     esac
     make FEATURES=sentry release
+    find release -type f -print0 | xargs -0 sh -c '
+        for f; do
+            file -b "$f" | grep -q ELF && printf "%s\0" "$f"
+        done
+    ' _ | xargs -0 "$STRIP" --strip-unneeded
 }
 
 package() {

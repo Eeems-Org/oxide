@@ -172,3 +172,51 @@ jobs:
           ssh_key: ${{ secrets.SSH_KEY }}
           ssh_args: ${{ vars.SSH_ARGS }}
           arch: ${{ matrix.arch }}
+
+  glitchtip:
+    name: Update glitchtip
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - lint
+    if: >-
+      github.repository == 'Eeems-org/oxide' &&
+      (github.ref == 'refs/heads/master' || github.event_name == 'release')
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      SENTRY_URL: https://glitchtip.eeems.codes
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: build-*
+          path: release/
+
+      - name: Stub vbuild
+        run: ln -s /bin/true /usr/local/bin/vbuild
+
+      - name: Install glitchtip-cli
+        run: curl -fsSL https://glitchtip.com/install.sh | sh
+
+      - name: Create release
+        if: github.event_name == 'release'
+        run: |
+          make "$(realpath .)/.build/package/VELBUILD"
+          VERSION="$(grep '^pkgver=' .build/package/VELBUILD | cut -d'"' -f2)"
+          glitchtip-cli releases new "$VERSION"
+          glitchtip-cli releases set-commits "$VERSION" --auto
+
+      - name: Upload debug symbols
+        run: glitchtip-cli debug-files upload release/
+
+      - name: Finalize release
+        if: github.event_name == 'release'
+        run: |
+          VERSION="$(grep '^pkgver=' .build/package/VELBUILD | cut -d'"' -f2)"
+          glitchtip-cli releases finalize "$VERSION"
