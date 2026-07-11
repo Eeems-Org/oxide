@@ -1,6 +1,7 @@
 #include "debug.h"
 #include <cstdlib>
 
+std::mutex __log_mutex;
 static int BLIGHT_DEBUG_LOGGING = LOG_WARNING;
 
 void

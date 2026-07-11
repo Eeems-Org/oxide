@@ -14,7 +14,7 @@
 
 #include <mutex>
 
-static std::mutex __log_mutex;
+LIBBLIGHT_EXPORT extern std::mutex __log_mutex;
 void
 __printf_header(int priority);
 void
