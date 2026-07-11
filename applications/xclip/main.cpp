@@ -42,8 +42,7 @@ setClipboard(
     name = "selection";
   }
   Blight::clipboard_t clipboard(name);
-  clipboard.set(data.constData(), data.size());
-  if (Blight::setClipboard(clipboard)) {
+  if (clipboard.set(data.constData(), data.size())) {
     return EXIT_SUCCESS;
   }
   qDebug() << "Failed to get clipboard:" << std::strerror(errno);
