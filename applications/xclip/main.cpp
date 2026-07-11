@@ -3,7 +3,8 @@
 #include <sys/stat.h>
 
 #include <QCommandLineParser>
-#include <string>
+#include <QCoreApplication>
+#include <QTimer>
 
 using namespace Oxide::Sentry;
 
@@ -51,7 +52,7 @@ setClipboard(
   if (clipboard.set(data.constData(), data.size())) {
     return EXIT_SUCCESS;
   }
-  qDebug() << "Failed to get clipboard:" << std::strerror(errno);
+  qDebug() << "Failed to set clipboard:" << std::strerror(errno);
   return EXIT_FAILURE;
 }
 

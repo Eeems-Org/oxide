@@ -6,13 +6,13 @@
 #pragma once
 
 #include "libblight_global.h"
+
 #include <cstdio>
 #include <linux/prctl.h>
+#include <mutex>
 #include <sys/prctl.h>
 #include <systemd/sd-journal.h>
 #include <unistd.h>
-
-#include <mutex>
 
 LIBBLIGHT_EXPORT extern std::mutex __log_mutex;
 void
@@ -38,11 +38,10 @@ set_blight_debug_level(int level);
  */
 #define _PRINTF(priority, ...)                                                 \
   if (priority <= get_blight_debug_level()) {                                  \
-    __log_mutex.lock();                                                        \
+    std::lock_guard<std::mutex> lock(__log_mutex);                             \
     __printf_header(priority);                                                 \
     fprintf(stderr, __VA_ARGS__);                                              \
     __printf_footer(__FILE__, __LINE__, __PRETTY_FUNCTION__);                  \
-    __log_mutex.unlock();                                                      \
   }
 
 /*!
