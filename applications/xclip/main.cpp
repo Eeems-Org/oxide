@@ -3,9 +3,16 @@
 #include <sys/stat.h>
 
 #include <QCommandLineParser>
-#include <string>
+#include <QCoreApplication>
+#include <QTimer>
 
 using namespace Oxide::Sentry;
+
+int
+qExit(int ret) {
+  QTimer::singleShot(0, [ret]() { qApp->exit(ret); });
+  return qApp->exec();
+}
 
 QTextStream&
 qStdOut() {
@@ -42,11 +49,10 @@ setClipboard(
     name = "selection";
   }
   Blight::clipboard_t clipboard(name);
-  clipboard.set(data.constData(), data.size());
-  if (Blight::setClipboard(clipboard)) {
+  if (clipboard.set(data.constData(), data.size())) {
     return EXIT_SUCCESS;
   }
-  qDebug() << "Failed to get clipboard:" << std::strerror(errno);
+  qDebug() << "Failed to set clipboard:" << std::strerror(errno);
   return EXIT_FAILURE;
 }
 
@@ -123,7 +129,7 @@ main(int argc, char* argv[]) {
 #endif
   if (!connected) {
     qDebug() << "Failed to connect to DBus";
-    return EXIT_FAILURE;
+    return qExit(EXIT_FAILURE);
   }
   QStringList args = parser.positionalArguments();
   if (parser.isSet(outOption)) {
@@ -135,36 +141,38 @@ main(int argc, char* argv[]) {
       auto maybe = Blight::secondary();
       if (!maybe.has_value()) {
         qDebug() << "Failed to get clipboard:" << std::strerror(errno);
-        return EXIT_FAILURE;
+        return qExit(EXIT_FAILURE);
       }
       readClipboard(maybe.value(), parser.isSet(rmlastnlOption));
     } else if (selection == "clipboard") {
       auto maybe = Blight::clipboard();
       if (!maybe.has_value()) {
         qDebug() << "Failed to get clipboard:" << std::strerror(errno);
-        return EXIT_FAILURE;
+        return qExit(EXIT_FAILURE);
       }
       readClipboard(maybe.value(), parser.isSet(rmlastnlOption));
     } else {
       auto maybe = Blight::selection();
       if (!maybe.has_value()) {
         qDebug() << "Failed to get clipboard:" << std::strerror(errno);
-        return EXIT_FAILURE;
+        return qExit(EXIT_FAILURE);
       }
       readClipboard(maybe.value(), parser.isSet(rmlastnlOption));
     }
-    return EXIT_SUCCESS;
+    return qExit(EXIT_SUCCESS);
   }
   if (args.empty()) {
     auto data = QTextStream(stdin).readAll().toUtf8();
     auto selection = parser.value(selectionOption);
-    return setClipboard(selection, data, verbose, parser.isSet(rmlastnlOption));
+    return qExit(
+      setClipboard(selection, data, verbose, parser.isSet(rmlastnlOption))
+    );
   }
   for (auto path : args) {
     if (!QFile::exists(path)) {
       qDebug().nospace() << "xclip: " << path.toStdString().c_str()
                          << ": No such file or directory";
-      return EXIT_FAILURE;
+      return qExit(EXIT_FAILURE);
     }
   }
   QByteArray data;
@@ -173,10 +181,12 @@ main(int argc, char* argv[]) {
     if (!file.open(QIODevice::ReadOnly)) {
       qDebug().nospace() << "xclip: " << path.toStdString().c_str() << ": "
                          << file.errorString();
-      return EXIT_FAILURE;
+      return qExit(EXIT_FAILURE);
     }
     data += file.readAll();
   }
   auto selection = parser.value(selectionOption);
-  return setClipboard(selection, data, verbose, parser.isSet(rmlastnlOption));
+  return qExit(
+    setClipboard(selection, data, verbose, parser.isSet(rmlastnlOption))
+  );
 }

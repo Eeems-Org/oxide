@@ -514,6 +514,9 @@ namespace Blight {
     }
     // Reload data just in case;
     auto newClipboard = getClipboard(clipboard.name);
+    if (!newClipboard.has_value()) {
+      return false;
+    }
     clipboard.size = newClipboard->size;
     clipboard.data = newClipboard->data;
     return true;
