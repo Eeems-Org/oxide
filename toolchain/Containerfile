@@ -1,0 +1,14 @@
+ARG VERSION=5.7.119
+ARG DEVICE=rm1
+FROM eeems/remarkable-toolchain:${VERSION}-${DEVICE}
+
+ARG ENVIRONMENT_SETUP
+ENV ENVIRONMENT_SETUP=${ENVIRONMENT_SETUP}
+
+RUN <<EOT
+  set -e
+  apt-get update
+  apt-get install -y --no-install-recommends clang-format
+  apt-get clean
+  rm -rf /var/lib/apt/lists/*
+EOT
