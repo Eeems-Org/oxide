@@ -66,6 +66,21 @@ namespace Oxide {
      */
     O_SETTINGS_PROPERTY(bool, General, wifion)
     /*!
+     * \property SleepScreenPath
+     * \brief Custom sleep screen image path
+     * \sa set_SleepScreenPath, SleepScreenPathChanged
+     */
+    /*!
+     * \fn set_SleepScreenPath
+     * \param _arg_SleepScreenPath Custom sleep screen image path
+     * \brief Set the custom sleep screen image path
+     */
+    /*!
+     * \fn SleepScreenPathChanged
+     * \brief The sleep screen image path has changed
+     */
+    O_SETTINGS_PROPERTY(QString, General, SleepScreenPath)
+    /*!
      * \property XochitlSettings::wifinetworks
      * \brief List of wifi networks
      * \sa setWifinetworks, wifinetworksChanged

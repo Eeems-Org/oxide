@@ -91,7 +91,10 @@ SystemAPI::PrepareForSleep(bool suspending) {
         O_INFO("Preparing for suspend...");
         Oxide::Sentry::sentry_span(
           t, "screen", "Update screen with suspend image", [this] {
-            QString path("/usr/share/remarkable/sleeping.png");
+            QString path(xochitlSettings.SleepScreenPath());
+            if (path.isEmpty() || !QFile::exists(path)) {
+              path = "/usr/share/remarkable/sleeping.png";
+            }
             if (!QFile::exists(path)) {
               path = "/usr/share/remarkable/suspended.png";
             }

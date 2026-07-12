@@ -38,5 +38,6 @@ namespace Oxide {
   XochitlSettings::~XochitlSettings() {}
   O_SETTINGS_PROPERTY_BODY(XochitlSettings, QString, General, passcode)
   O_SETTINGS_PROPERTY_BODY(XochitlSettings, bool, General, wifion)
+  O_SETTINGS_PROPERTY_BODY(XochitlSettings, QString, General, SleepScreenPath)
 } // namespace Oxide
 #include "moc_xochitlsettings.cpp"
