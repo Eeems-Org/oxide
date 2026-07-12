@@ -55,7 +55,7 @@ main(int argc, char* argv[]) {
 #else
     connected = Blight::connect(false);
 #endif
-    if (connected) {
+    if (connected && Blight::connection() != nullptr) {
       break;
     }
     if (++tries < 10) {
