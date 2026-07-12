@@ -13,7 +13,7 @@ Item {
 
     Timer {
         id: timer
-        interval: 3
+        interval: 3000
         repeat: true
         onTriggered: networks.model.sort()
     }
