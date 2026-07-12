@@ -42,5 +42,5 @@ Install Oxide
 Uninstall Oxide
 ===============
 
-1. ``launcherctl switch-launcher --start xochitl``
+1. ``launcherctl switch-launcher --start none``
 2. ``vellum del launcherctl-oxide``
