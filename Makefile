@@ -147,8 +147,8 @@ build-rm1: $(DIST)
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:$(TOOLCHAIN)-rm1 \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm1/$(TOOLCHAIN)/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rm1 \
+		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
 
 .PHONY: build-rm2
 build-rm2: $(DIST)
@@ -157,8 +157,8 @@ build-rm2: $(DIST)
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:$(TOOLCHAIN)-rm2 \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm2/$(TOOLCHAIN)/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rm2 \
+		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
 
 .PHONY: build-rmpp
 build-rmpp: $(DIST)
@@ -167,8 +167,8 @@ build-rmpp: $(DIST)
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmpp \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/ferrari/$(TOOLCHAIN)/environment-setup-cortexa53-crypto-remarkable-linux; make FEATURES=$(FEATURES) release'
+		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rmpp \
+		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
 
 .PHONY: build-rmppm
 build-rmppm: $(DIST)
@@ -177,8 +177,8 @@ build-rmppm: $(DIST)
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppm \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/chiappa/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
+		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rmppm \
+		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
 
 .PHONY: build-rmppure
 build-rmppure: $(DIST)
@@ -187,8 +187,8 @@ build-rmppure: $(DIST)
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppure \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/tatsu/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
+		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rmppure \
+		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
 
 .PHONY: build-amd64
 build-amd64: BUILDNAME=oxide-amd64

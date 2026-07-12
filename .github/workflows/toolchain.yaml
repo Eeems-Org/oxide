@@ -1,0 +1,89 @@
+name: Build toolchain images
+on:
+  pull_request: &on-filter
+    branches:
+      - master
+    paths:
+      - .github/workflows/toolchain.yaml
+      - "toolchain/**"
+      - "Makefile"
+  push: *on-filter
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  toolchain:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - device: rm1
+            codex_device: rm1
+            env_suffix: cortexa9hf-neon-remarkable-linux-gnueabi
+          - device: rm2
+            codex_device: rm2
+            env_suffix: cortexa7hf-neon-remarkable-linux-gnueabi
+          - device: rmpp
+            codex_device: ferrari
+            env_suffix: cortexa53-crypto-remarkable-linux
+          - device: rmppm
+            codex_device: chiappa
+            env_suffix: cortexa55-remarkable-linux
+          - device: rmppure
+            codex_device: tatsu
+            env_suffix: cortexa55-remarkable-linux
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Get toolchain version
+        id: toolchain
+        run: |
+          version=$(grep '^TOOLCHAIN?=' Makefile | cut -d= -f2)
+          echo "version=${version}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to ghcr
+        if: github.repository == 'Eeems-Org/oxide' && github.event_name == 'push'
+        uses: docker/login-action@v4
+        with:
+          username: ${{github.actor}}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+
+      - name: Generate tags
+        id: meta
+        env:
+          VERSION: ${{ steps.toolchain.outputs.version }}
+          DEVICE: ${{ matrix.device }}
+          CODEX_DEVICE: ${{ matrix.codex_device }}
+          ENV_SUFFIX: ${{ matrix.env_suffix }}
+        run: |
+          IMAGE_NAME=ghcr.io/eeems-org/oxide-toolchain
+          echo "image=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "tags=${IMAGE_NAME}:${VERSION}-${DEVICE}" >> $GITHUB_OUTPUT
+          echo "environment_setup=/opt/codex/${CODEX_DEVICE}/${VERSION}/environment-setup-${ENV_SUFFIX}" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: toolchain
+          file: toolchain/Containerfile
+          build-args: |
+            VERSION=${{ steps.toolchain.outputs.version }}
+            DEVICE=${{ matrix.device }}
+            ENVIRONMENT_SETUP=${{ steps.meta.outputs.environment_setup }}
+          platforms: linux/amd64
+          push: ${{ github.repository == 'Eeems-Org/oxide' && github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}

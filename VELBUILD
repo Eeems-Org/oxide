@@ -35,8 +35,8 @@ liboxide=$pkgver-r$pkgrel
 _toolchain=5.7.119
 image() {
     case "$CARCH" in
-    aarch64) echo "eeems/remarkable-toolchain:$_toolchain-rmpp" ;;
-    armv7) echo "eeems/remarkable-toolchain:$_toolchain-rm1" ;;
+    aarch64) echo "ghcr.io/eeems-org/oxide-toolchain:$_toolchain-rmpp" ;;
+    armv7) echo "ghcr.io/eeems-org/oxide-toolchain:$_toolchain-rm1" ;;
     *)
         echo "Invalid CARCH: $CARCH"
         exit 1
@@ -45,21 +45,9 @@ image() {
 }
 
 build() {
-    _toolchain=5.7.119 # Is not currently passed into build()
     set -e
     cd "$srcdir"
-    case "$CARCH" in
-    aarch64)
-        . /opt/codex/ferrari/"$_toolchain"/environment-setup-cortexa53-crypto-remarkable-linux
-        ;;
-    armv7)
-        . /opt/codex/rm1/"$_toolchain"/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi
-        ;;
-    *)
-        echo "Invalid CARCH: $CARCH"
-        exit 1
-        ;;
-    esac
+    . "$ENVIRONMENT_SETUP"
     make FEATURES=sentry release
     find release -type f -print0 | xargs -0 sh -c '
         for f; do
