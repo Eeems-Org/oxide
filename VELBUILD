@@ -390,6 +390,7 @@ inject_evdev() {
 fbinfo() {
     pkgdesc="Print out framebuffer info"
     category="utilities"
+    depends=""
 
     package() {
         cd "$srcdir"/release
@@ -405,6 +406,7 @@ fbinfo() {
 liboxide() {
     pkgdesc="Shared library for oxide applications"
     category="framework"
+    depends=""
 
     package() {
         cd "$srcdir"/release
