@@ -18,6 +18,7 @@
 
 using namespace codes::eeems::oxide1;
 using codes::eeems::oxide1::Power;
+using codes::eeems::oxide1::Frontlight;
 using Oxide::SysObject;
 using namespace Oxide::Sentry;
 
@@ -137,6 +138,11 @@ class Controller : public QObject {
   )
   Q_PROPERTY(int maxTouchWidth READ maxTouchWidth)
   Q_PROPERTY(int maxTouchHeight READ maxTouchHeight)
+  Q_PROPERTY(bool hasFrontlight READ hasFrontlight)
+  Q_PROPERTY(
+    bool extraBrightness READ extraBrightness WRITE setExtraBrightness NOTIFY
+      extraBrightnessChanged
+  )
 public:
   QObject* stateController = nullptr;
   QObject* root = nullptr;
@@ -370,6 +376,21 @@ public:
       [this](uint displayTime) { setNotificationDisplayTime(displayTime); }
     );
 
+    reply = api->requestAPI("frontlight");
+    reply.waitForFinished();
+    if (!reply.isError()) {
+      path = ((QDBusObjectPath)reply).path();
+      if (path != "/") {
+        frontlightApi = new Frontlight(OXIDE_SERVICE, path, bus);
+        connect(
+          frontlightApi,
+          &Frontlight::extraBrightnessChanged,
+          this,
+          &Controller::extraBrightnessChanged
+        );
+      }
+    }
+
     uiTimer = new QTimer(this);
     uiTimer->setSingleShot(false);
     uiTimer->setInterval(3 * 1000); // 3 seconds
@@ -525,6 +546,19 @@ public:
   bool sleepInhibited() { return systemApi->sleepInhibited(); }
   int maxTouchWidth() { return deviceSettings.getTouchWidth() * 0.9; }
   int maxTouchHeight() { return deviceSettings.getTouchHeight() * 0.9; }
+  bool hasFrontlight() { return frontlightApi != nullptr; }
+  bool extraBrightness() {
+    if (frontlightApi == nullptr) {
+      return false;
+    }
+    return frontlightApi->extraBrightness();
+  }
+  void setExtraBrightness(bool enabled) {
+    if (frontlightApi == nullptr) {
+      return;
+    }
+    frontlightApi->setExtraBrightness(enabled);
+  }
 
   Q_INVOKABLE void disconnectWifiSignals() {
     disconnect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
@@ -598,6 +632,7 @@ signals:
   void hasNotificationChanged(bool);
   void notificationTextChanged(QString);
   void notificationsChanged(NotificationList*);
+  void extraBrightnessChanged(bool);
 
 public slots:
   void updateUIElements();
@@ -906,6 +941,7 @@ private:
   System* systemApi = nullptr;
   Apps* appsApi = nullptr;
   Notifications* notificationApi = nullptr;
+  Frontlight* frontlightApi = nullptr;
   QList<QObject*> applications;
   AppItem* getApplication(QString name);
   WifiNetworkList* networks;

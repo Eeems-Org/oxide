@@ -17,6 +17,7 @@ const QSet<QString> ApiNames = QSet<QString>{
   "system",
   "screen",
   "notification",
+  "frontlight",
 };
 
 QTextStream&
@@ -67,6 +68,9 @@ getApi(const QString& name) {
   }
   if (name == "notification") {
     return new Notifications(OXIDE_SERVICE, path, bus);
+  }
+  if (name == "frontlight") {
+    return new Frontlight(OXIDE_SERVICE, path, bus);
   }
   qDebug() << "xdg-settings: Unknown API" << name;
   return nullptr;

@@ -6,6 +6,7 @@
 
 #include "appsapi.h"
 #include "controller.h"
+#include "frontlightapi.h"
 #include "notificationapi.h"
 #include "powerapi.h"
 #include "screenapi.h"
@@ -180,6 +181,18 @@ DBusService::DBusService(QObject* parent)
                   .path = QString(OXIDE_SERVICE_PATH) + "/notification",
                   .dependants = new QStringList(),
                   .instance = new NotificationAPI(this),
+                }
+              );
+            }
+          );
+          Oxide::Sentry::sentry_span(
+            s, "frontlight", "Initialize frontlight API", [this] {
+              apis.insert(
+                "frontlight",
+                APIEntry{
+                  .path = QString(OXIDE_SERVICE_PATH) + "/frontlight",
+                  .dependants = new QStringList(),
+                  .instance = new FrontlightAPI(this),
                 }
               );
             }

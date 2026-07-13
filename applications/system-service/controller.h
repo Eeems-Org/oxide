@@ -23,12 +23,13 @@
 #include "appsapi.h"
 #include "dbusservice.h"
 #include "eventlistener.h"
+#include "frontlightapi.h"
 #include "screenapi.h"
 #include "systemapi.h"
 
 class Controller : public QObject {
   Q_OBJECT
-  Q_PROPERTY(QString deviceName READ deviceName)
+  Q_PROPERTY(QString deviceName READ deviceName CONSTANT)
   Q_PROPERTY(
     bool leftSwipeEnabled READ leftSwipeEnabled NOTIFY leftSwipeEnabledChanged
   )
@@ -53,6 +54,11 @@ class Controller : public QObject {
     int downSwipeLength READ downSwipeLength NOTIFY downSwipeLengthChanged
   )
   Q_PROPERTY(bool lidOpen READ lidOpen NOTIFY lidOpenChanged)
+  Q_PROPERTY(bool hasFrontlight READ hasFrontlight CONSTANT)
+  Q_PROPERTY(
+    int frontlightBrightness READ frontlightBrightness WRITE
+      setFrontlightBrightness NOTIFY frontlightBrightnessChanged
+  )
 
 public:
   static Controller* singleton() {
@@ -166,6 +172,13 @@ public:
     Manager* systemd = systemAPI->systemdManager();
     return systemd == nullptr || !systemd->lidClosed();
   }
+  bool hasFrontlight() {
+    return frontlightAPI->hasFrontlightNoPermissionCheck();
+  }
+  int frontlightBrightness() { return frontlightAPI->brightness(); }
+  void setFrontlightBrightness(int brightness) {
+    frontlightAPI->setBrightnessNoPermissionCheck(brightness);
+  }
   bool shouldResume() {
     auto* engine = dbusService->engine();
     if (engine == nullptr) {
@@ -211,6 +224,7 @@ signals:
   void penAttached();
   void penDetached();
   void lidOpenChanged(bool open);
+  void frontlightBrightnessChanged(int);
 
 private slots:
   void debouncedReload(const QString& path) {
@@ -478,5 +492,11 @@ private:
     );
     connect(&m_reloadTimer, &QTimer::timeout, this, &Controller::reload);
     updateFileWatches();
+    connect(
+      frontlightAPI,
+      &FrontlightAPI::brightnessChanged,
+      this,
+      &Controller::frontlightBrightnessChanged
+    );
   }
 };

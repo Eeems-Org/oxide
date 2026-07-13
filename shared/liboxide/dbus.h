@@ -64,6 +64,10 @@ namespace codes::eeems::oxide1 {
    * \brief The Notification class
    */
   class Notification : public QDBusAbstractInterface {};
+  /*!
+   * \brief The Frontlight class
+   */
+  class Frontlight : public QDBusAbstractInterface {};
 } // namespace codes::eeems::oxide1
 #endif
 #include "application_interface.h"
@@ -78,6 +82,7 @@ namespace codes::eeems::oxide1 {
 #include "screenshot_interface.h"
 #include "systemapi_interface.h"
 #include "wifiapi_interface.h"
+#include "frontlightapi_interface.h"
 #ifdef IN_DOXYGEN
 /*!
  * \brief Display server DBus interfaces

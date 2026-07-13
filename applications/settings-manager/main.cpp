@@ -43,7 +43,7 @@ main(int argc, char* argv[]) {
   parser.addVersionOption();
   parser.addPositionalArgument(
     "api",
-    "settings\nwifi\npower\napps\nsystem\nscreen\nnotification\ncompositor"
+    "settings\nwifi\npower\napps\nsystem\nscreen\nnotification\nfrontlight\ncompositor"
   );
   parser.addPositionalArgument("action", "get\nset\nlisten\ncall");
   QCommandLineOption objectOption(
@@ -76,6 +76,7 @@ main(int argc, char* argv[]) {
           "system",
           "screen",
           "notification",
+          "frontlight",
           "compositor"
         })
          .contains(apiName)) {
@@ -326,6 +327,18 @@ main(int argc, char* argv[]) {
 #endif
         return qExit(EXIT_FAILURE);
       }
+    }
+  } else if (apiName == "frontlight") {
+#ifdef SENTRY
+    sentry_breadcrumb("api", "frontlight");
+#endif
+    api = new Frontlight(OXIDE_SERVICE, path, bus);
+    if (parser.isSet("object")) {
+      qDebug() << "Paths are not valid for the frontlight API";
+#ifdef SENTRY
+      sentry_breadcrumb("error", "invalid arguments");
+#endif
+      return qExit(EXIT_FAILURE);
     }
   } else if (apiName == "compositor") {
 #ifdef SENTRY

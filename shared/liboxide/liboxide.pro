@@ -80,7 +80,8 @@ DBUS_INTERFACES += \
     ../../interfaces/screenapi.xml \
     ../../interfaces/screenshot.xml \
     ../../interfaces/notificationapi.xml \
-    ../../interfaces/notification.xml
+    ../../interfaces/notification.xml \
+    ../../interfaces/frontlightapi.xml
 
 blight.files = ../../interfaces/blight.xml
 blight.header_flags = -i dbus_types.h
