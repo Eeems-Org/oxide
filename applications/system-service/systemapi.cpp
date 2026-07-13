@@ -196,8 +196,12 @@ SystemAPI::PrepareForSleep(bool suspending) {
         if (!Controller::singleton()->shouldResume()) {
           O_INFO("Resuspending...");
           reSuspend = true;
-          systemd->Suspend(false).waitForFinished();
-          return;
+          auto reply = systemd->Suspend(false);
+          reply.waitForFinished();
+          if (reply.isValid()) {
+            return;
+          }
+          O_WARNING("Failed to resuspend:" << reply.error().message());
         }
         reSuspend = false;
         qDebug() << "Resuming...";
