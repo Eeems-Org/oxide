@@ -15,6 +15,7 @@ SOURCES += \
     bss.cpp \
     dbusservice.cpp \
     eventlistener.cpp \
+    frontlightapi.cpp \
     network.cpp \
     notification.cpp \
     notificationapi.cpp \
@@ -73,8 +74,10 @@ HEADERS += \
     appsapi.h \
     bss.h \
     controller.h \
+    csl_light.h \
     dbusservice.h \
     eventlistener.h \
+    frontlightapi.h \
     network.h \
     notification.h \
     notificationapi.h \

@@ -4,5 +4,5 @@
     "bin": "/home/root/.vellum/bin/oxide",
     "type": "foreground",
     "flags": ["hidden", "nopreload"],
-    "permissions": ["apps", "wifi", "power", "system", "notification"]
+    "permissions": ["apps", "wifi", "power", "system", "notification", "frontlight"]
 }

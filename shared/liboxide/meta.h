@@ -96,4 +96,9 @@
  * \brief DBus service for a screenshot object
  */
 #define OXIDE_SCREENSHOT_INTERFACE OXIDE_SERVICE ".Screenshot"
+/*!
+ * \def OXIDE_FRONTLIGHT_INTERFACE
+ * \brief DBus service for the frontlight API
+ */
+#define OXIDE_FRONTLIGHT_INTERFACE OXIDE_SERVICE ".Frontlight"
 /*! @} */

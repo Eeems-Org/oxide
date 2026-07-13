@@ -8,6 +8,7 @@
 #include "appsapi.h"
 #include "controller.h"
 #include "dbusservice.h"
+#include "frontlightapi.h"
 #include "notificationapi.h"
 #include "powerapi.h"
 #include "wifiapi.h"
@@ -25,7 +26,7 @@ operator<<(QDebug debug, Touch* touch) {
   return debug.maybeSpace();
 }
 #ifdef __aarch64__
-void
+static void
 disableVPDD() {
   QString basePath;
   switch (deviceSettings.getDeviceType()) {
@@ -45,35 +46,6 @@ disableVPDD() {
       "Cancelled VPDD timer at" << device.propertyPath("vpdd_length").c_str()
     );
   }
-}
-#endif
-
-#ifdef __aarch64__
-static void
-saveBacklight(const char* backlight, const char* cslSource, int& savedValue) {
-  QString sysPath = QStringLiteral("/sys/class/backlight/") + backlight;
-  if (!QFile::exists(sysPath)) {
-    return;
-  }
-  savedValue = Oxide::SysObject(sysPath).intProperty("brightness");
-  O_DEBUG("Saved" << cslSource << "brightness:" << savedValue);
-  QProcess::execute(
-    "csl",
-    QStringList() << "light" << "--source" << cslSource << "--brightness" << "0"
-  );
-  O_DEBUG("Turned off" << cslSource << "backlight for suspend");
-}
-
-static void
-restoreBacklight(const char* backlight, const char* cslSource, int savedValue) {
-  QString sysPath = QStringLiteral("/sys/class/backlight/") + backlight;
-  if (savedValue <= 0 || !QFile::exists(sysPath)) {
-    return;
-  }
-  SysObject sysObject(sysPath);
-  sysObject.setProperty("brightness", std::to_string(savedValue));
-  sysObject.setProperty("bl_power", "0");
-  O_DEBUG("Restored" << cslSource << "brightness:" << savedValue);
 }
 #endif
 
@@ -177,13 +149,31 @@ SystemAPI::PrepareForSleep(bool suspending) {
             }
 #ifdef __aarch64__
             disableVPDD();
-            saveBacklight(
-              "rm_frontlight", "frontlight", m_savedFrontlightBrightness
-            );
-            saveBacklight(
-              "rm_keyboard_backlight", "keyboard", m_savedKeyboardBrightness
-            );
 #endif
+            {
+              auto* api = FrontlightAPI::singleton();
+              if (api->hasFrontlightNoPermissionCheck()) {
+                m_savedFrontlightBrightness = api->brightness();
+                O_DEBUG(
+                  "Saved frontlight brightness:" << m_savedFrontlightBrightness
+                );
+                api->setBrightnessNoPermissionCheck(0);
+                O_DEBUG("Turned off frontlight for suspend");
+              }
+            }
+            {
+              QString sysPath =
+                QStringLiteral("/sys/class/backlight/rm_keyboard_backlight");
+              if (QFile::exists(sysPath)) {
+                m_savedKeyboardBrightness =
+                  Oxide::SysObject(sysPath).intProperty("brightness");
+                O_DEBUG(
+                  "Saved keyboard brightness:" << m_savedKeyboardBrightness
+                );
+                Oxide::SysObject(sysPath).setProperty("brightness", "0");
+                O_DEBUG("Turned off keyboard backlight for suspend");
+              }
+            }
             releaseSleepInhibitors();
           }
         );
@@ -208,14 +198,32 @@ SystemAPI::PrepareForSleep(bool suspending) {
         Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep", [this] {
           inhibitSleep();
         });
-#ifdef __aarch64__
-        restoreBacklight(
-          "rm_frontlight", "frontlight", m_savedFrontlightBrightness
-        );
-        restoreBacklight(
-          "rm_keyboard_backlight", "keyboard", m_savedKeyboardBrightness
-        );
-#endif
+        {
+          auto* api = FrontlightAPI::singleton();
+          if (
+            api->hasFrontlightNoPermissionCheck() &&
+            m_savedFrontlightBrightness > 0
+          ) {
+            api->setBrightnessNoPermissionCheck(m_savedFrontlightBrightness);
+            O_DEBUG(
+              "Restored frontlight brightness:" << m_savedFrontlightBrightness
+            );
+          }
+        }
+        {
+          QString sysPath =
+            QStringLiteral("/sys/class/backlight/rm_keyboard_backlight");
+          if (m_savedKeyboardBrightness > 0 && QFile::exists(sysPath)) {
+            Oxide::SysObject sysObject(sysPath);
+            sysObject.setProperty(
+              "brightness", std::to_string(m_savedKeyboardBrightness)
+            );
+            sysObject.setProperty("bl_power", "0");
+            O_DEBUG(
+              "Restored keyboard brightness:" << m_savedKeyboardBrightness
+            );
+          }
+        }
         Oxide::Sentry::sentry_span(
           t,
           "resume",

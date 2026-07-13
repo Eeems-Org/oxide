@@ -15,6 +15,8 @@
 // Must be included so that generate_xml.sh will work
 #include "../../shared/liboxide/meta.h"
 
+#include "frontlightapi.h"
+
 #define dbusService DBusService::singleton()
 
 using namespace std;

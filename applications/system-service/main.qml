@@ -235,6 +235,46 @@ Window{
             }
         }
         contentItem: ColumnLayout {
+            spacing: 10
+            Slider {
+                id: brightnessSlider
+                visible: controller.hasFrontlight
+                Layout.fillWidth: true
+                Layout.preferredHeight: 60
+                from: 0
+                to: 100
+                value: controller.frontlightBrightness
+                onMoved: controller.frontlightBrightness = value
+                background: Rectangle {
+                    x: brightnessSlider.leftPadding
+                    y: brightnessSlider.topPadding + brightnessSlider.availableHeight / 2 - height / 2
+                    width: brightnessSlider.availableWidth
+                    height: 8
+                    color: "black"
+                }
+                handle: Rectangle {
+                    x: brightnessSlider.leftPadding + brightnessSlider.visualPosition * (brightnessSlider.availableWidth - width)
+                    y: brightnessSlider.topPadding + brightnessSlider.availableHeight / 2 - height / 2
+                    width: 50
+                    height: 50
+                    radius: 25
+                    color: "white"
+                    border.color: "black"
+                    border.width: 2
+                }
+            }
+            Label {
+                text: "Brightness"
+                visible: controller.hasFrontlight
+                Layout.fillWidth: true
+                font.pixelSize: 36
+                horizontalAlignment: Text.AlignRight
+            }
+            Item {
+                visible: controller.hasFrontlight
+                Layout.fillWidth: true
+                Layout.preferredHeight: 20
+            }
             OxideButton {
                 text: "Suspend"
                 Layout.fillWidth: true

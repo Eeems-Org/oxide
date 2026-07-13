@@ -64,12 +64,17 @@ namespace codes::eeems::oxide1 {
    * \brief The Notification class
    */
   class Notification : public QDBusAbstractInterface {};
+  /*!
+   * \brief The Frontlight class
+   */
+  class Frontlight : public QDBusAbstractInterface {};
 } // namespace codes::eeems::oxide1
 #endif
 #include "application_interface.h"
 #include "appsapi_interface.h"
 #include "bss_interface.h"
 #include "dbusservice_interface.h"
+#include "frontlightapi_interface.h"
 #include "network_interface.h"
 #include "notification_interface.h"
 #include "notificationapi_interface.h"
