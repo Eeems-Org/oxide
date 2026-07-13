@@ -546,7 +546,12 @@ public:
   bool sleepInhibited() { return systemApi->sleepInhibited(); }
   int maxTouchWidth() { return deviceSettings.getTouchWidth() * 0.9; }
   int maxTouchHeight() { return deviceSettings.getTouchHeight() * 0.9; }
-  bool hasFrontlight() { return frontlightApi != nullptr; }
+  bool hasFrontlight() {
+    if (frontlightApi == nullptr) {
+      return false;
+    }
+    return frontlightApi->hasFrontlight();
+  }
   bool extraBrightness() {
     if (frontlightApi == nullptr) {
       return false;

@@ -118,6 +118,9 @@ namespace csl {
         return isValid() && m_isBoosted(m_object);
       }
 
+      Manager(const Manager&) = delete;
+      Manager& operator=(const Manager&) = delete;
+
     private:
       void* m_lib = nullptr;
       void* m_object = nullptr;
