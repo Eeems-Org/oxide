@@ -91,19 +91,24 @@ SystemAPI::PrepareForSleep(bool suspending) {
         O_INFO("Preparing for suspend...");
         Oxide::Sentry::sentry_span(
           t, "screen", "Update screen with suspend image", [this] {
-            QString path("/usr/share/remarkable/sleeping.png");
-            if (!QFile::exists(path)) {
-              path = "/usr/share/remarkable/suspended.png";
+            QImage img;
+            for (const QString& path :
+                 {xochitlSettings.SleepScreenPath(),
+                  QStringLiteral("/usr/share/remarkable/sleeping.png"),
+                  QStringLiteral("/usr/share/remarkable/suspended.png")}) {
+              if (path.isEmpty() || !QFile::exists(path)) {
+                continue;
+              }
+              img = QImage(path);
+              if (!img.isNull()) {
+                break;
+              }
             }
-            if (!QFile::exists(path)) {
+            if (img.isNull()) {
               return;
             }
             m_buffer = createBuffer();
             if (m_buffer == nullptr) {
-              return;
-            }
-            QImage img(path);
-            if (img.isNull()) {
               return;
             }
             if (landscape()) {
