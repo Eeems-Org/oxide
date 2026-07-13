@@ -100,6 +100,7 @@ public:
   bool sleepInhibited();
   bool powerOffInhibited();
   bool landscape();
+  Manager* systemdManager() { return systemd; }
   void uninhibitAll(QString name);
   void stopSuspendTimer();
   void stopLockTimer();
@@ -164,7 +165,8 @@ private:
   QStringList sleepInhibitors;
   QStringList powerOffInhibitors;
   QMutex mutex;
-  bool wifiWasOn = false;
+  bool reSuspend;
+  bool wifiWasOn;
 #ifdef __aarch64__
   int m_savedFrontlightBrightness = 0;
   int m_savedKeyboardBrightness = 0;

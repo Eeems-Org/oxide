@@ -80,6 +80,9 @@ restoreBacklight(const char* backlight, const char* cslSource, int savedValue) {
 void
 SystemAPI::PrepareForSleep(bool suspending) {
   if (suspending) {
+    if (reSuspend) {
+      return;
+    }
     Controller::singleton()->enabled = false;
     Oxide::Sentry::sentry_transaction(
       "Suspend System", "suspend", [this](Oxide::Sentry::Transaction* t) {
@@ -190,6 +193,17 @@ SystemAPI::PrepareForSleep(bool suspending) {
   } else {
     Oxide::Sentry::sentry_transaction(
       "Resume System", "resume", [this](Oxide::Sentry::Transaction* t) {
+        if (!Controller::singleton()->shouldResume()) {
+          O_INFO("Resuspending...");
+          reSuspend = true;
+          auto reply = systemd->Suspend(false);
+          reply.waitForFinished();
+          if (reply.isValid()) {
+            return;
+          }
+          O_WARNING("Failed to resuspend:" << reply.error().message());
+        }
+        reSuspend = false;
         qDebug() << "Resuming...";
         Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep", [this] {
           inhibitSleep();
@@ -288,6 +302,8 @@ SystemAPI::SystemAPI(QObject* parent)
   , sleepInhibitors()
   , powerOffInhibitors()
   , mutex()
+  , reSuspend{false}
+  , wifiWasOn{false}
   , swipeStates()
   , swipeLengths() {
   Oxide::Sentry::sentry_transaction(
