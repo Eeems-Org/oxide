@@ -80,6 +80,9 @@ restoreBacklight(const char* backlight, const char* cslSource, int savedValue) {
 void
 SystemAPI::PrepareForSleep(bool suspending) {
   if (suspending) {
+    if (reSuspend) {
+      return;
+    }
     Controller::singleton()->enabled = false;
     Oxide::Sentry::sentry_transaction(
       "Suspend System", "suspend", [this](Oxide::Sentry::Transaction* t) {
@@ -190,6 +193,13 @@ SystemAPI::PrepareForSleep(bool suspending) {
   } else {
     Oxide::Sentry::sentry_transaction(
       "Resume System", "resume", [this](Oxide::Sentry::Transaction* t) {
+        if (!Controller::singleton()->shouldResume()) {
+          O_INFO("Resuspending...");
+          reSuspend = true;
+          systemd->Suspend(false).waitForFinished();
+          return;
+        }
+        reSuspend = false;
         qDebug() << "Resuming...";
         Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep", [this] {
           inhibitSleep();
@@ -202,12 +212,6 @@ SystemAPI::PrepareForSleep(bool suspending) {
           "rm_keyboard_backlight", "keyboard", m_savedKeyboardBrightness
         );
 #endif
-        if (!Controller::singleton()->shouldResume()) {
-          O_INFO("Overlay requested no resume, re-suspending...");
-          releaseSleepInhibitors();
-          systemd->Suspend(false).waitForFinished();
-          return;
-        }
         Oxide::Sentry::sentry_span(
           t,
           "resume",
@@ -294,6 +298,8 @@ SystemAPI::SystemAPI(QObject* parent)
   , sleepInhibitors()
   , powerOffInhibitors()
   , mutex()
+  , reSuspend{false}
+  , wifiWasOn{false}
   , swipeStates()
   , swipeLengths() {
   Oxide::Sentry::sentry_transaction(

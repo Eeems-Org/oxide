@@ -165,7 +165,8 @@ private:
   QStringList sleepInhibitors;
   QStringList powerOffInhibitors;
   QMutex mutex;
-  bool wifiWasOn = false;
+  bool reSuspend;
+  bool wifiWasOn;
 #ifdef __aarch64__
   int m_savedFrontlightBrightness = 0;
   int m_savedKeyboardBrightness = 0;
