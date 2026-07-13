@@ -17,8 +17,8 @@
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 
 using namespace codes::eeems::oxide1;
-using codes::eeems::oxide1::Power;
 using codes::eeems::oxide1::Frontlight;
+using codes::eeems::oxide1::Power;
 using Oxide::SysObject;
 using namespace Oxide::Sentry;
 

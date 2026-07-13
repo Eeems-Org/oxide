@@ -74,6 +74,7 @@ namespace codes::eeems::oxide1 {
 #include "appsapi_interface.h"
 #include "bss_interface.h"
 #include "dbusservice_interface.h"
+#include "frontlightapi_interface.h"
 #include "network_interface.h"
 #include "notification_interface.h"
 #include "notificationapi_interface.h"
@@ -82,7 +83,6 @@ namespace codes::eeems::oxide1 {
 #include "screenshot_interface.h"
 #include "systemapi_interface.h"
 #include "wifiapi_interface.h"
-#include "frontlightapi_interface.h"
 #ifdef IN_DOXYGEN
 /*!
  * \brief Display server DBus interfaces

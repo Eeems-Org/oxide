@@ -43,7 +43,8 @@ main(int argc, char* argv[]) {
   parser.addVersionOption();
   parser.addPositionalArgument(
     "api",
-    "settings\nwifi\npower\napps\nsystem\nscreen\nnotification\nfrontlight\ncompositor"
+    "settings\nwifi\npower\napps\nsystem\nscreen\nnotification\nfrontlight\ncom"
+    "positor"
   );
   parser.addPositionalArgument("action", "get\nset\nlisten\ncall");
   QCommandLineOption objectOption(

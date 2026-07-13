@@ -14,7 +14,8 @@ class FrontlightAPI : public APIBase {
   Q_OBJECT
   Q_CLASSINFO("D-Bus Interface", OXIDE_FRONTLIGHT_INTERFACE)
   Q_PROPERTY(
-    int brightness READ getBrightness WRITE setBrightness NOTIFY brightnessChanged
+    int brightness READ getBrightness WRITE setBrightness NOTIFY
+      brightnessChanged
   )
   Q_PROPERTY(bool hasFrontlight READ getHasFrontlight)
   Q_PROPERTY(

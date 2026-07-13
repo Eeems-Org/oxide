@@ -200,7 +200,10 @@ SystemAPI::PrepareForSleep(bool suspending) {
         });
         {
           auto* api = FrontlightAPI::singleton();
-          if (api->hasFrontlightNoPermissionCheck() && m_savedFrontlightBrightness > 0) {
+          if (
+            api->hasFrontlightNoPermissionCheck() &&
+            m_savedFrontlightBrightness > 0
+          ) {
             api->setBrightnessNoPermissionCheck(m_savedFrontlightBrightness);
             O_DEBUG(
               "Restored frontlight brightness:" << m_savedFrontlightBrightness
