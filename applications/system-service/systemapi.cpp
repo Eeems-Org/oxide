@@ -202,6 +202,12 @@ SystemAPI::PrepareForSleep(bool suspending) {
           "rm_keyboard_backlight", "keyboard", m_savedKeyboardBrightness
         );
 #endif
+        if (!Controller::singleton()->shouldResume()) {
+          O_INFO("Overlay requested no resume, re-suspending...");
+          releaseSleepInhibitors();
+          systemd->Suspend(false).waitForFinished();
+          return;
+        }
         Oxide::Sentry::sentry_span(
           t,
           "resume",

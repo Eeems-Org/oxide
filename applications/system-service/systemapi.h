@@ -100,6 +100,7 @@ public:
   bool sleepInhibited();
   bool powerOffInhibited();
   bool landscape();
+  Manager* systemdManager() { return systemd; }
   void uninhibitAll(QString name);
   void stopSuspendTimer();
   void stopLockTimer();

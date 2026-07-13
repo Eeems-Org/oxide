@@ -52,6 +52,7 @@ class Controller : public QObject {
   Q_PROPERTY(
     int downSwipeLength READ downSwipeLength NOTIFY downSwipeLengthChanged
   )
+  Q_PROPERTY(bool lidOpen READ lidOpen NOTIFY lidOpenChanged)
 
 public:
   static Controller* singleton() {
@@ -161,6 +162,29 @@ public:
   int rightSwipeLength() { return systemAPI->getSwipeLength(SystemAPI::Right); }
   int upSwipeLength() { return systemAPI->getSwipeLength(SystemAPI::Up); }
   int downSwipeLength() { return systemAPI->getSwipeLength(SystemAPI::Down); }
+  bool lidOpen() {
+    Manager* systemd = systemAPI->systemdManager();
+    return systemd == nullptr || !systemd->lidClosed();
+  }
+  bool shouldResume() {
+    auto* engine = dbusService->engine();
+    if (engine == nullptr) {
+      return true;
+    }
+    auto* rootObject = engine->rootObjects().value(0);
+    if (rootObject == nullptr) {
+      return true;
+    }
+    QVariant result;
+    if (
+      QMetaObject::invokeMethod(
+        rootObject, "shouldResume", Q_RETURN_ARG(QVariant, result)
+      )
+    ) {
+      return result.toBool();
+    }
+    return true;
+  }
 
   ~Controller() {
     for (auto& monitor : m_switchMonitors) {
@@ -186,6 +210,7 @@ signals:
   void lidOpened();
   void penAttached();
   void penDetached();
+  void lidOpenChanged(bool open);
 
 private slots:
   void debouncedReload(const QString& path) {
@@ -259,8 +284,10 @@ private:
       }
       if (lidState != -1) {
         if (lidState) {
+          emit lidOpenChanged(false);
           emit lidClosed();
         } else {
+          emit lidOpenChanged(true);
           emit lidOpened();
         }
       }

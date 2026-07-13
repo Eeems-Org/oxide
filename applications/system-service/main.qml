@@ -27,6 +27,9 @@ Window{
             powerMenu.open();
         }
     }
+    function shouldResume(){
+        return controller.lidOpen;
+    }
 
     Connections{
         target: controller
