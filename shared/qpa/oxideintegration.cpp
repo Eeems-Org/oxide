@@ -134,10 +134,16 @@ OxideIntegration::initialize() {
   qApp->installEventFilter(new OxideEventFilter(qApp));
   m_inputContext = QPlatformInputContextFactory::create();
   m_eventManager = new OxideEventManager(m_parameters);
-  connect(qApp, &QGuiApplication::aboutToQuit, m_eventManager, [this] {
-    delete m_eventManager;
-    m_eventManager = nullptr;
-  }, Qt::QueuedConnection);
+  connect(
+    qApp,
+    &QGuiApplication::aboutToQuit,
+    m_eventManager,
+    [this] {
+      delete m_eventManager;
+      m_eventManager = nullptr;
+    },
+    Qt::QueuedConnection
+  );
 #ifndef QT_NO_CLIPBOARD
   auto compositor = new Compositor(
     BLIGHT_SERVICE,
