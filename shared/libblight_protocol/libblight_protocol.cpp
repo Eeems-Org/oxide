@@ -111,6 +111,21 @@ is_valid_header(const blight_header_t& header) {
   }
 }
 
+bool
+should_ack(BlightMessageType type) {
+  switch (type) {
+    case BlightMessageType::Repaint:
+    case BlightMessageType::Move:
+    case BlightMessageType::Raise:
+    case BlightMessageType::Lower:
+    case BlightMessageType::Focus:
+    case BlightMessageType::Ack:
+      return false;
+    default:
+      return true;
+  }
+}
+
 extern "C" {
 int
 blight_bus_connect_system(blight_bus** bus) {
@@ -443,10 +458,12 @@ blight_send_message(
   {
     std::shared_lock lock(ackQueuesMutex);
     UNUSED(lock);
-    do_ack = ackQueues.contains(fd);
+    do_ack = ackQueues.contains(fd) && should_ack(type);
     ack = std::make_shared<ack_t>(fd, ackid);
-    if (do_ack && type != BlightMessageType::Ack) {
+    if (do_ack) {
       ackQueues.at(fd)->enqueue(ack);
+    } else {
+      timeout = 0;
     }
   }
   if (size && data == nullptr) {
@@ -782,22 +799,18 @@ blight_move_surface(
   int y
 ) {
   blight_packet_move_t packet{.identifier = identifier, .x = x, .y = y};
-  blight_data_t response = nullptr;
   int res = blight_send_message(
     fd,
     BlightMessageType::Move,
-    ackid++,
+    0,
     sizeof(blight_packet_move_t),
     (blight_data_t)&packet,
-    0,
-    &response
+    -1,
+    nullptr
   );
   if (res >= 0) {
     buf->x = x;
     buf->y = y;
-  }
-  if (response != nullptr) {
-    delete[] response;
   }
   return res;
 }
@@ -1102,24 +1115,20 @@ blight_surface_repaint(
     .marker = marker,
     .identifier = identifier
   };
-  blight_data_t response = nullptr;
   int res = blight_send_message(
     fd,
     BlightMessageType::Repaint,
-    ackid++,
+    0,
     sizeof(blight_packet_repaint_t),
     (blight_data_t)&repaint,
-    0,
-    &response
+    -1,
+    nullptr
   );
   if (res < 0) {
     _WARN(
       "[blight_surface_repaint::flip(...)] Error: %s", std::strerror(errno)
     );
     return 0;
-  }
-  if (response != nullptr) {
-    delete[] response;
   }
   return repaint.marker;
 }
@@ -1128,10 +1137,10 @@ blight_raise(int fd, blight_surface_id_t identifier) {
   return blight_send_message(
     fd,
     BlightMessageType::Raise,
-    ackid++,
+    0,
     sizeof(blight_surface_id_t),
     (blight_data_t)&identifier,
-    0,
+    -1,
     nullptr
   );
 }
@@ -1140,17 +1149,17 @@ blight_lower(int fd, blight_surface_id_t identifier) {
   return blight_send_message(
     fd,
     BlightMessageType::Lower,
-    ackid++,
+    0,
     sizeof(blight_surface_id_t),
     (blight_data_t)&identifier,
-    0,
+    -1,
     nullptr
   );
 }
 int
 blight_focus(int fd) {
   return blight_send_message(
-    fd, BlightMessageType::Focus, ackid++, 0, nullptr, 0, nullptr
+    fd, BlightMessageType::Focus, 0, 0, nullptr, -1, nullptr
   );
 }
 }

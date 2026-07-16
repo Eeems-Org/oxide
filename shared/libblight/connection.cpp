@@ -146,17 +146,25 @@ namespace Blight {
     _DEBUG("[Blight::Connection::send(%d, [data], %d)", type, size);
     auto _ackid = __ackid ? __ackid : ++ackid;
     auto ack = ackid_ptr_t(new ackid_t(_ackid));
-    if (type != MessageType::Ack) {
-      // Adding acks to queue to make sure it's there by the time a
-      // response comes back from the server
-      acks.enqueue(ack);
+    switch (type) {
+      case MessageType::Repaint:
+      case MessageType::Move:
+      case MessageType::Raise:
+      case MessageType::Lower:
+      case MessageType::Focus:
+      case MessageType::Ack:
 #ifdef ACK_DEBUG
-      _DEBUG("Ack enqueued: %u", _ackid);
+        _DEBUG("No ack enqueue needed: %u", _ackid);
 #endif
-    } else {
+        break;
+      default:
+        // Adding acks to queue to make sure it's there by the time a
+        // response comes back from the server
+        acks.enqueue(ack);
 #ifdef ACK_DEBUG
-      _DEBUG("No ack enqueue needed: %u", _ackid);
+        _DEBUG("Ack enqueued: %u", _ackid);
 #endif
+        break;
     }
     header_t header{
       {.type = type, .ackid = _ackid, .size = size}
@@ -180,9 +188,16 @@ namespace Blight {
 #ifdef ACK_DEBUG
     _DEBUG("Sent: %u %d", _ackid, type);
 #endif
-    if (type == MessageType::Ack) {
-      // Clear the ackid so that it will not block on wait
-      ack->ackid = 0;
+    switch (type) {
+      case MessageType::Repaint:
+      case MessageType::Move:
+      case MessageType::Raise:
+      case MessageType::Lower:
+      case MessageType::Focus:
+      case MessageType::Ack:
+        // Clear the ackid so that it will not block on wait
+        ack->ackid = 0;
+        break;
     }
     return ack;
   }
