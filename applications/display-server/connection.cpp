@@ -535,10 +535,10 @@ Connection::readSocket() {
           false,
           [message, this] { ack(message, 0, nullptr); }
         );
-        do_ack = false;
 #else
         emit surface->update(rect);
 #endif
+        do_ack = false;
         break;
       }
       case Blight::MessageType::Move: {
@@ -579,10 +579,10 @@ Connection::readSocket() {
           true,
           nullptr
         );
-        do_ack = false;
 #else
         surface->move(move.x, move.y);
 #endif
+        do_ack = false;
         break;
       }
       case Blight::MessageType::Info: {
@@ -671,8 +671,8 @@ Connection::readSocket() {
           false,
           [message, this] { ack(message, 0, nullptr); }
         );
-        do_ack = false;
 #endif
+        do_ack = false;
         break;
       }
       case Blight::MessageType::Lower: {
@@ -697,8 +697,8 @@ Connection::readSocket() {
           true,
           [message, this] { ack(message, 0, nullptr); }
         );
-        do_ack = false;
 #endif
+        do_ack = false;
         break;
       }
       case Blight::MessageType::Wait: {
@@ -729,6 +729,7 @@ Connection::readSocket() {
       case Blight::MessageType::Focus: {
         C_DEBUG("Focus requested");
         dbusInterface->setFocus(dbusInterface->getConnection(this));
+        do_ack = false;
         break;
       }
       case Blight::MessageType::Ping: {
