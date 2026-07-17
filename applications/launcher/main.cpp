@@ -68,35 +68,7 @@ main(int argc, char* argv[]) {
       return;
     }
     controller->stateController = stateController;
-    QObject* clock = root->findChild<QObject*>("clock");
-    if (!clock) {
-      qDebug() << "Can't find clock";
-      qApp->exit(EXIT_FAILURE);
-      return;
-    }
-    // Update UI
-    clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
     controller->updateUIElements();
-    // Setup clock
-    QTimer* clockTimer = new QTimer(root);
-    auto currentTime = QTime::currentTime();
-    QTime nextTime = currentTime.addSecs(60 - currentTime.second());
-    clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
-    QObject::connect(
-      clockTimer, &QTimer::timeout, [clock, clockTimer, controller]() {
-        QString text = "";
-        if (controller->showDate()) {
-          text = QDate::currentDate().toString(Qt::TextDate) + " ";
-        }
-        clock->setProperty(
-          "text", text + QTime::currentTime().toString("h:mm a")
-        );
-        if (clockTimer->interval() != 60 * 1000) {
-          clockTimer->setInterval(60 * 1000); // 1 minute
-        }
-      }
-    );
-    clockTimer->start();
   });
   shutdown_handler = [&controller](int signum) {
     Q_UNUSED(signum)

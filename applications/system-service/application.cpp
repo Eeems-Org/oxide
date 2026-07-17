@@ -659,7 +659,9 @@ Application::setConfig(const QVariantMap& config) {
 }
 void
 Application::started() {
-  if (flags().contains("exclusive")) {
+  bool exclusive = flags().contains("exclusive");
+  bool system = flags().contains("privileged");
+  if (exclusive || system) {
     O_DEBUG("Setting exclusive flag for " << name());
     QElapsedTimer waitTimer;
     waitTimer.start();
@@ -678,7 +680,14 @@ Application::started() {
       }
       QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     }
-    compositor->setFlags(identifier, QStringList() << "exclusive");
+    QStringList flags;
+    if (exclusive) {
+      flags.append("exclusive");
+    }
+    if (system) {
+      flags.append("system");
+    }
+    compositor->setFlags(identifier, flags);
   }
   if (m_notification != nullptr) {
     m_notification->remove();
