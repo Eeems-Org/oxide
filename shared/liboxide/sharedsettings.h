@@ -255,6 +255,38 @@ namespace Oxide {
       notificationOverlay,
       "qrc:/notification.qml"
     )
+    /*!
+     * \property topSystemSpace
+     * \brief The height in pixels of the top system bar (topbar header).
+     * Set by the topbar on startup so that other OxideWindow instances can
+     * reserve the correct amount of space below it.
+     * \sa set_topSystemSpace, topSystemSpaceChanged
+     */
+    /*!
+     * \fn set_topSystemSpace
+     * \param _arg_topSystemSpace
+     * \brief Change topSystemSpace
+     */
+    /*!
+     * \fn topSystemSpaceChanged
+     * \brief If topSystemSpace has changed
+     */
+    O_SETTINGS_PROPERTY(int, Screen, topSystemSpace, 0)
+    /*!
+     * \property bottomSystemSpace
+     * \brief The height in pixels of the bottom system bar.
+     * \sa set_bottomSystemSpace, bottomSystemSpaceChanged
+     */
+    /*!
+     * \fn set_bottomSystemSpace
+     * \param _arg_bottomSystemSpace
+     * \brief Change bottomSystemSpace
+     */
+    /*!
+     * \fn bottomSystemSpaceChanged
+     * \brief If bottomSystemSpace has changed
+     */
+    O_SETTINGS_PROPERTY(int, Screen, bottomSystemSpace, 0)
 
   private:
     ~SharedSettings();

@@ -40,4 +40,6 @@ namespace Oxide {
     notificationOverlay,
     "qrc:/notification.qml"
   )
+  O_SETTINGS_PROPERTY_BODY(SharedSettings, int, Screen, topSystemSpace, 0)
+  O_SETTINGS_PROPERTY_BODY(SharedSettings, int, Screen, bottomSystemSpace, 0)
 } // namespace Oxide

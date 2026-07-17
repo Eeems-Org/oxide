@@ -1,8 +1,0 @@
-{
-    "displayName": "Screenshot daemon",
-    "description": "Takes screenshots and displays notifications",
-    "bin": "/home/root/.vellum/bin/fret",
-    "flags": ["autoStart", "hidden", "nopreload"],
-    "type": "background",
-    "permissions": ["notification", "screen", "system"]
-}

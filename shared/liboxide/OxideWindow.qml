@@ -14,7 +14,10 @@ ApplicationWindow {
     property alias initialItem: stack.initialItem
     property alias headerBackgroundColor: header.color
     property alias backgroundColor: background.color
+    property bool reserveSystemSpace: false
     property bool landscape: Oxide.landscape
+    property int topSystemSpace: reserveSystemSpace ? Oxide.topSystemSpace : 0
+    property int bottomSystemSpace: reserveSystemSpace ? Oxide.bottomSystemSpace : 0
     Component.onCompleted: stack.forceActiveFocus()
     function orientationWidth(){ return landscape ? height : width; }
     function orientationHeight(){ return landscape ? width : height; }
@@ -27,7 +30,8 @@ ApplicationWindow {
     Overlay.overlay.x: landscape ? (width - height) / 2 : 0
     Overlay.overlay.y: landscape ? (height - width) / 2 : 0
     width: Screen.width
-    height: Screen.height
+    height: Screen.height - topSystemSpace - bottomSystemSpace
+    y: topSystemSpace
     contentOrientation: landscape ? Qt.LandscapeOrientation : Qt.PortraitOrientation
     Page {
         id: page
