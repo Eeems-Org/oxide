@@ -7,6 +7,7 @@ import "qrc:/codes.eeems.oxide"
 
 OxideWindow {
     id: window
+    reserveSystemSpace: true
     objectName: "window"
     visible: true
     title: qsTr("Sketchpad")

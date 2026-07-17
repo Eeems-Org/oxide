@@ -1,3 +1,5 @@
+#include <cstring>
+#include <libblight/system.h>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
 #include <liboxide/oxideqml.h>
@@ -46,6 +48,22 @@ main(int argc, char* argv[]) {
       qApp->exit(EXIT_FAILURE);
       return;
     }
+    auto window = qobject_cast<QWindow*>(root);
+    if (window == nullptr) {
+      qDebug() << "Root is not a QWindow";
+      qApp->exit(EXIT_FAILURE);
+      return;
+    }
+    auto buffer = Oxide::QML::getSurfaceForWindow(window);
+    if (!Blight::setFlags(
+          QString("connection/%1/surface/%2")
+            .arg(getpid())
+            .arg(buffer->surface)
+            .toStdString(),
+          {"system"}
+        )) {
+      O_WARNING("Unable to set flags on surface" << std::strerror(errno));
+    }
     controller->root = root;
     root->installEventFilter(new EventFilter(&app));
     QObject* clock = root->findChild<QObject*>("clock");
@@ -56,7 +74,6 @@ main(int argc, char* argv[]) {
     }
     // Update UI
     clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
-    controller->updateUIElements();
     // Setup clock
     QTimer* clockTimer = new QTimer(root);
     auto currentTime = QTime::currentTime();
