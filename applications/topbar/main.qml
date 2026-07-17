@@ -12,7 +12,26 @@ OxideWindow {
     focus: true
     color: "transparent"
     headerBackgroundColor: "white"
+    height: page.header.height
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
+    Binding {
+        target: Oxide
+        property: "topSystemSpace"
+        value: page.header.height
+        when: page.header.height > 0
+    }
+    function onVisibleChanged(visible){
+        if(visible){
+            window.raise()
+        }else{
+            window.lower()
+        }
+    }
+    Component.onCompleted: window.onVisibleChanged(controller.visible)
+    Connections {
+        target: controller
+        function onVisibleChanged(visible){ window.onVisibleChanged(visible); }
+    }
     leftMenu: [
         AbstractButton {
             leftPadding: 4
@@ -32,6 +51,7 @@ OxideWindow {
                 color: "transparent"
             }
             onClicked: {
+                console.log("settings icon clicked")
                 // TODO open settings app
             }
         },
@@ -46,6 +66,7 @@ OxideWindow {
                 anchors.fill: parent
                 enabled: parent.visible
                 onClicked: {
+                    console.log("notifications display clicked")
                     // TODO open notifications app
                 }
             }
@@ -58,6 +79,7 @@ OxideWindow {
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
+                    console.log("clocked clicked")
                     // TODO open calendar app
                 }
             }
@@ -96,6 +118,7 @@ OxideWindow {
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
+                    console.log("wifi icon clicked")
                     // TODO open wifi app
                 }
             }
@@ -140,6 +163,13 @@ OxideWindow {
                 return "qrc:/codes.eeems.oxide/img/battery/" + icon + ".png";
             }
             text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    console.log("battery icon clicked")
+                    // TODO open battery app
+                }
+            }
         },
         AbstractButton {
             topPadding: 4
@@ -158,6 +188,7 @@ OxideWindow {
                 color: "transparent"
             }
             onClicked: {
+                console.log("power icon clicked")
                 // TODO open power menu
             }
         }

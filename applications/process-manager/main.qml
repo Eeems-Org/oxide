@@ -7,6 +7,7 @@ import "qrc:/codes.eeems.oxide"
 OxideWindow {
     id: window
     visible: true
+    reserveSystemSpace: true
     headerBackgroundColor: "white"
     backgroundColor: "white"
     color: "black"

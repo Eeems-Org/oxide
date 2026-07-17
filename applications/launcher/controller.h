@@ -136,9 +136,9 @@ class Controller : public QObject {
     QString notificationText MEMBER m_notificationText NOTIFY
       notificationTextChanged
   )
-  Q_PROPERTY(int maxTouchWidth READ maxTouchWidth)
-  Q_PROPERTY(int maxTouchHeight READ maxTouchHeight)
-  Q_PROPERTY(bool hasFrontlight READ hasFrontlight)
+  Q_PROPERTY(int maxTouchWidth READ maxTouchWidth CONSTANT)
+  Q_PROPERTY(int maxTouchHeight READ maxTouchHeight CONSTANT)
+  Q_PROPERTY(bool hasFrontlight READ hasFrontlight CONSTANT)
   Q_PROPERTY(
     bool extraBrightness READ extraBrightness WRITE setExtraBrightness NOTIFY
       extraBrightnessChanged

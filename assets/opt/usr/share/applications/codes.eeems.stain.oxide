@@ -1,8 +1,0 @@
-{
-    "displayName": "Top bar",
-    "description": "System status bar",
-    "bin": "/home/root/.vellum/bin/stain",
-    "type": "background",
-    "flags": ["hidden", "nopreload", "noannounce", "nosavescreen"],
-    "permissions": ["power", "wifi", "notification", "system"]
-}
