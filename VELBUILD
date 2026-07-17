@@ -97,6 +97,11 @@ package() {
         home/root/.vellum/bin/corrupt
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
         home/root/.local/share/applications/codes.eeems.corrupt.oxide
+    # Top bar
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
+        home/root/.vellum/bin/stain
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/codes.eeems.stain.oxide
     # Keyd configuration
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
         home/root/.config/keyd/oxide.conf
