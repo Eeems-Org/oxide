@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>font/icomoon.ttf</file>
+        <file>img/icon.png</file>
+        <file>img/notifications/black.png</file>
+        <file>img/notifications/white.png</file>
+        <file>js/moment.js</file>
+    </qresource>
+</RCC>

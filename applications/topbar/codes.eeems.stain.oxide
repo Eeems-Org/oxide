@@ -1,0 +1,8 @@
+{
+    "displayName": "topbar",
+    "description": "Application launcher",
+    "bin": "/home/root/.vellum/bin/stain",
+    "type": "background",
+    "flags": ["hidden", "nopreload"],
+    "permissions": ["apps", "wifi", "power", "system", "notification"]
+}
