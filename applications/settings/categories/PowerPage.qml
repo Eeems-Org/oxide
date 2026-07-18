@@ -9,6 +9,7 @@ Page {
     objectName: "power"
     title: "Power"
     background: Rectangle { color: "white" }
+    Component.onCompleted: powerController.init()
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
@@ -23,8 +24,8 @@ Page {
             }
             BetterCheckBox {
                 tristate: false
-                checkState: controller.lockOnSuspend ? Qt.Checked : Qt.Unchecked
-                onClicked: controller.lockOnSuspend = this.checkState === Qt.Checked
+                checkState: powerController.lockOnSuspend ? Qt.Checked : Qt.Unchecked
+                onClicked: powerController.lockOnSuspend = this.checkState === Qt.Checked
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
             }
         }
@@ -38,15 +39,15 @@ Page {
             }
             BetterCheckBox {
                 tristate: false
-                checkState: controller.automaticSleep ? Qt.Checked : Qt.Unchecked
-                onClicked: controller.automaticSleep = this.checkState === Qt.Checked
+                checkState: powerController.automaticSleep ? Qt.Checked : Qt.Unchecked
+                onClicked: powerController.automaticSleep = this.checkState === Qt.Checked
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
             }
         }
 
         RowLayout {
             Layout.fillWidth: true
-            enabled: controller.automaticSleep
+            enabled: powerController.automaticSleep
             Label {
                 text: "Sleep After (minutes)"
                 font.pixelSize: 32
@@ -56,8 +57,8 @@ Page {
                 from: 1
                 to: 360
                 stepSize: 1
-                value: controller.sleepAfter
-                onValueChanged: controller.sleepAfter = this.value
+                value: powerController.sleepAfter
+                onValueChanged: powerController.sleepAfter = this.value
                 Layout.preferredWidth: 300
             }
         }
@@ -71,15 +72,15 @@ Page {
             }
             BetterCheckBox {
                 tristate: false
-                checkState: controller.automaticLock ? Qt.Checked : Qt.Unchecked
-                onClicked: controller.automaticLock = this.checkState === Qt.Checked
+                checkState: powerController.automaticLock ? Qt.Checked : Qt.Unchecked
+                onClicked: powerController.automaticLock = this.checkState === Qt.Checked
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
             }
         }
 
         RowLayout {
             Layout.fillWidth: true
-            enabled: controller.automaticLock
+            enabled: powerController.automaticLock
             Label {
                 text: "Lock After (minutes)"
                 font.pixelSize: 32
@@ -89,8 +90,8 @@ Page {
                 from: 1
                 to: 360
                 stepSize: 1
-                value: controller.lockAfter
-                onValueChanged: controller.lockAfter = this.value
+                value: powerController.lockAfter
+                onValueChanged: powerController.lockAfter = this.value
                 Layout.preferredWidth: 300
             }
         }

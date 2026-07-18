@@ -13,9 +13,7 @@ OxideWindow {
     backgroundColor: "white"
     color: "black"
     title: "Settings"
-    Component.onCompleted: {
-        controller.startup();
-    }
+    FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Connections {
         target: controller
         function onCategoryRequested(name) {
@@ -26,7 +24,7 @@ OxideWindow {
             if (stack.depth > 1) {
                 stack.pop(null); // Pop back to category list
             }
-            // Reuse cached instance or create from component
+            // Create once, reuse same instance on every push
             if (!categoryInstances[name]) {
                 categoryInstances[name] = component.createObject(window);
             }

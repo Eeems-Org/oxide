@@ -23,6 +23,11 @@ INSTALLS += applications
 
 HEADERS += \
     controller.h \
+    generalcontroller.h \
+    displaycontroller.h \
+    powercontroller.h \
+    wificontroller.h \
+    notificationscontroller.h \
     wifinetworklist.h
 
 RESOURCES += \

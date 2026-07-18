@@ -23,8 +23,8 @@ Page {
             }
             BetterCheckBox {
                 tristate: false
-                checkState: controller.showBatteryPercent ? Qt.Checked : Qt.Unchecked
-                onClicked: controller.showBatteryPercent = this.checkState === Qt.Checked
+                checkState: displayController.showBatteryPercent ? Qt.Checked : Qt.Unchecked
+                onClicked: displayController.showBatteryPercent = this.checkState === Qt.Checked
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
             }
         }
@@ -38,8 +38,8 @@ Page {
             }
             BetterCheckBox {
                 tristate: false
-                checkState: controller.showBatteryTemperature ? Qt.Checked : Qt.Unchecked
-                onClicked: controller.showBatteryTemperature = this.checkState === Qt.Checked
+                checkState: displayController.showBatteryTemperature ? Qt.Checked : Qt.Unchecked
+                onClicked: displayController.showBatteryTemperature = this.checkState === Qt.Checked
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
             }
         }
@@ -53,8 +53,8 @@ Page {
             }
             BetterCheckBox {
                 tristate: false
-                checkState: controller.showWifiDb ? Qt.Checked : Qt.Unchecked
-                onClicked: controller.showWifiDb = this.checkState === Qt.Checked
+                checkState: displayController.showWifiDb ? Qt.Checked : Qt.Unchecked
+                onClicked: displayController.showWifiDb = this.checkState === Qt.Checked
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
             }
         }
@@ -68,15 +68,15 @@ Page {
             }
             BetterCheckBox {
                 tristate: false
-                checkState: controller.showDate ? Qt.Checked : Qt.Unchecked
-                onClicked: controller.showDate = this.checkState === Qt.Checked
+                checkState: displayController.showDate ? Qt.Checked : Qt.Unchecked
+                onClicked: displayController.showDate = this.checkState === Qt.Checked
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
             }
         }
 
         RowLayout {
             Layout.fillWidth: true
-            visible: controller.hasFrontlight
+            visible: displayController.hasFrontlight
             Label {
                 text: "Extra Brightness"
                 font.pixelSize: 32
@@ -84,8 +84,8 @@ Page {
             }
             BetterCheckBox {
                 tristate: false
-                checkState: controller.extraBrightness ? Qt.Checked : Qt.Unchecked
-                onClicked: controller.extraBrightness = this.checkState === Qt.Checked
+                checkState: displayController.extraBrightness ? Qt.Checked : Qt.Unchecked
+                onClicked: displayController.extraBrightness = this.checkState === Qt.Checked
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
             }
         }
@@ -101,8 +101,8 @@ Page {
                 from: 2
                 to: 10
                 stepSize: 2
-                value: controller.columns
-                onValueChanged: controller.columns = this.value
+                value: displayController.columns
+                onValueChanged: displayController.columns = this.value
                 Layout.preferredWidth: 300
             }
         }
