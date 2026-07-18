@@ -107,6 +107,23 @@ Page {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            Label {
+                text: "Notification display time (seconds)"
+                font.pixelSize: 32
+                Layout.fillWidth: true
+            }
+            BetterSpinBox {
+                from: 1
+                to: 60
+                stepSize: 1
+                value: notificationsController.notificationDisplayTime
+                onValueChanged: notificationsController.notificationDisplayTime = this.value
+                Layout.preferredWidth: 300
+            }
+        }
+
         Item {
             Layout.fillHeight: true
             Layout.fillWidth: true

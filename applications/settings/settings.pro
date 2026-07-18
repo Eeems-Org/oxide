@@ -28,6 +28,7 @@ HEADERS += \
     powercontroller.h \
     wificontroller.h \
     notificationscontroller.h \
+    notificationlist.h \
     wifinetworklist.h
 
 RESOURCES += \

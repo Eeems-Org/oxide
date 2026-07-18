@@ -48,15 +48,18 @@ public:
   }
 
   void ensureApi() {
-    if (apiReady || api == nullptr)
+    if (apiReady || api == nullptr) {
       return;
+    }
     auto reply = api->requestAPI("frontlight");
     reply.waitForFinished();
-    if (reply.isError())
+    if (reply.isError()) {
       return;
+    }
     auto path = ((QDBusObjectPath)reply).path();
-    if (path == "/")
+    if (path == "/") {
       return;
+    }
     frontlightApi =
       new Frontlight(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
     connect(
@@ -71,40 +74,45 @@ public:
   // === Display ===
   bool showBatteryPercent() const { return m_showBatteryPercent; }
   void setShowBatteryPercent(bool v) {
-    if (m_showBatteryPercent == v)
+    if (m_showBatteryPercent == v) {
       return;
+    }
     m_showBatteryPercent = v;
     emit showBatteryPercentChanged(v);
     saveConfigFile();
   }
   bool showBatteryTemperature() const { return m_showBatteryTemperature; }
   void setShowBatteryTemperature(bool v) {
-    if (m_showBatteryTemperature == v)
+    if (m_showBatteryTemperature == v) {
       return;
+    }
     m_showBatteryTemperature = v;
     emit showBatteryTemperatureChanged(v);
     saveConfigFile();
   }
   bool showWifiDb() const { return m_showWifiDb; }
   void setShowWifiDb(bool v) {
-    if (m_showWifiDb == v)
+    if (m_showWifiDb == v) {
       return;
+    }
     m_showWifiDb = v;
     emit showWifiDbChanged(v);
     saveConfigFile();
   }
   bool showDate() const { return m_showDate; }
   void setShowDate(bool v) {
-    if (m_showDate == v)
+    if (m_showDate == v) {
       return;
+    }
     m_showDate = v;
     emit showDateChanged(v);
     saveConfigFile();
   }
   int columns() const { return m_columns; }
   void setColumns(int v) {
-    if (m_columns == v)
+    if (m_columns == v) {
       return;
+    }
     m_columns = v;
     emit columnsChanged(v);
     saveConfigFile();
@@ -165,8 +173,9 @@ private:
 
   void loadConfigFile() {
     auto configFile = getConfigFile();
-    if (configFile == nullptr)
+    if (configFile == nullptr) {
       return;
+    }
     if (!configFile->open(QIODevice::ReadOnly | QIODevice::Text)) {
       delete configFile;
       return;
@@ -174,11 +183,13 @@ private:
     QTextStream in(configFile);
     while (!in.atEnd()) {
       QString line = in.readLine();
-      if (line.startsWith("#") || line.isEmpty())
+      if (line.startsWith("#") || line.isEmpty()) {
         continue;
+      }
       QStringList parts = line.split("=");
-      if (parts.length() != 2)
+      if (parts.length() != 2) {
         continue;
+      }
       QString lhs = parts.at(0).trimmed();
       QString rhs = parts.at(1).trimmed();
       bool value = rhs.toLower() == "true" || rhs.toLower() == "t" ||
