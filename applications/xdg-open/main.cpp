@@ -3,8 +3,8 @@
 #include <sys/stat.h>
 
 #include <QCommandLineParser>
-#include <QUuid>
 #include <QUrlQuery>
+#include <QUuid>
 #include <string>
 
 using namespace Oxide::Sentry;
@@ -37,7 +37,7 @@ launchOxideApp(const QString& name, const QStringList& launchArgs = {}) {
   }
   // Register a transient background clone and launch it
   QVariantMap properties;
-  properties["name"] = QUuid::createUuid().toString();
+  properties["name"] = QUuid::createUuid().toString(QUuid::Id128);
   properties["bin"] = app.bin();
   properties["displayName"] = app.displayName();
   properties["description"] = app.description();

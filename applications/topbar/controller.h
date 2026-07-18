@@ -400,6 +400,10 @@ private slots:
   }
   void networkRemoved(const QDBusObjectPath& path) { networks->remove(path); }
   void wifiStateChanged(int state) {
+    if (root == nullptr) {
+      wifiState = state;
+      return;
+    }
     if (state == wifiState) {
       return;
     }
@@ -420,9 +424,6 @@ private slots:
       case WifiUnknown:
       default:
         qDebug() << "Wifi state: Unknown";
-    }
-    if (root == nullptr) {
-      return;
     }
     QObject* ui = root->findChild<QObject*>("wifiState");
     if (ui) {

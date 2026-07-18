@@ -108,6 +108,10 @@ public:
       delete this->network;
     }
     this->network = network;
+    m_protocol = network->protocol();
+    emit fakeStringSignal(m_protocol);
+    emit knownChanged(known());
+    emit availableChanged(available());
   }
 
 signals:
@@ -184,6 +188,8 @@ public:
     auto ssid = bss->ssid();
     for (auto network : networks) {
       if (network->ssid() == ssid) {
+        network->appendBSS(bss);
+        sort();
         return;
       }
     }
@@ -196,22 +202,31 @@ public:
     sort();
   }
   void append(QList<Network*> networks) {
+    QList<Network*> unmatched;
     for (auto network : networks) {
       auto ssid = network->ssid();
+      bool found = false;
       for (auto item : this->networks) {
         if (item->ssid() == ssid) {
           item->setNetwork(network);
-          networks.removeAll(network);
+          found = true;
           break;
         }
       }
+      if (!found) {
+        unmatched.append(network);
+      }
+    }
+    if (unmatched.isEmpty()) {
+      sort();
+      return;
     }
     beginInsertRows(
       QModelIndex(),
       this->networks.length(),
-      this->networks.length() + networks.length() - 1
+      this->networks.length() + unmatched.length() - 1
     );
-    for (auto network : networks) {
+    for (auto network : unmatched) {
       qDebug() << "Adding known network" << network->ssid();
       this->networks.append(new WifiNetwork(network, api, this));
     }
@@ -234,6 +249,8 @@ public:
         }
       }
     }
+    if (bsss.isEmpty())
+      return;
     beginInsertRows(
       QModelIndex(),
       this->networks.length(),
@@ -249,14 +266,16 @@ public:
     sort();
   }
   void clear() {
-    beginRemoveRows(QModelIndex(), 0, networks.length());
+    if (networks.isEmpty())
+      return;
+    beginResetModel();
     for (auto network : networks) {
       if (network != nullptr) {
         delete network;
       }
     }
     networks.clear();
-    endRemoveRows();
+    endResetModel();
   }
   void removeUnknown() {
     QList<WifiNetwork*> toRemove;
@@ -288,10 +307,10 @@ public:
       networks.begin(),
       networks.end(),
       [=](WifiNetwork* a, WifiNetwork* b) -> bool {
-        if (a->connected()) {
+        if (a->connected() && !b->connected()) {
           return true;
         }
-        if (b->connected()) {
+        if (!a->connected() && b->connected()) {
           return false;
         }
         if (a->available() && !b->available()) {
@@ -324,9 +343,12 @@ public:
       auto network = i.next();
       network->remove(path);
       if (!network->paths().length()) {
+        auto idx = networks.indexOf(network);
+        beginRemoveRows(QModelIndex(), idx, idx);
         qDebug() << "Network removed" << network->ssid();
         i.remove();
         delete network;
+        endRemoveRows();
       }
     }
     sort();

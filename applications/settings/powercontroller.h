@@ -34,27 +34,28 @@ class PowerController : public QObject {
   )
 
 public:
-  explicit PowerController(
-    General* api,
-    QObject* parent = nullptr
-  )
+  explicit PowerController(General* api, QObject* parent = nullptr)
     : QObject(parent)
     , api(api) {}
 
   void ensureApi() {
-    if (apiReady || api == nullptr) return;
+    if (apiReady || api == nullptr)
+      return;
     auto reply = api->requestAPI("system");
     reply.waitForFinished();
-    if (reply.isError()) return;
+    if (reply.isError())
+      return;
     auto path = ((QDBusObjectPath)reply).path();
-    if (path == "/") return;
-    systemApi = new System(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
-    connect(
-      systemApi,
-      &System::autoSleepChanged,
-      this,
-      [this](int v) { setSleepAfter(v); }
-    );
+    if (path == "/")
+      return;
+    systemApi =
+      new System(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
+    connect(systemApi, &System::autoSleepChanged, this, [this](int v) {
+      m_automaticSleep = v > 0;
+      m_sleepAfter = v > 0 ? v : 5;
+      emit automaticSleepChanged(m_automaticSleep);
+      emit sleepAfterChanged(m_sleepAfter);
+    });
     // Load initial values
     auto autoSleep = systemApi->autoSleep();
     m_automaticSleep = autoSleep > 0;
@@ -76,35 +77,40 @@ public:
 
   bool automaticSleep() const { return m_automaticSleep; }
   void setAutomaticSleep(bool v) {
-    if (m_automaticSleep == v) return;
+    if (m_automaticSleep == v)
+      return;
     m_automaticSleep = v;
     emit automaticSleepChanged(v);
     applyPowerSettings();
   }
   int sleepAfter() const { return m_sleepAfter; }
   void setSleepAfter(int v) {
-    if (m_sleepAfter == v) return;
+    if (m_sleepAfter == v)
+      return;
     m_sleepAfter = v;
     emit sleepAfterChanged(v);
     applyPowerSettings();
   }
   bool automaticLock() const { return m_automaticLock; }
   void setAutomaticLock(bool v) {
-    if (m_automaticLock == v) return;
+    if (m_automaticLock == v)
+      return;
     m_automaticLock = v;
     emit automaticLockChanged(v);
     applyPowerSettings();
   }
   int lockAfter() const { return m_lockAfter; }
   void setLockAfter(int v) {
-    if (m_lockAfter == v) return;
+    if (m_lockAfter == v)
+      return;
     m_lockAfter = v;
     emit lockAfterChanged(v);
     applyPowerSettings();
   }
   bool lockOnSuspend() const { return m_lockOnSuspend; }
   void setLockOnSuspend(bool v) {
-    if (m_lockOnSuspend == v) return;
+    if (m_lockOnSuspend == v)
+      return;
     m_lockOnSuspend = v;
     emit lockOnSuspendChanged(v);
     if (systemApi != nullptr) {
@@ -132,7 +138,8 @@ private:
 
   void applyPowerSettings() {
     ensureApi();
-    if (systemApi == nullptr) return;
+    if (systemApi == nullptr)
+      return;
     if (!m_automaticSleep) {
       systemApi->setAutoSleep(0);
     } else {
