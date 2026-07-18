@@ -140,15 +140,14 @@ public:
     return nullptr;
   }
   Q_INVOKABLE void clear() {
-    beginRemoveRows(QModelIndex(), 0, notifications.length());
+    if (notifications.isEmpty())
+      return;
+    beginResetModel();
     for (auto notification : notifications) {
-      notification->notification()->remove().waitForFinished();
-      if (notification != nullptr) {
-        notification->deleteLater();
-      }
+      notification->deleteLater();
     }
     notifications.clear();
-    endRemoveRows();
+    endResetModel();
     emit updated();
   }
   Q_INVOKABLE void remove(QString identifier) {
@@ -181,7 +180,6 @@ public:
           notifications.indexOf(item)
         );
         i.remove();
-        item->notification()->remove().waitForFinished();
         item->deleteLater();
         endRemoveRows();
         count++;

@@ -38,7 +38,10 @@ getConfigFile() {
 bool
 configFileExists() {
   auto configFile = getConfigFile();
-  bool exists = configFile != nullptr && configFile->exists();
+  if (configFile == nullptr) {
+    return false;
+  }
+  bool exists = configFile->exists();
   configFile->close();
   delete configFile;
   return exists;

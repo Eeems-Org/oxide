@@ -8,15 +8,13 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QQmlApplicationEngine>
-#include <QThread>
-#include <signal.h>
 
 #include "controller.h"
-#include "generalcontroller.h"
 #include "displaycontroller.h"
+#include "generalcontroller.h"
+#include "notificationscontroller.h"
 #include "powercontroller.h"
 #include "wificontroller.h"
-#include "notificationscontroller.h"
 
 using namespace Oxide;
 using namespace Oxide::QML;
@@ -72,22 +70,8 @@ main(int argc, char* argv[]) {
       // Running instance acknowledged, category forwarded
       return 0;
     }
-    // No ack — assume dead, kill holder and continue as primary
-    auto pids = lsof(LOCK_PATH);
-    for (int pid : pids) {
-      if (pid > 0) {
-        kill(pid, SIGTERM);
-      }
-    }
-    // Wait briefly for process to die and lock to release
-    QThread::msleep(200);
-    QFile::remove(SOCKET_PATH);
-    QFile::remove(LOCK_PATH);
-    lockFd = tryGetLock(LOCK_PATH);
-    if (lockFd < 0) {
-      qWarning() << "Unable to acquire lock after killing stale process";
-      return EXIT_FAILURE;
-    }
+    qWarning() << "Settings is already running and did not acknowledge";
+    return EXIT_FAILURE;
   }
 
   // Clean up stale socket file if it exists (previous crash)
@@ -136,7 +120,9 @@ main(int argc, char* argv[]) {
   context->setContextProperty("displayController", &displayController);
   context->setContextProperty("powerController", &powerController);
   context->setContextProperty("wifiController", &wifiController);
-  context->setContextProperty("notificationsController", &notificationsController);
+  context->setContextProperty(
+    "notificationsController", &notificationsController
+  );
 
   QTimer::singleShot(0, [&app, &engine, &controller, &requestedCategory] {
     QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
