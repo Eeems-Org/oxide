@@ -92,6 +92,8 @@ public:
     if (network != nullptr && network->path() == path.path()) {
       delete network;
       network = nullptr;
+      emit knownChanged(known());
+      emit availableChanged(available());
       return;
     }
     QMutableListIterator<BSS*> i(bsss);
@@ -175,6 +177,7 @@ public:
     for (auto item : networks) {
       if (item->ssid() == ssid) {
         item->setNetwork(network);
+        sort();
         return;
       }
     }
