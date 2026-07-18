@@ -25,9 +25,15 @@ public:
     : QObject(parent) {
     auto bus = QDBusConnection::systemBus();
     qDebug() << "Waiting for tarnish to start up";
+    int retries = 0;
+    const int maxRetries = 300;
     while (!bus.interface()->registeredServiceNames().value().contains(
       OXIDE_SERVICE
     )) {
+      if (++retries >= maxRetries) {
+        qWarning() << "Timed out waiting for tarnish to start up";
+        return;
+      }
       struct timespec args{
         .tv_sec = 1,
         .tv_nsec = 0,

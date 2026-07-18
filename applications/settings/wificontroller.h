@@ -28,23 +28,25 @@ class WifiController : public QObject {
   )
 
 public:
-  explicit WifiController(
-    General* api,
-    QObject* parent = nullptr
-  )
+  explicit WifiController(General* api, QObject* parent = nullptr)
     : QObject(parent)
     , api(api)
     , networks(new WifiNetworkList()) {}
 
   void ensureApi() {
-    if (apiReady || api == nullptr) return;
+    if (apiReady || api == nullptr)
+      return;
     auto reply = api->requestAPI("wifi");
     reply.waitForFinished();
-    if (reply.isError()) return;
+    if (reply.isError())
+      return;
     auto path = ((QDBusObjectPath)reply).path();
-    if (path == "/") return;
+    if (path == "/")
+      return;
     wifiApi = new Wifi(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
-    connect(wifiApi, &Wifi::stateChanged, this, &WifiController::wifiStateChanged);
+    connect(
+      wifiApi, &Wifi::stateChanged, this, &WifiController::wifiStateChanged
+    );
     connect(
       wifiApi, &Wifi::networkConnected, this, &WifiController::networkConnected
     );
@@ -67,7 +69,8 @@ public:
   }
   Q_INVOKABLE void turnOffWifi() {
     ensureApi();
-    if (wifiApi == nullptr) return;
+    if (wifiApi == nullptr)
+      return;
     wifiApi->disable();
     m_wifion = false;
     emit wifiOnChanged(false);
@@ -77,17 +80,21 @@ public:
   WifiNetworkList* getNetworks() { return networks; }
   Q_INVOKABLE void disconnectWifiSignals() {
     ensureApi();
-    if (wifiApi == nullptr) return;
+    if (wifiApi == nullptr)
+      return;
     disconnect(wifiApi, &Wifi::bssFound, this, &WifiController::bssFound);
     disconnect(wifiApi, &Wifi::bssRemoved, this, &WifiController::bssRemoved);
-    disconnect(wifiApi, &Wifi::networkAdded, this, &WifiController::networkAdded);
+    disconnect(
+      wifiApi, &Wifi::networkAdded, this, &WifiController::networkAdded
+    );
     disconnect(
       wifiApi, &Wifi::networkRemoved, this, &WifiController::networkRemoved
     );
   }
   Q_INVOKABLE void connectWifiSignals() {
     ensureApi();
-    if (wifiApi == nullptr) return;
+    if (wifiApi == nullptr)
+      return;
     networks->clear();
     QList<Network*> networksToAdd;
     for (auto path : wifiApi->networks()) {
@@ -116,10 +123,34 @@ public:
     networks->append(bsssToAdd);
     networks->sort();
     networks->setConnected(wifiApi->network());
-    connect(wifiApi, &Wifi::bssFound, this, &WifiController::bssFound);
-    connect(wifiApi, &Wifi::bssRemoved, this, &WifiController::bssRemoved);
-    connect(wifiApi, &Wifi::networkAdded, this, &WifiController::networkAdded);
-    connect(wifiApi, &Wifi::networkRemoved, this, &WifiController::networkRemoved);
+    connect(
+      wifiApi,
+      &Wifi::bssFound,
+      this,
+      &WifiController::bssFound,
+      Qt::UniqueConnection
+    );
+    connect(
+      wifiApi,
+      &Wifi::bssRemoved,
+      this,
+      &WifiController::bssRemoved,
+      Qt::UniqueConnection
+    );
+    connect(
+      wifiApi,
+      &Wifi::networkAdded,
+      this,
+      &WifiController::networkAdded,
+      Qt::UniqueConnection
+    );
+    connect(
+      wifiApi,
+      &Wifi::networkRemoved,
+      this,
+      &WifiController::networkRemoved,
+      Qt::UniqueConnection
+    );
   }
 
 signals:
@@ -137,9 +168,7 @@ private slots:
   void networkConnected(const QDBusObjectPath& path) {
     networks->setConnected(path);
   }
-  void disconnected() {
-    networks->setConnected(QDBusObjectPath("/"));
-  }
+  void disconnected() { networks->setConnected(QDBusObjectPath("/")); }
   void bssFound(const QDBusObjectPath& path) {
     auto bss =
       new BSS(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this);

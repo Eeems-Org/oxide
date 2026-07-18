@@ -9,14 +9,14 @@ Page {
     objectName: "wifi"
     title: "WiFi"
     background: Rectangle { color: "white" }
-    Component.onCompleted: {
+    StackView.onActivated: {
         wifiController.connectWifiSignals();
         if (wifiController.wifiOn) {
             wifiController.networks.scan(false);
         }
         sortTimer.start();
     }
-    Component.onDestruction: {
+    StackView.onDeactivated: {
         sortTimer.stop();
         wifiController.disconnectWifiSignals();
     }

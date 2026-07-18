@@ -1,9 +1,8 @@
 #pragma once
 
-#include <QObject>
 #include <QDir>
 #include <QFile>
-#include <QSet>
+#include <QObject>
 #include <QTextStream>
 
 #include <liboxide.h>
@@ -30,7 +29,9 @@ class DisplayController : public QObject {
   Q_PROPERTY(
     bool showDate MEMBER m_showDate WRITE setShowDate NOTIFY showDateChanged
   )
-  Q_PROPERTY(int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged)
+  Q_PROPERTY(
+    int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged
+  )
   Q_PROPERTY(bool hasFrontlight READ hasFrontlight CONSTANT)
   Q_PROPERTY(
     bool extraBrightness READ extraBrightness WRITE setExtraBrightness NOTIFY
@@ -40,23 +41,24 @@ class DisplayController : public QObject {
   Q_PROPERTY(int maxTouchHeight READ maxTouchHeight CONSTANT)
 
 public:
-  explicit DisplayController(
-    General* api,
-    QObject* parent = nullptr
-  )
+  explicit DisplayController(General* api, QObject* parent = nullptr)
     : QObject(parent)
     , api(api) {
     loadConfigFile();
   }
 
   void ensureApi() {
-    if (apiReady || api == nullptr) return;
+    if (apiReady || api == nullptr)
+      return;
     auto reply = api->requestAPI("frontlight");
     reply.waitForFinished();
-    if (reply.isError()) return;
+    if (reply.isError())
+      return;
     auto path = ((QDBusObjectPath)reply).path();
-    if (path == "/") return;
-    frontlightApi = new Frontlight(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
+    if (path == "/")
+      return;
+    frontlightApi =
+      new Frontlight(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
     connect(
       frontlightApi,
       &Frontlight::extraBrightnessChanged,
@@ -69,35 +71,40 @@ public:
   // === Display ===
   bool showBatteryPercent() const { return m_showBatteryPercent; }
   void setShowBatteryPercent(bool v) {
-    if (m_showBatteryPercent == v) return;
+    if (m_showBatteryPercent == v)
+      return;
     m_showBatteryPercent = v;
     emit showBatteryPercentChanged(v);
     saveConfigFile();
   }
   bool showBatteryTemperature() const { return m_showBatteryTemperature; }
   void setShowBatteryTemperature(bool v) {
-    if (m_showBatteryTemperature == v) return;
+    if (m_showBatteryTemperature == v)
+      return;
     m_showBatteryTemperature = v;
     emit showBatteryTemperatureChanged(v);
     saveConfigFile();
   }
   bool showWifiDb() const { return m_showWifiDb; }
   void setShowWifiDb(bool v) {
-    if (m_showWifiDb == v) return;
+    if (m_showWifiDb == v)
+      return;
     m_showWifiDb = v;
     emit showWifiDbChanged(v);
     saveConfigFile();
   }
   bool showDate() const { return m_showDate; }
   void setShowDate(bool v) {
-    if (m_showDate == v) return;
+    if (m_showDate == v)
+      return;
     m_showDate = v;
     emit showDateChanged(v);
     saveConfigFile();
   }
   int columns() const { return m_columns; }
   void setColumns(int v) {
-    if (m_columns == v) return;
+    if (m_columns == v)
+      return;
     m_columns = v;
     emit columnsChanged(v);
     saveConfigFile();
@@ -140,9 +147,8 @@ private:
   int m_columns = 6;
 
   // === oxide.conf file handling ===
-  QList<QString> configFileDirectoryPaths = {
-    "/opt/etc", "/etc", "/home/root/.config", "/home/root/.vellum/etc"
-  };
+  QList<QString> configFileDirectoryPaths =
+    {"/opt/etc", "/etc", "/home/root/.config", "/home/root/.vellum/etc"};
 
   QFile* getConfigFile() {
     for (auto path : configFileDirectoryPaths) {
@@ -159,30 +165,34 @@ private:
 
   void loadConfigFile() {
     auto configFile = getConfigFile();
-    if (configFile == nullptr) return;
+    if (configFile == nullptr)
+      return;
     if (!configFile->open(QIODevice::ReadOnly | QIODevice::Text)) {
       delete configFile;
       return;
     }
-    QSet<QString> booleanSettings = {
-      "showWifiDb", "showBatteryPercent", "showBatteryTemperature", "showDate"
-    };
-    QSet<QString> intSettings = {"columns"};
     QTextStream in(configFile);
     while (!in.atEnd()) {
       QString line = in.readLine();
-      if (line.startsWith("#") || line.isEmpty()) continue;
+      if (line.startsWith("#") || line.isEmpty())
+        continue;
       QStringList parts = line.split("=");
-      if (parts.length() != 2) continue;
+      if (parts.length() != 2)
+        continue;
       QString lhs = parts.at(0).trimmed();
       QString rhs = parts.at(1).trimmed();
-      if (booleanSettings.contains(lhs)) {
-        bool value = rhs.toLower() == "true" || rhs.toLower() == "t" ||
-                     rhs.toLower() == "y" || rhs.toLower() == "yes" ||
-                     rhs == "1";
-        setProperty(lhs.toStdString().c_str(), value);
-      } else if (intSettings.contains(lhs)) {
-        setProperty(lhs.toStdString().c_str(), rhs.toInt());
+      bool value = rhs.toLower() == "true" || rhs.toLower() == "t" ||
+                   rhs.toLower() == "y" || rhs.toLower() == "yes" || rhs == "1";
+      if (lhs == "showBatteryPercent") {
+        m_showBatteryPercent = value;
+      } else if (lhs == "showBatteryTemperature") {
+        m_showBatteryTemperature = value;
+      } else if (lhs == "showWifiDb") {
+        m_showWifiDb = value;
+      } else if (lhs == "showDate") {
+        m_showDate = value;
+      } else if (lhs == "columns") {
+        m_columns = rhs.toInt();
       }
     }
     configFile->close();
@@ -192,8 +202,7 @@ private:
   void saveConfigFile() {
     QFile* configFile = getConfigFile();
     if (configFile == nullptr) {
-      configFile =
-        new QFile(configFileDirectoryPaths.last() + "/oxide.conf");
+      configFile = new QFile(configFileDirectoryPaths.last() + "/oxide.conf");
     }
     QMap<QString, QString> entries;
     if (configFile->exists()) {
