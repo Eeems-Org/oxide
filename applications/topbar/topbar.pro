@@ -26,9 +26,7 @@ INSTALLS += applications
 
 HEADERS += \
     controller.h \
-    notificationlist.h \
-    stain_stable.h \
-    wifinetworklist.h
+    stain_stable.h
 
 PRECOMPILED_HEADER = \
     stain_stable.h

@@ -16,7 +16,7 @@ Page {
         }
         sortTimer.start();
     }
-    StackView.onDeactivated: {
+    StackView.onDeactivating: {
         sortTimer.stop();
         wifiController.disconnectWifiSignals();
     }
@@ -28,13 +28,17 @@ Page {
         onTriggered: wifiController.networks.sort()
     }
 
-    ColumnLayout {
+    // Unable to use ColumnLayout due to polish loop on close
+    Item {
         anchors.fill: parent
         anchors.margins: 16
-        spacing: 8
 
         RowLayout {
-            Layout.fillWidth: true
+            id: buttonsRow
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            spacing: 8
             OxideButton {
                 text: "Turn wifi " + (wifiController.wifiOn ? "off" : "on")
                 color: "black"
@@ -66,8 +70,11 @@ Page {
 
         ListView {
             id: networks
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            anchors.top: buttonsRow.bottom
+            anchors.topMargin: 8
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
             clip: true
             model: wifiController.networks
             delegate: Rectangle {

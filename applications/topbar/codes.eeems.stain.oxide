@@ -4,5 +4,5 @@
     "bin": "/home/root/.vellum/bin/stain",
     "type": "background",
     "flags": ["hidden", "nopreload", "noannounce", "privileged", "autoStart"],
-    "permissions": ["apps", "wifi", "power", "system", "notification"]
+    "permissions": ["apps", "wifi", "power", "notification"]
 }
