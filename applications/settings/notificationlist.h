@@ -87,8 +87,8 @@ class NotificationList : public QAbstractListModel {
   Q_OBJECT
 
 public:
-  NotificationList()
-    : QAbstractListModel(nullptr) {}
+  NotificationList(QObject* parent = nullptr)
+    : QAbstractListModel(parent) {}
 
   QVariant headerData(
     int section,
@@ -140,14 +140,15 @@ public:
     return nullptr;
   }
   Q_INVOKABLE void clear() {
-    if (notifications.isEmpty())
-      return;
-    beginResetModel();
+    beginRemoveRows(QModelIndex(), 0, notifications.length());
     for (auto notification : notifications) {
-      notification->deleteLater();
+      notification->notification()->remove().waitForFinished();
+      if (notification != nullptr) {
+        notification->deleteLater();
+      }
     }
     notifications.clear();
-    endResetModel();
+    endRemoveRows();
     emit updated();
   }
   Q_INVOKABLE void remove(QString identifier) {
@@ -180,6 +181,7 @@ public:
           notifications.indexOf(item)
         );
         i.remove();
+        item->notification()->remove().waitForFinished();
         item->deleteLater();
         endRemoveRows();
         count++;

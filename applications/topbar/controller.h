@@ -1,20 +1,14 @@
 #pragma once
 
 #include <liboxide.h>
-#include <liboxide/sysobject.h>
 
 #include <QObject>
-
-#include "notificationlist.h"
-#include "wifinetworklist.h"
 
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 
 using namespace codes::eeems::oxide1;
-using codes::eeems::oxide1::Frontlight;
 using codes::eeems::oxide1::Power;
-using Oxide::SysObject;
 using namespace Oxide::Sentry;
 
 enum BatteryState {
@@ -49,18 +43,6 @@ class Controller : public QObject {
     bool showBatteryTemperature MEMBER m_showBatteryTemperature NOTIFY
       showBatteryTemperatureChanged
   )
-  Q_PROPERTY(
-    WifiNetworkList* networks MEMBER networks READ getNetworks NOTIFY
-      networksChanged
-  )
-  Q_PROPERTY(
-    NotificationList* notifications MEMBER notifications READ getNotifications
-      NOTIFY notificationsChanged
-  )
-  Q_PROPERTY(QString locale READ locale NOTIFY localeChanged)
-  Q_PROPERTY(QString timezone READ timezone NOTIFY timezoneChanged)
-  Q_PROPERTY(bool wifiOn MEMBER m_wifion READ wifiOn NOTIFY wifiOnChanged)
-
   Q_PROPERTY(bool showDate MEMBER m_showDate NOTIFY showDateChanged)
   Q_PROPERTY(
     bool hasNotification MEMBER m_hasNotification NOTIFY hasNotificationChanged
@@ -72,41 +54,7 @@ class Controller : public QObject {
 public:
   QObject* root = nullptr;
   explicit Controller(QObject* parent = nullptr);
-  Q_INVOKABLE void startup() { loadSettings(); }
-  Q_INVOKABLE bool turnOnWifi() {
-    if (!wifiApi->enable()) {
-      return false;
-    }
-    m_wifion = true;
-    emit wifiOnChanged(true);
-    connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-    return true;
-  };
-  Q_INVOKABLE void turnOffWifi() {
-    wifiApi->disable();
-    m_wifion = false;
-    emit wifiOnChanged(false);
-    disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-    networks->removeUnknown();
-    wifiApi->flushBSSCache(0);
-  };
-  bool wifiOn() { return m_wifion; }
   Q_INVOKABLE void loadSettings();
-  Q_INVOKABLE void
-  breadcrumb(QString category, QString message, QString type = "default") {
-#ifdef SENTRY
-    sentry_breadcrumb(
-      category.toStdString().c_str(),
-      message.toStdString().c_str(),
-      type.toStdString().c_str()
-    );
-#else
-    Q_UNUSED(category);
-    Q_UNUSED(message);
-    Q_UNUSED(type);
-#endif
-  }
-  void updateBatteryLevel();
   bool showWifiDb() const { return m_showWifiDb; }
   void setShowWifiDb(bool);
   bool showBatteryPercent() const { return m_showBatteryPercent; }
@@ -148,101 +96,31 @@ public:
     emit hasNotificationChanged(m_hasNotification);
   }
   bool getPowerConnected() { return m_powerConnected; }
-  WifiNetworkList* getNetworks() { return networks; }
-  NotificationList* getNotifications() { return notifications; }
-  QString locale() { return deviceSettings.getLocale(); }
-  QString timezone() { return deviceSettings.getTimezone(); }
-  Q_INVOKABLE void disconnectWifiSignals() {
-    disconnect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
-    disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-    disconnect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
-    disconnect(
-      wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved
-    );
-  }
-  Q_INVOKABLE void connectWifiSignals() {
-    networks->clear();
-    QList<Network*> networksToAdd;
-    for (auto path : wifiApi->networks()) {
-      auto network = new Network(
-        OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
-      );
-      auto ssid = network->ssid();
-      if (ssid.isEmpty()) {
-        delete network;
-        continue;
-      }
-      networksToAdd.append(network);
-    }
-    networks->append(networksToAdd);
-    QList<BSS*> bsssToAdd;
-    for (auto path : wifiApi->bSSs()) {
-      auto bss =
-        new BSS(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this);
-      auto ssid = bss->ssid();
-      if (ssid.isEmpty()) {
-        delete bss;
-        continue;
-      }
-      bsssToAdd.append(bss);
-    }
-    networks->append(bsssToAdd);
-    networks->sort();
-    networks->setConnected(wifiApi->network());
-    connect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
-    connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-    connect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
-    connect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
-  }
-  Apps* getAppsApi() { return appsApi; }
-  Notifications* getNotificationApi() { return notificationApi; }
 signals:
   void visibleChanged(bool);
   void showWifiDbChanged(bool);
   void showBatteryPercentChanged(bool);
   void showBatteryTemperatureChanged(bool);
-  void networksChanged(WifiNetworkList*);
-  void localeChanged(QString);
-  void timezoneChanged(QString);
-  void wifiOnChanged(bool);
   void showDateChanged(bool);
   void hasNotificationChanged(bool);
   void notificationTextChanged(QString);
-  void notificationsChanged(NotificationList*);
+
+public slots:
+  void openSettings(const QString& category = {});
 
 private slots:
   void checkCurrentApplication(QDBusObjectPath path = QDBusObjectPath());
-  void notificationsUpdated() {
-    if (notifications->length() > 1) {
-      setNotification(
-        QStringLiteral("%1 notifications").arg(notifications->length())
-      );
-    } else if (!notifications->empty()) {
-      setNotification("1 notification");
-    } else {
-      clearNotification();
-    }
-    emit notificationsChanged(notifications);
-  }
   void notificationAdded(const QDBusObjectPath& path) {
-    auto notification = new Notification(
-      OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
-    );
-    notifications->append(notification);
-    // Notification UI updates will be handled by notificationsUpdated
+    Q_UNUSED(path);
+    m_notificationCount++;
+    updateNotificationText();
   }
   void notificationRemoved(const QDBusObjectPath& path) {
-    auto notification = notifications->get(path);
-    if (notification == nullptr) {
-      return;
-    }
-    notifications->removeAll(notification);
-    notification->deleteLater();
-    // Notification UI updates will be handled by notificationsUpdated
-  }
-  void notificationChanged(const QDBusObjectPath& path) {
     Q_UNUSED(path);
-    emit notificationsChanged(notifications);
+    if (m_notificationCount > 0) {
+      m_notificationCount--;
+    }
+    updateNotificationText();
   }
   void batteryAlert() {
     if (root == nullptr) {
@@ -369,36 +247,7 @@ private slots:
     Q_UNUSED(state);
     // TODO handle requested battery state
   }
-  void bssFound(const QDBusObjectPath& path) {
-    auto bss =
-      new BSS(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this);
-    auto ssid = bss->ssid();
-    if (ssid.isEmpty()) {
-      delete bss;
-      return;
-    }
-    networks->append(bss);
-  }
-  void bssRemoved(const QDBusObjectPath& path) { networks->remove(path); }
-  void disconnected() {
-    wifiStateChanged(wifiApi->state());
-    networks->setConnected(QDBusObjectPath("/"));
-  }
-  void networkAdded(const QDBusObjectPath& path) {
-    auto network = new Network(
-      OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
-    );
-    auto ssid = network->ssid();
-    if (ssid.isEmpty()) {
-      delete network;
-      return;
-    }
-    networks->append(network);
-  }
-  void networkConnected(const QDBusObjectPath& path) {
-    networks->setConnected(path);
-  }
-  void networkRemoved(const QDBusObjectPath& path) { networks->remove(path); }
+  void disconnected() { wifiStateChanged(wifiApi->state()); }
   void wifiStateChanged(int state) {
     if (root == nullptr) {
       wifiState = state;
@@ -466,7 +315,6 @@ private slots:
   }
 
 private:
-  void checkUITimer();
   bool m_visible = false;
   bool m_showWifiDb = false;
   bool m_showBatteryPercent = false;
@@ -476,16 +324,21 @@ private:
   QString m_notificationText = "";
   bool m_powerConnected = false;
   int wifiState = WifiUnknown;
-  bool m_wifion;
-  SysObject wifi;
   General* api = nullptr;
   Power* powerApi = nullptr;
   Wifi* wifiApi = nullptr;
-  System* systemApi = nullptr;
   Apps* appsApi = nullptr;
   Notifications* notificationApi = nullptr;
-  Frontlight* frontlightApi = nullptr;
-  QList<QObject*> applications;
-  WifiNetworkList* networks;
-  NotificationList* notifications;
+  int m_notificationCount = 0;
+  void updateNotificationText() {
+    if (m_notificationCount > 1) {
+      setNotification(
+        QStringLiteral("%1 notifications").arg(m_notificationCount)
+      );
+    } else if (m_notificationCount == 1) {
+      setNotification("1 notification");
+    } else {
+      clearNotification();
+    }
+  }
 };

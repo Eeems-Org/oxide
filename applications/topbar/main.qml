@@ -52,7 +52,7 @@ OxideWindow {
             }
             onClicked: {
                 console.log("settings icon clicked")
-                // TODO open settings app
+                controller.openSettings()
             }
         },
         OxideStatusIcon {
@@ -67,7 +67,7 @@ OxideWindow {
                 enabled: parent.visible
                 onClicked: {
                     console.log("notifications display clicked")
-                    // TODO open notifications app
+                    controller.openSettings("notifications")
                 }
             }
         }
@@ -119,7 +119,7 @@ OxideWindow {
                 anchors.fill: parent
                 onClicked: {
                     console.log("wifi icon clicked")
-                    // TODO open wifi app
+                    controller.openSettings("wifi")
                 }
             }
         },

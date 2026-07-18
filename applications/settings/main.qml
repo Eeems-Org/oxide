@@ -22,13 +22,9 @@ OxideWindow {
                 return;
             }
             if (stack.depth > 1) {
-                stack.pop(null); // Pop back to category list
+                stack.pop();
             }
-            // Create once, reuse same instance on every push
-            if (!categoryInstances[name]) {
-                categoryInstances[name] = component.createObject(window);
-            }
-            stack.push(categoryInstances[name]);
+            stack.push(component.createObject(stack));
         }
     }
 
@@ -39,7 +35,6 @@ OxideWindow {
         "wifi": wifiPageComponent,
         "notifications": notificationsPageComponent
     })
-    property var categoryInstances: ({})
 
     leftMenu: [
         OxideButton {
@@ -49,11 +44,11 @@ OxideWindow {
             borderColor: window.backgroundColor
             onClicked: {
                 controller.breadcrumb("settings.back", "click", "ui");
-                if (stack.depth <= 1) {
+                if (stack.depth == 1) {
                     Qt.quit();
-                    return;
+                }else{
+                    stack.pop();
                 }
-                stack.pop();
             }
         }
     ]

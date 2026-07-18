@@ -117,6 +117,7 @@ public slots:
   void openLockScreen();
   void openTaskSwitcher();
   void openTerminal();
+  void openSettings(const QString& category);
 
 private:
   bool m_stopping;

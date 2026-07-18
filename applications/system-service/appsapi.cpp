@@ -817,6 +817,52 @@ AppsAPI::openTerminal() {
   app->launchNoSecurityCheck();
 }
 
+void
+AppsAPI::openSettings(const QString& category) {
+  auto app = getApplication("codes.eeems.settings");
+  if (app == nullptr) {
+    O_WARNING("Unable to find settings application");
+    return;
+  }
+  QStringList args = category.isEmpty() ? QStringList{} : QStringList{category};
+  if (!app->forking()) {
+    app->launchNoSecurityCheck(args);
+    return;
+  }
+  QVariantMap properties;
+  properties["name"] = QUuid::createUuid().toString(QUuid::Id128);
+  properties["bin"] = app->bin();
+  properties["displayName"] = app->displayName();
+  properties["description"] = app->description();
+  properties["type"] = (int)ApplicationType::Background;
+  properties["icon"] = app->icon();
+  properties["workingDirectory"] = app->workingDirectory();
+  properties["user"] = app->user();
+  properties["group"] = app->group();
+  properties["environment"] = app->environment();
+  properties["permissions"] = app->permissions();
+  properties["directories"] = app->directories();
+  properties["onPause"] = app->onPause();
+  properties["onResume"] = app->onResume();
+  properties["onStop"] = app->onStop();
+  QStringList cloneFlags = app->flags();
+  if (!cloneFlags.contains("transient")) {
+    cloneFlags.prepend("transient");
+  }
+  cloneFlags.removeAll("forking");
+  properties["flags"] = cloneFlags;
+  QDBusObjectPath clonePath = registerApplicationNoSecurityCheck(properties);
+  if (clonePath.path() == "/") {
+    O_WARNING("Failed to register transient settings instance");
+    return;
+  }
+  auto clone = getApplication(clonePath);
+  if (clone == nullptr) {
+    return;
+  }
+  clone->launchNoSecurityCheck(args);
+}
+
 QString
 AppsAPI::getPath(QString name) {
   static const QUuid NS =
