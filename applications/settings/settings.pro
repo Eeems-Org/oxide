@@ -10,27 +10,25 @@ CONFIG(release, debug|release){
 }
 
 SOURCES += \
-    main.cpp \
-    controller.cpp
+        main.cpp
 
-RESOURCES += qml.qrc
-
-TARGET = stain
+TARGET = codes.eeems.settings
 include(../../qmake/common.pri)
-target.path = $$BIN_INSTALL_PATH
+target.path = $$ROOT_INSTALL_PATH/share/oxide/libexec
 INSTALLS += target
 
-applications.files = codes.eeems.stain.oxide
+applications.files = codes.eeems.settings.oxide
 applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 
 HEADERS += \
     controller.h \
-    notificationlist.h \
-    stain_stable.h \
     wifinetworklist.h
 
+RESOURCES += \
+    qml.qrc
+
 PRECOMPILED_HEADER = \
-    stain_stable.h
+    settings_stable.h
 
 include(../../qmake/liboxide.pri)
