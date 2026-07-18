@@ -52,7 +52,7 @@ public:
       new System(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
     connect(systemApi, &System::autoSleepChanged, this, [this](int v) {
       m_automaticSleep = v > 0;
-      m_sleepAfter = v > 0 ? v : 5;
+      m_sleepAfter = v;
       emit automaticSleepChanged(m_automaticSleep);
       emit sleepAfterChanged(m_sleepAfter);
     });

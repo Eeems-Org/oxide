@@ -100,6 +100,9 @@ main(int argc, char* argv[]) {
     if (socket == nullptr) {
       return;
     }
+    QObject::connect(
+      socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater
+    );
     QObject::connect(socket, &QLocalSocket::readyRead, [socket, &controller]() {
       QByteArray data = socket->readAll();
       socket->write("ok");
