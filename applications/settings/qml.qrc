@@ -9,5 +9,6 @@
         <file>categories/WifiPage.qml</file>
         <file>categories/NotificationsPage.qml</file>
         <file alias="font/icomoon.ttf">../screenshot-viewer/font/icomoon.ttf</file>
+        <file alias="img/notifications/black.png">../launcher/img/notifications/black.png</file>
     </qresource>
 </RCC>

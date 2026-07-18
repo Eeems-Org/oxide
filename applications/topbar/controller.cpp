@@ -17,8 +17,6 @@ QSet<QString> booleanSettings{
   "showBatteryTemperature",
   "showDate"
 };
-QList<QString> configDirectoryPaths =
-  {"/opt/etc/draft", "/etc/draft", "/home/root/.config/draft"};
 QList<QString> configFileDirectoryPaths =
   {"/opt/etc", "/etc", "/home/root/.config", "/home/root/.vellum/etc"};
 
@@ -48,12 +46,7 @@ configFileExists() {
 }
 
 Controller::Controller(QObject* parent)
-  : QObject(parent)
-  , m_wifion(false)
-  , wifi("/sys/class/net/wlan0")
-  , applications() {
-  networks = new WifiNetworkList();
-  notifications = new NotificationList();
+  : QObject(parent) {
 
   auto bus = QDBusConnection::systemBus();
   qDebug() << "Waiting for tarnish to start up";
@@ -124,14 +117,8 @@ Controller::Controller(QObject* parent)
   }
   wifiApi = new Wifi(OXIDE_SERVICE, path, bus);
   connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
-  connect(
-    wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected
-  );
   connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
   connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
-  networks->setAPI(wifiApi);
-  auto state = wifiApi->state();
-  m_wifion = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
   QTimer::singleShot(1000, [this]() {
     while (this->root == nullptr) {
       qApp->processEvents(QEventLoop::AllEvents, 100);
@@ -145,24 +132,7 @@ Controller::Controller(QObject* parent)
 
     wifiStateChanged(wifiApi->state());
     wifiRssiChanged(wifiApi->rssi());
-    emit wifiOnChanged(m_wifion);
-    auto network = wifiApi->network();
-    if (network.path() != "/") {
-      networkConnected(network);
-    }
   });
-  reply = api->requestAPI("system");
-  reply.waitForFinished();
-  if (reply.isError()) {
-    qDebug() << reply.error();
-    qFatal("Could not request system API");
-  }
-  path = ((QDBusObjectPath)reply).path();
-  if (path == "/") {
-    qDebug() << "API not available";
-    qFatal("System API was not available");
-  }
-  systemApi = new System(OXIDE_SERVICE, path, bus);
   reply = api->requestAPI("apps");
   reply.waitForFinished();
   if (reply.isError()) {
@@ -220,18 +190,6 @@ Controller::Controller(QObject* parent)
     &Notifications::notificationRemoved,
     this,
     &Controller::notificationRemoved
-  );
-  connect(
-    notificationApi,
-    &Notifications::notificationChanged,
-    this,
-    &Controller::notificationChanged
-  );
-  connect(
-    notifications,
-    &NotificationList::updated,
-    this,
-    &Controller::notificationsUpdated
   );
 }
 
@@ -312,6 +270,11 @@ Controller::checkCurrentApplication(QDBusObjectPath path) {
   m_visible = app.flags().contains("topbar");
   qDebug() << app.name() << m_visible;
   emit visibleChanged(m_visible);
+}
+
+void
+Controller::openSettings(const QString& category) {
+  appsApi->openSettings(category);
 }
 
 #include "moc_controller.cpp"

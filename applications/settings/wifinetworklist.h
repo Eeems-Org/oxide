@@ -138,6 +138,8 @@ public:
     : QAbstractListModel(nullptr)
     , networks() {}
 
+  ~WifiNetworkList() { clear(); }
+
   QVariant headerData(
     int section,
     Qt::Orientation orientation,
@@ -249,8 +251,9 @@ public:
         }
       }
     }
-    if (bsss.isEmpty())
+    if (bsss.isEmpty()) {
       return;
+    }
     beginInsertRows(
       QModelIndex(),
       this->networks.length(),
@@ -266,8 +269,9 @@ public:
     sort();
   }
   void clear() {
-    if (networks.isEmpty())
+    if (networks.isEmpty()) {
       return;
+    }
     beginResetModel();
     for (auto network : networks) {
       if (network != nullptr) {
@@ -370,8 +374,13 @@ public:
       emit scanningChanged(scanning);
     });
   }
-  bool scanning() { return api->scanning(); }
-  Q_INVOKABLE void scan(bool active) { api->scan(active).waitForFinished(); }
+  bool scanning() { return api != nullptr && api->scanning(); }
+  Q_INVOKABLE void scan(bool active) {
+    if (api == nullptr) {
+      return;
+    }
+    api->scan(active).waitForFinished();
+  }
   Q_INVOKABLE void remove(QString ssid) {
     QMutableListIterator<WifiNetwork*> i(networks);
     while (i.hasNext()) {

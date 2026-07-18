@@ -39,15 +39,18 @@ public:
     , api(api) {}
 
   void ensureApi() {
-    if (apiReady || api == nullptr)
+    if (apiReady || api == nullptr) {
       return;
+    }
     auto reply = api->requestAPI("system");
     reply.waitForFinished();
-    if (reply.isError())
+    if (reply.isError()) {
       return;
+    }
     auto path = ((QDBusObjectPath)reply).path();
-    if (path == "/")
+    if (path == "/") {
       return;
+    }
     systemApi =
       new System(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
     connect(systemApi, &System::autoSleepChanged, this, [this](int v) {
@@ -77,40 +80,45 @@ public:
 
   bool automaticSleep() const { return m_automaticSleep; }
   void setAutomaticSleep(bool v) {
-    if (m_automaticSleep == v)
+    if (m_automaticSleep == v) {
       return;
+    }
     m_automaticSleep = v;
     emit automaticSleepChanged(v);
     applyPowerSettings();
   }
   int sleepAfter() const { return m_sleepAfter; }
   void setSleepAfter(int v) {
-    if (m_sleepAfter == v)
+    if (m_sleepAfter == v) {
       return;
+    }
     m_sleepAfter = v;
     emit sleepAfterChanged(v);
     applyPowerSettings();
   }
   bool automaticLock() const { return m_automaticLock; }
   void setAutomaticLock(bool v) {
-    if (m_automaticLock == v)
+    if (m_automaticLock == v) {
       return;
+    }
     m_automaticLock = v;
     emit automaticLockChanged(v);
     applyPowerSettings();
   }
   int lockAfter() const { return m_lockAfter; }
   void setLockAfter(int v) {
-    if (m_lockAfter == v)
+    if (m_lockAfter == v) {
       return;
+    }
     m_lockAfter = v;
     emit lockAfterChanged(v);
     applyPowerSettings();
   }
   bool lockOnSuspend() const { return m_lockOnSuspend; }
   void setLockOnSuspend(bool v) {
-    if (m_lockOnSuspend == v)
+    if (m_lockOnSuspend == v) {
       return;
+    }
     m_lockOnSuspend = v;
     emit lockOnSuspendChanged(v);
     if (systemApi != nullptr) {
@@ -138,8 +146,9 @@ private:
 
   void applyPowerSettings() {
     ensureApi();
-    if (systemApi == nullptr)
+    if (systemApi == nullptr) {
       return;
+    }
     if (!m_automaticSleep) {
       systemApi->setAutoSleep(0);
     } else {
