@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>widgets/BetterCheckBox.qml</file>
+        <file>widgets/BetterSpinBox.qml</file>
+        <file>categories/GeneralPage.qml</file>
+        <file>categories/DisplayPage.qml</file>
+        <file>categories/PowerPage.qml</file>
+        <file>categories/WifiPage.qml</file>
+        <file>categories/NotificationsPage.qml</file>
+    </qresource>
+</RCC>

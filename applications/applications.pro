@@ -15,6 +15,7 @@ SUBDIRS = \
     notify-send \
     process-manager \
     screenshot-viewer \
+    settings \
     settings-manager \
     sketchpad \
     system-service \
@@ -41,6 +42,7 @@ lockscreen.depends = system-service
 notify-send.depends = system-service
 process-manager.depends =
 screenshot-viewer.depends = system-service
+settings.depends = system-service
 settings-manager.depends = system-service
 sketchpad.depends = system-service
 terminal.depends = system-service
