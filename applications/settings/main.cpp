@@ -12,6 +12,11 @@
 #include <signal.h>
 
 #include "controller.h"
+#include "generalcontroller.h"
+#include "displaycontroller.h"
+#include "powercontroller.h"
+#include "wificontroller.h"
+#include "notificationscontroller.h"
 
 using namespace Oxide;
 using namespace Oxide::QML;
@@ -94,7 +99,16 @@ main(int argc, char* argv[]) {
     qWarning() << "Unable to start local server:" << server->errorString();
   }
 
+  // Create main controller (does tarnish wait + General API + signal handlers)
   Controller controller(&app);
+
+  // Create category controllers — constructors are instant, no D-Bus calls
+  auto* generalApi = controller.generalApi();
+  GeneralController generalController(&app);
+  DisplayController displayController(generalApi, &app);
+  PowerController powerController(generalApi, &app);
+  WifiController wifiController(generalApi, &app);
+  NotificationsController notificationsController(generalApi, &app);
 
   // Connect new connection signal to category navigation
   QObject::connect(server, &QLocalServer::newConnection, [&controller]() {
@@ -118,6 +132,11 @@ main(int argc, char* argv[]) {
   registerQML(&engine);
   QQmlContext* context = engine.rootContext();
   context->setContextProperty("controller", &controller);
+  context->setContextProperty("generalController", &generalController);
+  context->setContextProperty("displayController", &displayController);
+  context->setContextProperty("powerController", &powerController);
+  context->setContextProperty("wifiController", &wifiController);
+  context->setContextProperty("notificationsController", &notificationsController);
 
   QTimer::singleShot(0, [&app, &engine, &controller, &requestedCategory] {
     QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
@@ -127,7 +146,6 @@ main(int argc, char* argv[]) {
       return;
     }
     root->installEventFilter(new EventFilter(&app));
-    controller.setRoot(root);
     if (!requestedCategory.isEmpty()) {
       controller.navigateToCategory(requestedCategory);
     }

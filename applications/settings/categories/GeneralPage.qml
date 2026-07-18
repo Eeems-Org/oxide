@@ -43,9 +43,9 @@ Page {
                     verticalAlignment: Text.AlignVCenter
                 }
 
-                model: controller.locales
-                onActivated: controller.locale = textAt(currentIndex)
-                Component.onCompleted: currentIndex = indexOfValue(controller.locale)
+                model: generalController.locales
+                onActivated: generalController.locale = textAt(currentIndex)
+                Component.onCompleted: currentIndex = indexOfValue(generalController.locale)
             }
         }
 
@@ -78,9 +78,9 @@ Page {
                     verticalAlignment: Text.AlignVCenter
                 }
 
-                model: controller.timezones
-                onActivated: controller.timezone = textAt(currentIndex)
-                Component.onCompleted: currentIndex = indexOfValue(controller.timezone)
+                model: generalController.timezones
+                onActivated: generalController.timezone = textAt(currentIndex)
+                Component.onCompleted: currentIndex = indexOfValue(generalController.timezone)
             }
         }
 

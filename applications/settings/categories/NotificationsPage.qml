@@ -9,6 +9,7 @@ Page {
     objectName: "notifications"
     title: "Notifications"
     background: Rectangle { color: "white" }
+    Component.onCompleted: notificationsController.init()
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
@@ -25,8 +26,8 @@ Page {
                 from: 1
                 to: 60
                 stepSize: 1
-                value: controller.notificationDisplayTime
-                onValueChanged: controller.notificationDisplayTime = this.value
+                value: notificationsController.notificationDisplayTime
+                onValueChanged: notificationsController.notificationDisplayTime = this.value
                 Layout.preferredWidth: 300
             }
         }
