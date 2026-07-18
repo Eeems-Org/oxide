@@ -8,5 +8,6 @@
         <file>categories/PowerPage.qml</file>
         <file>categories/WifiPage.qml</file>
         <file>categories/NotificationsPage.qml</file>
+        <file alias="font/icomoon.ttf">../screenshot-viewer/font/icomoon.ttf</file>
     </qresource>
 </RCC>

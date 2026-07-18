@@ -10,22 +10,22 @@ Page {
     title: "WiFi"
     background: Rectangle { color: "white" }
     Component.onCompleted: {
-        controller.connectWifiSignals();
-        if (controller.wifiOn) {
-            controller.networks.scan(false);
+        wifiController.connectWifiSignals();
+        if (wifiController.wifiOn) {
+            wifiController.networks.scan(false);
         }
         sortTimer.start();
     }
     Component.onDestruction: {
         sortTimer.stop();
-        controller.disconnectWifiSignals();
+        wifiController.disconnectWifiSignals();
     }
 
     Timer {
         id: sortTimer
         interval: 3000
         repeat: true
-        onTriggered: controller.networks.sort()
+        onTriggered: wifiController.networks.sort()
     }
 
     ColumnLayout {
@@ -36,30 +36,30 @@ Page {
         RowLayout {
             Layout.fillWidth: true
             OxideButton {
-                text: "Turn wifi " + (controller.wifiOn ? "off" : "on")
+                text: "Turn wifi " + (wifiController.wifiOn ? "off" : "on")
                 color: "black"
                 Layout.fillWidth: true
                 Layout.preferredWidth: root.width / 2
                 onClicked: {
                     controller.breadcrumb("wifi.toggle", "click", "ui");
-                    if (controller.wifiOn) {
-                        controller.turnOffWifi();
+                    if (wifiController.wifiOn) {
+                        wifiController.turnOffWifi();
                     } else {
-                        controller.turnOnWifi();
+                        wifiController.turnOnWifi();
                     }
-                    controller.networks.sort();
+                    wifiController.networks.sort();
                 }
             }
             OxideButton {
-                text: (!!controller.networks && controller.networks.scanning) ? "Scanning..." : "Scan"
+                text: (!!wifiController.networks && wifiController.networks.scanning) ? "Scanning..." : "Scan"
                 color: "black"
-                enabled: controller.wifiOn && !!controller.networks && !controller.networks.scanning
+                enabled: wifiController.wifiOn && !!wifiController.networks && !wifiController.networks.scanning
                 Layout.fillWidth: true
                 Layout.preferredWidth: root.width / 2
                 onClicked: {
                     controller.breadcrumb("wifi.scan", "click", "ui");
-                    controller.networks.scan(true);
-                    controller.networks.sort();
+                    wifiController.networks.scan(true);
+                    wifiController.networks.sort();
                 }
             }
         }
@@ -69,7 +69,7 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: controller.networks
+            model: wifiController.networks
             delegate: Rectangle {
                 id: item
                 width: networks.width
@@ -81,7 +81,7 @@ Page {
                     anchors.fill: parent
                     anchors.margins: 8
                     Label {
-                        enabled: controller.wifiOn && !!model.display && model.display.available
+                        enabled: wifiController.wifiOn && !!model.display && model.display.available
                         text: model.display ? (model.display.connected ? "* " : "") + model.display.ssid : ""
                         font.bold: !!model.display && model.display.connected
                         font.pixelSize: 32
@@ -91,7 +91,7 @@ Page {
                     RowLayout {
                         spacing: 8
                         OxideButton {
-                            enabled: controller.wifiOn
+                            enabled: wifiController.wifiOn
                             text: "Forget"
                             color: "black"
                             visible: !!model.display && model.display.known
@@ -99,11 +99,11 @@ Page {
                                 controller.breadcrumb("wifi.network.forget", "click", "ui");
                                 if (!model.display) return;
                                 model.display.remove();
-                                controller.networks.remove(model.display.ssid);
+                                wifiController.networks.remove(model.display.ssid);
                             }
                         }
                         OxideButton {
-                            enabled: controller.wifiOn
+                            enabled: wifiController.wifiOn
                             text: model.display && model.display.connected ? "Disconnect" : "Connect"
                             color: "black"
                             onClicked: {
@@ -114,7 +114,7 @@ Page {
                                 } else {
                                     model.display.connect();
                                 }
-                                controller.networks.sort();
+                                wifiController.networks.sort();
                             }
                         }
                     }
