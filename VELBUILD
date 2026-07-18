@@ -102,6 +102,11 @@ package() {
         home/root/.vellum/bin/stain
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
         home/root/.local/share/applications/codes.eeems.stain.oxide
+    # Settings
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/share/oxide/libexec \
+        home/root/.vellum/share/oxide/libexec/codes.eeems.settings
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/codes.eeems.settings.oxide
     # Keyd configuration
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
         home/root/.config/keyd/oxide.conf

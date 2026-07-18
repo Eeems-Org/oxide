@@ -63,6 +63,10 @@ namespace Oxide {
     SignalHandler(QObject* parent = 0);
     ~SignalHandler();
     static void handleSignal(int signal, siginfo_t* si, void* vcontext);
+    /*!
+     * \brief Remove a signal notifier so that the default notifier runs
+     */
+    void removeNotifier(int signal);
 
   signals:
     /*!
