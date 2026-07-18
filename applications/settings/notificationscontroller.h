@@ -17,21 +17,23 @@ class NotificationsController : public QObject {
   )
 
 public:
-  explicit NotificationsController(
-    General* api,
-    QObject* parent = nullptr
-  )
+  explicit NotificationsController(General* api, QObject* parent = nullptr)
     : QObject(parent)
     , api(api) {}
 
   void ensureApi() {
-    if (apiReady || api == nullptr) return;
+    if (apiReady || api == nullptr)
+      return;
     auto reply = api->requestAPI("notification");
     reply.waitForFinished();
-    if (reply.isError()) return;
+    if (reply.isError())
+      return;
     auto path = ((QDBusObjectPath)reply).path();
-    if (path == "/") return;
-    notificationsApi = new Notifications(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
+    if (path == "/")
+      return;
+    notificationsApi = new Notifications(
+      OXIDE_SERVICE, path, QDBusConnection::systemBus(), this
+    );
     m_notificationDisplayTime = notificationsApi->displayTime();
     connect(
       notificationsApi,
@@ -47,7 +49,8 @@ public:
 
   uint notificationDisplayTime() { return m_notificationDisplayTime; }
   void setNotificationDisplayTime(uint v) {
-    if (m_notificationDisplayTime == v) return;
+    if (m_notificationDisplayTime == v)
+      return;
     m_notificationDisplayTime = v;
     emit notificationDisplayTimeChanged(v);
     if (notificationsApi != nullptr) {

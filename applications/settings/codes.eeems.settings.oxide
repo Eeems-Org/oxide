@@ -4,5 +4,5 @@
     "bin": "/home/root/.vellum/share/oxide/libexec/codes.eeems.settings",
     "type": "backgroundable",
     "permissions": ["wifi", "power", "system", "screen", "notification"],
-    "flags": ["nopreload", "noannounce", topbar"]
+    "flags": ["nopreload", "noannounce", "topbar", "forking"]
 }
