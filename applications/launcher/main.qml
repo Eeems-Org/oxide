@@ -58,11 +58,11 @@ OxideWindow {
         CustomMenu {
             OxideMenu {
                 id: optionsMenu
-                title: qsTr("");
+                title: qsTr("");
                 font.family: iconFont.name
                 width: 310
                 Action {
-                    text: qsTr(" Reload")
+                    text: qsTr(" Reload")
                     onTriggered: {
                         controller.breadcrumb("menu.reload", "click", "ui");
                         controller.startup();
@@ -70,18 +70,11 @@ OxideWindow {
                     }
                 }
                 Action {
-                    text: qsTr(" Import Apps")
+                    text: qsTr(" Import Apps")
                     onTriggered:{
                         controller.breadcrumb("menu.import", "click", "ui");
                         controller.importDraftApps();
                         appsView.model = controller.getApps();
-                    }
-                }
-                Action {
-                    text: qsTr(" Options")
-                    onTriggered: {
-                        controller.breadcrumb("menu.options", "click", "ui");
-                        stateController.state = "settings";
                     }
                 }
             }
@@ -264,27 +257,10 @@ OxideWindow {
                 }
             }
         }
-        SettingsPopup {
-            id: settings
-            onClosed: stateController.state = "loaded"
-            visible: false
-        }
-        WifiMenu {
-            id: wifi
-            onClosed: stateController.state = "loaded"
-            visible: false
-            model: controller.networks
-        }
         CalendarMenu {
             id: calendar
             onClosed: stateController.state = "loaded"
             visible: false
-        }
-        NotificationsPopup {
-            id: notifications
-            onClosed: stateController.state = "loaded"
-            visible: false
-            model: controller.notifications
         }
     }
     StateGroup {
@@ -295,41 +271,10 @@ OxideWindow {
         states: [
             State { name: "loading" },
             State { name: "loaded" },
-            State { name: "settings" },
             State { name: "itemInfo" },
-            State { name: "wifi" },
-            State { name: "calendar" },
-            State { name: "notifications" }
+            State { name: "calendar" }
         ]
         transitions: [
-            Transition {
-                from: "*"; to: "settings"
-                SequentialAnimation {
-                    ScriptAction { script: {
-                        controller.breadcrumb("navigation", "settings", "navigation");
-                        stateController.previousState = "settings";
-                    } }
-                    ScriptAction { script: console.log("Opening settings") }
-                    PropertyAction { target: settings; property: "visible"; value: true }
-                    PropertyAction { target: wifi; property: "visible"; value: false }
-                    PropertyAction { target: calendar; property: "visible"; value: false }
-                    PropertyAction { target: notifications; property: "visible"; value: false }
-                }
-            },
-            Transition {
-                from: "*"; to: "wifi"
-                ParallelAnimation {
-                    ScriptAction { script: {
-                        controller.breadcrumb("navigation", "wifi", "navigation");
-                        stateController.previousState = "wifi";
-                    } }
-                    ScriptAction { script: console.log("Opening wifi menu") }
-                    PropertyAction { target: wifi; property: "visible"; value: true }
-                    PropertyAction { target: calendar; property: "visible"; value: false }
-                    PropertyAction { target: settings; property: "visible"; value: false }
-                    PropertyAction { target: notifications; property: "visible"; value: false }
-                }
-            },
             Transition {
                 from: "*"; to: "calendar"
                 SequentialAnimation {
@@ -339,23 +284,6 @@ OxideWindow {
                     } }
                     ScriptAction { script: console.log("Opening calendar") }
                     PropertyAction { target: calendar; property: "visible"; value: true }
-                    PropertyAction { target: settings; property: "visible"; value: false }
-                    PropertyAction { target: wifi; property: "visible"; value: false }
-                    PropertyAction { target: notifications; property: "visible"; value: false }
-                }
-            },
-            Transition {
-                from: "*"; to: "notifications"
-                SequentialAnimation {
-                    ScriptAction { script: {
-                        controller.breadcrumb("navigation", "notifications", "navigation");
-                        stateController.previousState = "notifications";
-                    } }
-                    ScriptAction { script: console.log("Opening notifications") }
-                    PropertyAction { target: notifications; property: "visible"; value: true }
-                    PropertyAction { target: calendar; property: "visible"; value: false }
-                    PropertyAction { target: settings; property: "visible"; value: false }
-                    PropertyAction { target: wifi; property: "visible"; value: false }
                 }
             },
             Transition {
@@ -376,9 +304,6 @@ OxideWindow {
                         console.log("Main display");
                     } }
                     PropertyAction { target: calendar; property: "visible"; value: false }
-                    PropertyAction { target: settings; property: "visible"; value: false }
-                    PropertyAction { target: wifi; property: "visible"; value: false }
-                    PropertyAction { target: notifications; property: "visible"; value: false }
                 }
             }
         ]

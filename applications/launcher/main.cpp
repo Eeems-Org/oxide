@@ -2,22 +2,13 @@
 #include <liboxide/eventfilter.h>
 #include <liboxide/oxideqml.h>
 #include <signal.h>
-#include <unistd.h>
 
 #include <QGuiApplication>
-#include <QMap>
 #include <QObject>
-#include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QQuickItem>
-#include <QStringList>
-#include <QtDBus>
-#include <QtPlugin>
 #include <QtQuick>
 #include <cstdlib>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
 
 #include "controller.h"
 
@@ -67,8 +58,7 @@ main(int argc, char* argv[]) {
       qApp->exit(EXIT_FAILURE);
       return;
     }
-    controller->stateController = stateController;
-    controller->updateUIElements();
+    Q_UNUSED(stateController);
   });
   shutdown_handler = [&controller](int signum) {
     Q_UNUSED(signum)
