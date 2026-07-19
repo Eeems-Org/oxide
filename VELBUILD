@@ -105,6 +105,8 @@ package() {
         home/root/.vellum/share/oxide/libexec/codes.eeems.settings
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
         home/root/.local/share/applications/codes.eeems.settings.oxide
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
+        home/root/.local/share/icons/oxide/48x48/apps/settings.png
     # Keyd configuration
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
         home/root/.config/keyd/oxide.conf
