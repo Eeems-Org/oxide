@@ -57,6 +57,7 @@ main(int argc, char* argv[]) {
     if (buffer == nullptr) {
       qDebug() << "Unable to get buffer for window";
       qApp->exit(EXIT_FAILURE);
+      return;
     }
     if (!Blight::setFlags(
           QString("connection/%1/surface/%2")
