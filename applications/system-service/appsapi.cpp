@@ -516,6 +516,9 @@ AppsAPI::resumeIfNone() {
 
 Application*
 AppsAPI::getApplication(QDBusObjectPath path) {
+  if (path.path() == "/") {
+    return nullptr;
+  }
   for (auto app : applications) {
     if (app->path() == path.path()) {
       return app;
@@ -861,6 +864,14 @@ AppsAPI::openSettings(const QString& category) {
     return;
   }
   clone->launchNoSecurityCheck(args);
+}
+
+QDBusObjectPath
+AppsAPI::application() {
+  if (!hasPermission("apps")) {
+    return QDBusObjectPath("/");
+  }
+  return APIBase::application();
 }
 
 QString

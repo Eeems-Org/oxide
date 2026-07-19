@@ -138,20 +138,19 @@ Wlan::operstate() {
 
 bool
 Wlan::pingIP(std::string ip, const char* port) {
-  auto process = new QProcess();
-  process->setProgram("/bin/bash");
+  QProcess process;
+  process.setProgram("/bin/bash");
   std::string cmd(
     "{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port +
     "; } > /dev/null 2>&1"
   );
-  process->setArguments(QStringList() << "-c" << cmd.c_str());
-  process->start();
-  process->deleteLater();
-  if (!process->waitForFinished(100)) {
-    process->kill();
+  process.setArguments(QStringList() << "-c" << cmd.c_str());
+  process.start();
+  if (!process.waitForFinished(100)) {
+    process.kill();
     return false;
   }
-  return !process->exitCode();
+  return !process.exitCode();
 }
 
 bool

@@ -287,6 +287,12 @@ namespace Oxide {
      * \brief If bottomSystemSpace has changed
      */
     O_SETTINGS_PROPERTY(int, Screen, bottomSystemSpace, 0)
+    O_SETTINGS_PROPERTY(bool, General, showWifiDb, false)
+    O_SETTINGS_PROPERTY(bool, General, showBatteryPercent, true)
+    O_SETTINGS_PROPERTY(bool, General, showBatteryTemperature, false)
+    O_SETTINGS_PROPERTY(bool, General, showDate, false)
+    O_SETTINGS_PROPERTY(int, General, columns, 4)
+    O_SETTINGS_PROPERTY(QString, General, autoStartApplication)
 
   private:
     ~SharedSettings();

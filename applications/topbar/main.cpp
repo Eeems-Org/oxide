@@ -37,7 +37,6 @@ main(int argc, char* argv[]) {
   QQmlApplicationEngine engine;
   QQmlContext* context = engine.rootContext();
   Controller* controller = new Controller();
-  controller->loadSettings();
   qmlRegisterAnonymousType<Controller>("codes.eeems.stain", 3);
   registerQML(&engine);
   context->setContextProperty("controller", controller);

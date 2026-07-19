@@ -34,16 +34,16 @@ enum WifiState {
 class Controller : public QObject {
   Q_OBJECT
   Q_PROPERTY(bool visible MEMBER m_visible NOTIFY visibleChanged)
-  Q_PROPERTY(bool showWifiDb MEMBER m_showWifiDb NOTIFY showWifiDbChanged)
+  Q_PROPERTY(bool showWifiDb READ showWifiDb NOTIFY showWifiDbChanged)
   Q_PROPERTY(
-    bool showBatteryPercent MEMBER m_showBatteryPercent NOTIFY
+    bool showBatteryPercent READ showBatteryPercent NOTIFY
       showBatteryPercentChanged
   )
   Q_PROPERTY(
-    bool showBatteryTemperature MEMBER m_showBatteryTemperature NOTIFY
+    bool showBatteryTemperature READ showBatteryTemperature NOTIFY
       showBatteryTemperatureChanged
   )
-  Q_PROPERTY(bool showDate MEMBER m_showDate NOTIFY showDateChanged)
+  Q_PROPERTY(bool showDate READ showDate NOTIFY showDateChanged)
   Q_PROPERTY(
     bool hasNotification MEMBER m_hasNotification NOTIFY hasNotificationChanged
   )
@@ -54,30 +54,15 @@ class Controller : public QObject {
 public:
   QObject* root = nullptr;
   explicit Controller(QObject* parent = nullptr);
-  Q_INVOKABLE void loadSettings();
-  bool showWifiDb() const { return m_showWifiDb; }
-  void setShowWifiDb(bool);
-  bool showBatteryPercent() const { return m_showBatteryPercent; }
-  void setShowBatteryPercent(bool);
-  bool showBatteryTemperature() const { return m_showBatteryTemperature; }
-  void setShowBatteryTemperature(bool);
-  void setShowDate(bool showDate) {
-    m_showDate = showDate;
-    emit showDateChanged(showDate);
-    if (root == nullptr) {
-      return;
-    }
-    QObject* clock = root->findChild<QObject*>("clock");
-    if (clock == nullptr) {
-      return;
-    }
-    QString text = "";
-    if (showDate) {
-      text = QDate::currentDate().toString(Qt::TextDate) + " ";
-    }
-    clock->setProperty("text", text + QTime::currentTime().toString("h:mm a"));
+  bool showWifiDb() const { return sharedSettings.showWifiDb(); }
+  bool showBatteryPercent() const {
+    return sharedSettings.showBatteryPercent();
   }
-  bool showDate() { return m_showDate; }
+  bool showBatteryTemperature() const {
+    return sharedSettings.showBatteryTemperature();
+  }
+  void setShowDate(bool showDate) { sharedSettings.set_showDate(showDate); }
+  bool showDate() { return sharedSettings.showDate(); }
   void setNotification(QString notificationText) {
     if (m_notificationText == notificationText) {
       return;
@@ -316,10 +301,6 @@ private slots:
 
 private:
   bool m_visible = false;
-  bool m_showWifiDb = false;
-  bool m_showBatteryPercent = false;
-  bool m_showBatteryTemperature = false;
-  bool m_showDate = false;
   bool m_hasNotification = false;
   QString m_notificationText = "";
   bool m_powerConnected = false;

@@ -5,6 +5,7 @@
 #include <liboxide/dbus_types.h>
 #include <liboxide/oxideqml.h>
 
+#include <QDBusObjectPath>
 #include <QDBusUnixFileDescriptor>
 #include <QFile>
 #include <QString>
@@ -12,25 +13,38 @@
 
 #include "appsapi.h"
 
-int
-APIBase::hasPermission(QString permission, const char* sender) {
+QDBusObjectPath
+APIBase::application() {
   if (getpgid(getpid()) == getSenderPgid()) {
-    return true;
+    return QDBusObjectPath("/");
   }
-  O_INFO("Checking permission" << permission << "from" << sender);
+  O_INFO("Getting application for pgid " << getSenderPgid());
   for (auto name : appsAPI->runningApplicationsNoSecurityCheck().keys()) {
     auto app = appsAPI->getApplication(name);
     if (app == nullptr) {
       continue;
     }
     if (app->processId() == getSenderPgid()) {
-      auto result = app->permissions().contains(permission);
-      O_INFO(app->name() << result);
-      return result;
+      return app->qPath();
     }
   }
-  O_INFO("app not found, permission granted");
-  return true;
+  return QDBusObjectPath("/");
+}
+
+int
+APIBase::hasPermission(const QString& permission, const char* sender) {
+  if (getpgid(getpid()) == getSenderPgid()) {
+    return true;
+  }
+  O_INFO("Checking permission" << permission << "from" << sender);
+  auto* app = appsAPI->getApplication(application());
+  if (app == nullptr) {
+    O_INFO("app not found, permission granted");
+    return true;
+  }
+  auto result = app->permissions().contains(permission);
+  O_INFO(app->name() << result);
+  return result;
 }
 
 int
@@ -40,6 +54,7 @@ APIBase::getSenderPid() {
   }
   return connection().interface()->servicePid(message().service());
 }
+
 int
 APIBase::getSenderPgid() {
   return getpgid(getSenderPid());

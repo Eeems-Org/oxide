@@ -9,7 +9,8 @@ Page {
     objectName: "notifications"
     title: "Notifications"
     background: Rectangle { color: "white" }
-    Component.onCompleted: notificationsController.init()
+    StackView.onActivated: notificationsController.activate()
+    StackView.onDeactivating: notificationsController.deactivate()
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16

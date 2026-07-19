@@ -42,4 +42,27 @@ namespace Oxide {
   )
   O_SETTINGS_PROPERTY_BODY(SharedSettings, int, Screen, topSystemSpace, 0)
   O_SETTINGS_PROPERTY_BODY(SharedSettings, int, Screen, bottomSystemSpace, 0)
+  O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, showWifiDb, false)
+  O_SETTINGS_PROPERTY_BODY(
+    SharedSettings,
+    bool,
+    General,
+    showBatteryPercent,
+    true
+  )
+  O_SETTINGS_PROPERTY_BODY(
+    SharedSettings,
+    bool,
+    General,
+    showBatteryTemperature,
+    false
+  )
+  O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, showDate, false)
+  O_SETTINGS_PROPERTY_BODY(SharedSettings, int, General, columns, 4)
+  O_SETTINGS_PROPERTY_BODY(
+    SharedSettings,
+    QString,
+    General,
+    autoStartApplication
+  )
 } // namespace Oxide
