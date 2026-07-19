@@ -58,9 +58,7 @@ class Controller : public QObject {
     bool automaticLock MEMBER m_automaticLock WRITE setAutomaticLock NOTIFY
       automaticLockChanged
   )
-  Q_PROPERTY(
-    int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged
-  )
+  Q_PROPERTY(int columns READ columns WRITE setColumns NOTIFY columnsChanged)
   Q_PROPERTY(
     int swipeLengthRight MEMBER m_swipeLengthRight WRITE setSwipeLengthRight
       NOTIFY swipeLengthRightChanged
@@ -78,15 +76,14 @@ class Controller : public QObject {
       swipeLengthDownChanged
   )
   Q_PROPERTY(
-    bool showWifiDb MEMBER m_showWifiDb WRITE setShowWifiDb NOTIFY
-      showWifiDbChanged
+    bool showWifiDb READ showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged
   )
   Q_PROPERTY(
-    bool showBatteryPercent MEMBER m_showBatteryPercent WRITE
-      setShowBatteryPercent NOTIFY showBatteryPercentChanged
+    bool showBatteryPercent READ showBatteryPercent WRITE setShowBatteryPercent
+      NOTIFY showBatteryPercentChanged
   )
   Q_PROPERTY(
-    bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE
+    bool showBatteryTemperature READ showBatteryTemperature WRITE
       setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged
   )
   Q_PROPERTY(
@@ -123,7 +120,7 @@ class Controller : public QObject {
     bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged
   )
   Q_PROPERTY(
-    bool showDate MEMBER m_showDate WRITE setShowDate NOTIFY showDateChanged
+    bool showDate READ showDate WRITE setShowDate NOTIFY showDateChanged
   )
   Q_PROPERTY(
     uint notificationDisplayTime MEMBER m_notificationDisplayTime WRITE
@@ -401,14 +398,68 @@ public:
       QOverload<>::of(&Controller::updateUIElements)
     );
     uiTimer->start();
+
+    // SharedSettings signal forwarding
+    connect(
+      &sharedSettings,
+      &Oxide::SharedSettings::columnsChanged,
+      this,
+      &Controller::columnsChanged
+    );
+    connect(
+      &sharedSettings,
+      &Oxide::SharedSettings::showWifiDbChanged,
+      this,
+      &Controller::showWifiDbChanged
+    );
+    connect(
+      &sharedSettings,
+      &Oxide::SharedSettings::showBatteryPercentChanged,
+      this,
+      &Controller::showBatteryPercentChanged
+    );
+    connect(
+      &sharedSettings,
+      &Oxide::SharedSettings::showBatteryTemperatureChanged,
+      this,
+      &Controller::showBatteryTemperatureChanged
+    );
+    connect(
+      &sharedSettings,
+      &Oxide::SharedSettings::showDateChanged,
+      this,
+      [this](bool showDate) {
+        if (root == nullptr) {
+          return;
+        }
+        QObject* clock = root->findChild<QObject*>("clock");
+        if (clock == nullptr) {
+          return;
+        }
+        QString text = "";
+        if (showDate) {
+          text = QDate::currentDate().toString(Qt::TextDate) + " ";
+        }
+        clock->setProperty(
+          "text", text + QTime::currentTime().toString("h:mm a")
+        );
+        emit showDateChanged(showDate);
+      }
+    );
+    connect(
+      &sharedSettings,
+      &Oxide::SharedSettings::autoStartApplicationChanged,
+      this,
+      &Controller::autoStartApplicationChanged
+    );
   }
   Q_INVOKABLE void startup() {
     loadSettings();
-    if (m_autoStartApplication.isEmpty()) {
+    if (autoStartApplication().isEmpty()) {
       qDebug() << "No auto start application";
       return;
     }
-    auto app = getApplication(m_autoStartApplication);
+    auto app = getApplication(autoStartApplication());
     if (app == nullptr) {
       qDebug() << "Unable to find auto start application";
       return;
@@ -461,8 +512,8 @@ public:
   bool lockOnSuspend() const { return m_lockOnSuspend; }
   void setLockOnSuspend(bool);
   void setAutomaticLock(bool);
-  int columns() const { return m_columns; }
-  void setColumns(int);
+  int columns() const { return sharedSettings.columns(); }
+  void setColumns(int columns) { sharedSettings.set_columns(columns); }
   int swipeLengthRight() const { return m_swipeLengthRight; }
   void setSwipeLengthRight(int length) { setSwipeLength(1, length); }
   int swipeLengthLeft() const { return m_swipeLengthLeft; }
@@ -473,33 +524,26 @@ public:
   void setSwipeLengthDown(int length) { setSwipeLength(4, length); }
   int getSwipeLength(int direction);
   void setSwipeLength(int direction, int length);
-  bool showWifiDb() const { return m_showWifiDb; }
-  void setShowWifiDb(bool);
-  bool showBatteryPercent() const { return m_showBatteryPercent; }
-  void setShowBatteryPercent(bool);
-  bool showBatteryTemperature() const { return m_showBatteryTemperature; }
-  void setShowBatteryTemperature(bool);
+  bool showWifiDb() const { return sharedSettings.showWifiDb(); }
+  void setShowWifiDb(bool state) { sharedSettings.set_showWifiDb(state); }
+  bool showBatteryPercent() const {
+    return sharedSettings.showBatteryPercent();
+  }
+  void setShowBatteryPercent(bool state) {
+    sharedSettings.set_showBatteryPercent(state);
+  }
+  bool showBatteryTemperature() const {
+    return sharedSettings.showBatteryTemperature();
+  }
+  void setShowBatteryTemperature(bool state) {
+    sharedSettings.set_showBatteryTemperature(state);
+  }
   int sleepAfter() const { return systemApi->autoSleep(); }
   void setSleepAfter(int);
   int lockAfter() const { return systemApi->autoLock(); }
   void setLockAfter(int);
-  void setShowDate(bool showDate) {
-    m_showDate = showDate;
-    emit showDateChanged(showDate);
-    if (root == nullptr) {
-      return;
-    }
-    QObject* clock = root->findChild<QObject*>("clock");
-    if (clock == nullptr) {
-      return;
-    }
-    QString text = "";
-    if (showDate) {
-      text = QDate::currentDate().toString(Qt::TextDate) + " ";
-    }
-    clock->setProperty("text", text + QTime::currentTime().toString("h:mm a"));
-  }
-  bool showDate() { return m_showDate; }
+  void setShowDate(bool showDate) { sharedSettings.set_showDate(showDate); }
+  bool showDate() { return sharedSettings.showDate(); }
   uint notificationDisplayTime() const { return m_notificationDisplayTime; }
   void setNotificationDisplayTime(uint displayTime) {
     if (m_notificationDisplayTime == displayTime) {
@@ -525,8 +569,12 @@ public:
     m_hasNotification = false;
     emit hasNotificationChanged(m_hasNotification);
   }
-  QString autoStartApplication() { return m_autoStartApplication; }
-  void setAutoStartApplication(QString autoStartApplication);
+  QString autoStartApplication() {
+    return sharedSettings.autoStartApplication();
+  }
+  void setAutoStartApplication(QString autoStartApplication) {
+    sharedSettings.set_autoStartApplication(autoStartApplication);
+  }
   bool getPowerConnected() { return m_powerConnected; }
   WifiNetworkList* getNetworks() { return networks; }
   NotificationList* getNotifications() { return notifications; }
@@ -917,19 +965,12 @@ private:
   bool m_automaticSleep = true;
   bool m_lockOnSuspend = true;
   bool m_automaticLock = true;
-  int m_columns = 6;
   int m_swipeLengthRight = 30;
   int m_swipeLengthLeft = 30;
   int m_swipeLengthUp = 30;
   int m_swipeLengthDown = 30;
-  int m_fontSize = 23;
   int m_sleepAfter;
   int m_lockAfter;
-  bool m_showWifiDb = false;
-  bool m_showBatteryPercent = false;
-  bool m_showBatteryTemperature = false;
-  bool m_showDate = false;
-  QString m_autoStartApplication = "";
   uint m_notificationDisplayTime = 5;
   bool m_hasNotification = false;
   QString m_notificationText = "";

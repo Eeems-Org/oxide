@@ -26,6 +26,7 @@ HEADERS += \
     generalcontroller.h \
     displaycontroller.h \
     powercontroller.h \
+    gesturescontroller.h \
     wificontroller.h \
     notificationscontroller.h \
     notificationlist.h \

@@ -33,8 +33,11 @@ public:
     }
   }
   virtual void setEnabled(bool enabled) = 0;
-  int
-  hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
+  QDBusObjectPath application();
+  int hasPermission(
+    const QString& permission,
+    const char* sender = __builtin_FUNCTION()
+  );
 
 protected:
   int getSenderPid();

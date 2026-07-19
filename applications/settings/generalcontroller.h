@@ -17,7 +17,7 @@ class GeneralController : public QObject {
   )
 
 public:
-  explicit GeneralController(QObject* parent = nullptr)
+  explicit GeneralController(QObject* parent)
     : QObject(parent) {}
 
   QStringList locales() { return deviceSettings.getLocales(); }

@@ -26,12 +26,16 @@ OxideWindow {
             }
             stack.push(component.createObject(stack));
         }
+        function onForegrounded(){
+            window.raise();
+        }
     }
 
     property var categoryPages: ({
         "general": generalPageComponent,
         "display": displayPageComponent,
         "power": powerPageComponent,
+        "gestures": gesturesPageComponent,
         "wifi": wifiPageComponent,
         "notifications": notificationsPageComponent
     })
@@ -80,6 +84,11 @@ OxideWindow {
                 name: "power"
                 label: "Power"
                 description: "Sleep, Lock, Suspend"
+            }
+            ListElement {
+                name: "gestures"
+                label: "Gestures"
+                description: "Swipe Lengths, Enable/Disable"
             }
             ListElement {
                 name: "wifi"
@@ -143,6 +152,10 @@ OxideWindow {
     Component {
         id: powerPageComponent
         PowerPage {}
+    }
+    Component {
+        id: gesturesPageComponent
+        GesturesPage {}
     }
     Component {
         id: wifiPageComponent
