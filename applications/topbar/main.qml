@@ -37,13 +37,15 @@ OxideWindow {
             leftPadding: 4
             topPadding: 4
             bottomPadding: 4
-            contentItem: Text{
-                text: qsTr("")
-                font.family: iconFont.name
-                font.pixelSize: 32
-                horizontalAlignment: Text.AlignLeft
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
+            Layout.maximumWidth: 300
+            enabled: controller.enabled
+            contentItem: OxideStatusIcon {
+                source: "qrc:/img/notifications/black.png"
+                text: controller.notificationText
+                visible: controller.hasNotification && controller.enabled
+                clip: true
+                Layout.maximumWidth: 300
+                Layout.alignment: Qt.AlignCenter
             }
             background: Rectangle{
                 implicitWidth: 40
@@ -51,24 +53,8 @@ OxideWindow {
                 color: "transparent"
             }
             onClicked: {
-                console.log("settings icon clicked")
-                controller.openSettings()
-            }
-        },
-        OxideStatusIcon {
-            source: "qrc:/img/notifications/black.png"
-            text: controller.notificationText
-            visible: controller.hasNotification
-            clip: true
-            Layout.maximumWidth: 300
-            Layout.alignment: Qt.AlignCenter
-            MouseArea {
-                anchors.fill: parent
-                enabled: parent.visible
-                onClicked: {
-                    console.log("notifications display clicked")
-                    controller.openSettings("notifications")
-                }
+                console.log("notifications display clicked")
+                controller.openSettings("notifications")
             }
         }
     ]
@@ -78,6 +64,7 @@ OxideWindow {
             Layout.alignment: Qt.AlignCenter
             MouseArea {
                 anchors.fill: parent
+                enabled: controller.enabled
                 onClicked: {
                     console.log("clocked clicked")
                     // TODO open calendar app
@@ -117,6 +104,7 @@ OxideWindow {
             text: controller.showWifiDb ? rssi + "dBm" : ""
             MouseArea {
                 anchors.fill: parent
+                enabled: controller.enabled
                 onClicked: {
                     console.log("wifi icon clicked")
                     controller.openSettings("wifi")
@@ -165,6 +153,7 @@ OxideWindow {
             text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
             MouseArea {
                 anchors.fill: parent
+                enabled: controller.enabled
                 onClicked: {
                     console.log("battery icon clicked")
                     // TODO open battery app
