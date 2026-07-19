@@ -24,7 +24,7 @@ OxideWindow {
             if (stack.depth > 1) {
                 stack.pop();
             }
-            stack.push(component.createObject(stack));
+            stack.push(component);
         }
         function onForegrounded(){
             window.raise();
