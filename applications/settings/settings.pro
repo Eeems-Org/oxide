@@ -21,6 +21,10 @@ applications.files = codes.eeems.settings.oxide
 applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 
+icons.path = $$ICONS_INSTALL_PATH
+icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/settings.png
+INSTALLS += icons
+
 HEADERS += \
     controller.h \
     generalcontroller.h \
