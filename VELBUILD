@@ -81,8 +81,6 @@ package() {
     # Launcher
     install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
         home/root/.vellum/bin/oxide
-    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/ \
-        home/root/.config/oxide.conf
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
         home/root/.local/share/applications/codes.eeems.oxide.oxide
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/icons/oxide/702x702/splash \
