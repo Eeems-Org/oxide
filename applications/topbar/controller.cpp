@@ -204,17 +204,288 @@ Controller::checkCurrentApplication(QDBusObjectPath path) {
   if (path.path().isNull()) {
     path = appsApi->currentApplication();
   }
-  Application app(
-    OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
-  );
-  m_visible = app.flags().contains("topbar");
-  qDebug() << app.name() << m_visible;
+  QString name;
+  if (path.path() == "/") {
+    m_visible = true;
+  } else {
+    Application app(
+      OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
+    );
+    name = app.name();
+    m_visible = app.flags().contains("topbar");
+  }
+  auto lockscreenPath = appsApi->lockscreenApplication().path();
+  m_enabled = lockscreenPath == "/" || path.path() != lockscreenPath;
+  qDebug() << name << m_visible << m_enabled;
+  emit enabledChanged(m_enabled);
   emit visibleChanged(m_visible);
 }
 
 void
 Controller::openSettings(const QString& category) {
   appsApi->openSettings(category);
+}
+
+void
+Controller::setNotification(QString notificationText) {
+  if (m_notificationText == notificationText) {
+    return;
+  }
+  m_notificationText = notificationText;
+  emit notificationTextChanged(notificationText);
+  if (!m_hasNotification) {
+    m_hasNotification = true;
+    emit hasNotificationChanged(true);
+  }
+}
+
+void
+Controller::updateNotificationText() {
+  if (m_notificationCount > 1) {
+    setNotification(
+      QStringLiteral("%1 notifications").arg(m_notificationCount)
+    );
+    return;
+  }
+  if (m_notificationCount == 1) {
+    setNotification("1 notification");
+    return;
+  }
+  m_notificationText = "";
+  emit notificationTextChanged(m_notificationText);
+  m_hasNotification = false;
+  emit hasNotificationChanged(m_hasNotification);
+}
+
+void
+Controller::notificationAdded(const QDBusObjectPath& path) {
+  Q_UNUSED(path);
+  m_notificationCount++;
+  updateNotificationText();
+}
+
+void
+Controller::notificationRemoved(const QDBusObjectPath& path) {
+  Q_UNUSED(path);
+  if (m_notificationCount > 0) {
+    m_notificationCount--;
+  }
+  updateNotificationText();
+}
+
+void
+Controller::batteryAlert() {
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("alert", true);
+  }
+}
+
+void
+Controller::batteryLevelChanged(int level) {
+  qDebug() << "Battery level: " << level;
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("level", level);
+  }
+}
+
+void
+Controller::batteryStateChanged(int state) {
+  switch (state) {
+    case BatteryCharging:
+      qDebug() << "Battery state: Charging";
+      break;
+    case BatteryNotPresent:
+      qDebug() << "Battery state: Not Present";
+      break;
+    case BatteryDischarging:
+      qDebug() << "Battery state: Discharging";
+      break;
+    case BatteryUnknown:
+    default:
+      qDebug() << "Battery state: Unknown";
+  }
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    if (state != BatteryNotPresent) {
+      ui->setProperty("present", true);
+    }
+    switch (state) {
+      case BatteryCharging:
+        ui->setProperty("charging", true);
+        m_powerConnected = true;
+        break;
+      case BatteryNotPresent:
+        ui->setProperty("present", false);
+        break;
+      case BatteryDischarging:
+        ui->setProperty("charging", false);
+        break;
+      case BatteryUnknown:
+      default:
+        ui->setProperty("charging", false);
+    }
+  }
+}
+
+void
+Controller::batteryTemperatureChanged(int temperature) {
+  qDebug() << "Battery temperature: " << temperature;
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("temperature", temperature);
+  }
+}
+
+void
+Controller::batteryWarning() {
+  qDebug() << "Battery Warning!";
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("warning", true);
+  }
+}
+
+void
+Controller::chargerStateChanged(int state) {
+  switch (state) {
+    case ChargerConnected:
+      qDebug() << "Charger state: Connected";
+      break;
+    case ChargerNotPresent:
+      qDebug() << "Charger state: Not Present";
+      break;
+    case ChargerNotConnected:
+      qDebug() << "Charger state: Not Connected";
+      break;
+    case ChargerUnknown:
+    default:
+      qDebug() << "Charger state: Unknown";
+  }
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    if (state != ChargerNotPresent) {
+      ui->setProperty("present", true);
+    }
+    switch (state) {
+      case ChargerConnected:
+        ui->setProperty("connected", true);
+        m_powerConnected = true;
+        break;
+      case ChargerNotConnected:
+      case ChargerNotPresent:
+        ui->setProperty("connected", false);
+        m_powerConnected = false;
+        break;
+      case ChargerUnknown:
+      default:
+        ui->setProperty("connected", false);
+    }
+  }
+}
+
+void
+Controller::chargerWarning() {
+  // TODO handle charger
+}
+
+void
+Controller::powerStateChanged(int state) {
+  Q_UNUSED(state);
+  // TODO handle requested battery state
+}
+
+void
+Controller::disconnected() {
+  wifiStateChanged(wifiApi->state());
+}
+
+void
+Controller::wifiStateChanged(int state) {
+  if (root == nullptr) {
+    wifiState = state;
+    return;
+  }
+  if (state == wifiState) {
+    return;
+  }
+  wifiState = state;
+  switch (state) {
+    case WifiOff:
+      qDebug() << "Wifi state: Off";
+      break;
+    case WifiDisconnected:
+      qDebug() << "Wifi state: On+Disconnected";
+      break;
+    case WifiOffline:
+      qDebug() << "Wifi state: On+Connected+Offline";
+      break;
+    case WifiOnline:
+      qDebug() << "Wifi state: On+Connected+Online";
+      break;
+    case WifiUnknown:
+    default:
+      qDebug() << "Wifi state: Unknown";
+  }
+  QObject* ui = root->findChild<QObject*>("wifiState");
+  if (ui) {
+    switch (state) {
+      case WifiOff:
+        ui->setProperty("state", "down");
+        break;
+      case WifiDisconnected:
+        ui->setProperty("state", "up");
+        ui->setProperty("connected", false);
+        break;
+      case WifiOffline:
+        ui->setProperty("state", "up");
+        ui->setProperty("connected", true);
+        break;
+      case WifiOnline:
+        ui->setProperty("state", "up");
+        ui->setProperty("connected", true);
+        ui->setProperty("rssi", wifiApi->rssi());
+        break;
+      case WifiUnknown:
+      default:
+        ui->setProperty("state", "unknown");
+        ui->setProperty("connected", false);
+        ui->setProperty("rssi", -100);
+    }
+  }
+}
+
+void
+Controller::wifiRssiChanged(int rssi) {
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("wifiState");
+  if (ui) {
+    if (wifiState != WifiOnline) {
+      rssi = -100;
+    }
+    ui->setProperty("rssi", rssi);
+  }
 }
 
 #include "moc_controller.cpp"

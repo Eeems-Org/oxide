@@ -2,7 +2,7 @@
     "displayName": "Startup application",
     "description": "Handles the password screen on resume",
     "bin": "/home/root/.vellum/bin/decay",
-    "flags": ["hidden", "nopreload"],
+    "flags": ["hidden", "nopreload", "topbar"],
     "type": "foreground",
-    "permissions": ["apps", "power", "system", "wifi"]
+    "permissions": ["apps", "system"]
 }
