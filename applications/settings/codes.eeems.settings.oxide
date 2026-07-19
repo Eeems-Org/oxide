@@ -1,6 +1,7 @@
 {
     "displayName": "Settings",
     "description": "Configure device settings",
+    "icon": "oxide:settings-48",
     "bin": "/home/root/.vellum/share/oxide/libexec/codes.eeems.settings",
     "type": "backgroundable",
     "permissions": ["wifi", "power", "system", "screen", "notification", "apps", "frontlight"],
