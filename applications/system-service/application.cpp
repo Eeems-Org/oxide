@@ -7,6 +7,7 @@
 #include <signal.h>
 
 #include <QFile>
+#include <QPointer>
 #include <QTimer>
 #include <QTransform>
 
@@ -202,6 +203,7 @@ Application::interruptApplication() {
     "Interrupt Application",
     "interrupt",
     [this](Oxide::Sentry::Transaction* t) {
+      QPointer<Application> guard(this);
 #ifdef SENTRY
       if (t != nullptr) {
         sentry_transaction_set_tag(
@@ -223,6 +225,7 @@ Application::interruptApplication() {
       }
       Oxide::Sentry::sentry_span(
         t, "background", "Background application", [this]() {
+          QPointer<Application> innerGuard(this);
           switch (type()) {
             case Background:
               // Already in the background. How did we get here?
@@ -234,6 +237,9 @@ Application::interruptApplication() {
               kill(-m_process->processId(), SIGUSR2);
               timer.restart();
               delayUpTo(1000);
+              if (innerGuard.isNull()) {
+                return;
+              }
               appsAPI->disconnectSignals(this, 2);
               if (stateNoSecurityCheck() == Inactive) {
                 O_INFO("Application crashed while pausing");
@@ -256,6 +262,9 @@ Application::interruptApplication() {
           }
         }
       );
+      if (guard.isNull()) {
+        return;
+      }
       if (flags().contains("exclusive")) {
         getCompositorDBus()->exitExclusiveMode().waitForFinished();
       }
@@ -348,6 +357,7 @@ Application::uninterruptApplication() {
     "Uninterrupt Application",
     "uninterrupt",
     [this](Oxide::Sentry::Transaction* t) {
+      QPointer<Application> guard(this);
       if (flags().contains("exclusive")) {
         auto compositor = getCompositorDBus();
         compositor->enterExclusiveMode().waitForFinished();
@@ -381,6 +391,7 @@ Application::uninterruptApplication() {
       }
       Oxide::Sentry::sentry_span(
         t, "foreground", "Foreground application", [this]() {
+          QPointer<Application> innerGuard(this);
           switch (type()) {
             case Background:
             case Backgroundable:
@@ -391,6 +402,9 @@ Application::uninterruptApplication() {
               appsAPI->connectSignals(this, 1);
               kill(-m_process->processId(), SIGUSR1);
               delayUpTo(1000);
+              if (innerGuard.isNull()) {
+                return;
+              }
               appsAPI->disconnectSignals(this, 1);
               if (timer.isValid()) {
                 // No need to fall through, we've just assumed
@@ -413,6 +427,9 @@ Application::uninterruptApplication() {
           }
         }
       );
+      if (guard.isNull()) {
+        return;
+      }
     }
   );
   auto compositor = getCompositorDBus();
