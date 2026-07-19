@@ -37,7 +37,7 @@ Application::launchWithArgs(const QStringList& args) {
 }
 void
 Application::launchNoSecurityCheck(const QStringList& args) {
-  if (m_process == nullptr || m_process->processId()) {
+  if (m_process->processId()) {
     resumeNoSecurityCheck();
   } else {
     if (sharedSettings.applicationUsage()) {
@@ -162,8 +162,8 @@ Application::pause(bool startIfNone) {
 void
 Application::pauseNoSecurityCheck(bool startIfNone) {
   if (
-    m_process == nullptr || !m_process->processId() ||
-    stateNoSecurityCheck() == Paused || type() == Background
+    !m_process->processId() || stateNoSecurityCheck() == Paused ||
+    type() == Background
   ) {
     return;
   }
@@ -194,8 +194,8 @@ Application::pauseNoSecurityCheck(bool startIfNone) {
 void
 Application::interruptApplication() {
   if (
-    m_process == nullptr || !m_process->processId() ||
-    stateNoSecurityCheck() == Paused || type() == Background
+    !m_process->processId() || stateNoSecurityCheck() == Paused ||
+    type() == Background
   ) {
     return;
   }
@@ -224,8 +224,7 @@ Application::interruptApplication() {
         );
       }
       Oxide::Sentry::sentry_span(
-        t, "background", "Background application", [this]() {
-          QPointer<Application> innerGuard(this);
+        t, "background", "Background application", [this, guard]() {
           switch (type()) {
             case Background:
               // Already in the background. How did we get here?
@@ -237,7 +236,7 @@ Application::interruptApplication() {
               kill(-m_process->processId(), SIGUSR2);
               timer.restart();
               delayUpTo(1000);
-              if (innerGuard.isNull()) {
+              if (guard.isNull()) {
                 return;
               }
               appsAPI->disconnectSignals(this, 2);
@@ -290,9 +289,6 @@ Application::waitForResume() {
 
 QString
 Application::id() {
-  if (m_process == nullptr) {
-    return QString();
-  }
   return QString("connection/%1").arg(m_process->processId());
 }
 
@@ -315,8 +311,7 @@ Application::resume() {
 void
 Application::resumeNoSecurityCheck() {
   if (
-    m_process == nullptr || !m_process->processId() ||
-    stateNoSecurityCheck() == InForeground ||
+    !m_process->processId() || stateNoSecurityCheck() == InForeground ||
     (type() == Background && stateNoSecurityCheck() == InBackground)
   ) {
     O_DEBUG("Can't Resume" << path() << "Already running!");
@@ -347,8 +342,7 @@ Application::resumeNoSecurityCheck() {
 void
 Application::uninterruptApplication() {
   if (
-    m_process == nullptr || !m_process->processId() ||
-    stateNoSecurityCheck() == InForeground ||
+    !m_process->processId() || stateNoSecurityCheck() == InForeground ||
     (type() == Background && stateNoSecurityCheck() == InBackground)
   ) {
     return;
@@ -530,7 +524,7 @@ Application::stopNoSecurityCheck() {
 
 void
 Application::signal(int signal) {
-  if (m_process != nullptr && m_process->processId()) {
+  if (m_process->processId()) {
     kill(-m_process->processId(), signal);
   }
 }
@@ -559,9 +553,6 @@ Application::unregisterNoSecurityCheck() {
 
 int
 Application::stateNoSecurityCheck() {
-  if (m_process == nullptr) {
-    return Inactive;
-  }
   switch (m_process->state()) {
     case QProcess::Starting:
     case QProcess::Running: {
@@ -728,7 +719,6 @@ Application::finished(int exitCode) {
   getCompositorDBus()->lower(
     QString("connection/%1").arg(m_process->processId())
   );
-  m_process = nullptr;
   if (
     exitCode != EXIT_SUCCESS && exitCode != SIGINT && exitCode != SIGTERM &&
     exitCode != SIGKILL && exitCode != 128 + EXIT_SUCCESS &&
@@ -761,9 +751,6 @@ Application::finished(int exitCode) {
 
 void
 Application::readyReadStandardError() {
-  if (m_process == nullptr) {
-    return;
-  }
   QString error = m_process->readAllStandardError();
   if (p_stderr != nullptr) {
     *p_stderr << error.toStdString().c_str();
@@ -787,9 +774,6 @@ Application::readyReadStandardError() {
 
 void
 Application::readyReadStandardOutput() {
-  if (m_process == nullptr) {
-    return;
-  }
   QString output = m_process->readAllStandardOutput();
   if (p_stdout != nullptr) {
     *p_stdout << output.toStdString().c_str();
@@ -896,7 +880,8 @@ void
 Application::delayUpTo(int milliseconds) {
   timer.invalidate();
   timer.start();
-  while (m_process != nullptr && timer.isValid() &&
+  QPointer<Application> guard(this);
+  while (!guard.isNull() && timer.isValid() &&
          !timer.hasExpired(milliseconds)) {
     QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
   }
@@ -943,9 +928,7 @@ Application::updateEnvironment() {
   for (auto key : environment().keys()) {
     env.insert(key, environment().value(key, "").toString());
   }
-  if (m_process != nullptr) {
-    m_process->setEnvironment(env.toStringList());
-  }
+  m_process->setEnvironment(env.toStringList());
 }
 
 void
@@ -966,7 +949,7 @@ Application::startSpan(std::string operation, std::string description) {
 
 void
 Application::waitForFinished() {
-  if (m_process != nullptr && m_process->processId()) {
+  if (m_process->processId()) {
     m_process->waitForFinished();
   }
 }
@@ -1067,9 +1050,6 @@ Application::name() {
 }
 int
 Application::processId() {
-  if (m_process == nullptr) {
-    return 0;
-  }
   return m_process->processId();
 }
 QStringList

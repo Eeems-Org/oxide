@@ -217,6 +217,7 @@ main(int argc, char* argv[]) {
               socket->write("ok");
               socket->flush();
               socket->disconnectFromServer();
+              emit controller.foregrounded();
             }
           );
         }
