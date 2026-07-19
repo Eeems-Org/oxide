@@ -1,28 +1,19 @@
 #pragma once
 
 #include <liboxide.h>
-#include <liboxide/sysobject.h>
 
 #include <QGuiApplication>
-#include <QJsonObject>
-#include <QMutableListIterator>
 #include <QObject>
-#include <QTimer>
 
 #include "appitem.h"
-#include "notificationlist.h"
-#include "wifinetworklist.h"
 
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 
 using namespace codes::eeems::oxide1;
-using codes::eeems::oxide1::Frontlight;
 using codes::eeems::oxide1::Power;
-using Oxide::SysObject;
 using namespace Oxide::Sentry;
 
-enum State { Normal, PowerSaving };
 enum BatteryState {
   BatteryUnknown,
   BatteryCharging,
@@ -35,79 +26,11 @@ enum ChargerState {
   ChargerNotConnected,
   ChargerNotPresent
 };
-enum WifiState {
-  WifiUnknown,
-  WifiOff,
-  WifiDisconnected,
-  WifiOffline,
-  WifiOnline
-};
-enum SwipeDirection { None, Right, Left, Up, Down };
 
 class Controller : public QObject {
   Q_OBJECT
-  Q_PROPERTY(
-    bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY
-      automaticSleepChanged
-  )
-  Q_PROPERTY(
-    bool lockOnSuspend MEMBER m_lockOnSuspend WRITE setLockOnSuspend NOTIFY
-      lockOnSuspendChanged
-  )
-  Q_PROPERTY(
-    bool automaticLock MEMBER m_automaticLock WRITE setAutomaticLock NOTIFY
-      automaticLockChanged
-  )
   Q_PROPERTY(int columns READ columns WRITE setColumns NOTIFY columnsChanged)
-  Q_PROPERTY(
-    int swipeLengthRight MEMBER m_swipeLengthRight WRITE setSwipeLengthRight
-      NOTIFY swipeLengthRightChanged
-  )
-  Q_PROPERTY(
-    int swipeLengthLeft MEMBER m_swipeLengthLeft WRITE setSwipeLengthLeft NOTIFY
-      swipeLengthLeftChanged
-  )
-  Q_PROPERTY(
-    int swipeLengthUp MEMBER m_swipeLengthUp WRITE setSwipeLengthUp NOTIFY
-      swipeLengthUpChanged
-  )
-  Q_PROPERTY(
-    int swipeLengthDown MEMBER m_swipeLengthDown WRITE setSwipeLengthDown NOTIFY
-      swipeLengthDownChanged
-  )
-  Q_PROPERTY(
-    bool showWifiDb READ showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged
-  )
-  Q_PROPERTY(
-    bool showBatteryPercent READ showBatteryPercent WRITE setShowBatteryPercent
-      NOTIFY showBatteryPercentChanged
-  )
-  Q_PROPERTY(
-    bool showBatteryTemperature READ showBatteryTemperature WRITE
-      setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged
-  )
-  Q_PROPERTY(
-    int sleepAfter MEMBER m_sleepAfter WRITE setSleepAfter NOTIFY
-      sleepAfterChanged
-  )
-  Q_PROPERTY(
-    int lockAfter MEMBER m_lockAfter WRITE setLockAfter NOTIFY lockAfterChanged
-  )
-  Q_PROPERTY(
-    WifiNetworkList* networks MEMBER networks READ getNetworks NOTIFY
-      networksChanged
-  )
-  Q_PROPERTY(
-    NotificationList* notifications MEMBER notifications READ getNotifications
-      NOTIFY notificationsChanged
-  )
-  Q_PROPERTY(QStringList locales READ locales)
   Q_PROPERTY(QString locale READ locale WRITE setLocale NOTIFY localeChanged)
-  Q_PROPERTY(QStringList timezones READ timezones)
-  Q_PROPERTY(
-    QString timezone READ timezone WRITE setTimezone NOTIFY timezoneChanged
-  )
-  Q_PROPERTY(bool wifiOn MEMBER m_wifion READ wifiOn NOTIFY wifiOnChanged)
   Q_PROPERTY(
     QString autoStartApplication READ autoStartApplication WRITE
       setAutoStartApplication NOTIFY autoStartApplicationChanged
@@ -119,33 +42,10 @@ class Controller : public QObject {
   Q_PROPERTY(
     bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged
   )
-  Q_PROPERTY(
-    bool showDate READ showDate WRITE setShowDate NOTIFY showDateChanged
-  )
-  Q_PROPERTY(
-    uint notificationDisplayTime MEMBER m_notificationDisplayTime WRITE
-      setNotificationDisplayTime NOTIFY notificationDisplayTimeChanged
-  )
-  Q_PROPERTY(
-    bool hasNotification MEMBER m_hasNotification NOTIFY hasNotificationChanged
-  )
-  Q_PROPERTY(
-    QString notificationText MEMBER m_notificationText NOTIFY
-      notificationTextChanged
-  )
-  Q_PROPERTY(int maxTouchWidth READ maxTouchWidth CONSTANT)
-  Q_PROPERTY(int maxTouchHeight READ maxTouchHeight CONSTANT)
-  Q_PROPERTY(bool hasFrontlight READ hasFrontlight CONSTANT)
-  Q_PROPERTY(
-    bool extraBrightness READ extraBrightness WRITE setExtraBrightness NOTIFY
-      extraBrightnessChanged
-  )
 public:
-  QObject* stateController = nullptr;
   QObject* root = nullptr;
   explicit Controller(QObject* parent = 0);
   Q_INVOKABLE void startup() {
-    loadSettings();
     if (autoStartApplication().isEmpty()) {
       qDebug() << "No auto start application";
       return;
@@ -157,30 +57,10 @@ public:
     }
     app->execute();
   }
-  Q_INVOKABLE bool turnOnWifi() {
-    if (!wifiApi->enable()) {
-      return false;
-    }
-    m_wifion = true;
-    emit wifiOnChanged(true);
-    connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-    return true;
-  };
-  Q_INVOKABLE void turnOffWifi() {
-    wifiApi->disable();
-    m_wifion = false;
-    emit wifiOnChanged(false);
-    disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-    networks->removeUnknown();
-    wifiApi->flushBSSCache(0);
-  };
-  bool wifiOn() { return m_wifion; }
-  Q_INVOKABLE void loadSettings();
-  Q_INVOKABLE void saveSettings();
+  Q_INVOKABLE void loadSettings() {}
+  Q_INVOKABLE void saveSettings() {}
   Q_INVOKABLE QList<QObject*> getApps();
   Q_INVOKABLE void importDraftApps();
-  Q_INVOKABLE void powerOff();
-  Q_INVOKABLE void reboot();
   Q_INVOKABLE void suspend();
   Q_INVOKABLE void lock();
   Q_INVOKABLE void
@@ -197,68 +77,12 @@ public:
     Q_UNUSED(type);
 #endif
   }
-  void updateBatteryLevel();
-  bool automaticSleep() const { return m_automaticSleep; }
-  void setAutomaticSleep(bool);
-  bool lockOnSuspend() const { return m_lockOnSuspend; }
-  void setLockOnSuspend(bool);
-  void setAutomaticLock(bool);
   int columns() const { return sharedSettings.columns(); }
   void setColumns(int columns) { sharedSettings.set_columns(columns); }
-  int swipeLengthRight() const { return m_swipeLengthRight; }
-  void setSwipeLengthRight(int length) { setSwipeLength(1, length); }
-  int swipeLengthLeft() const { return m_swipeLengthLeft; }
-  void setSwipeLengthLeft(int length) { setSwipeLength(2, length); }
-  int swipeLengthUp() const { return m_swipeLengthUp; }
-  void setSwipeLengthUp(int length) { setSwipeLength(3, length); }
-  int swipeLengthDown() const { return m_swipeLengthDown; }
-  void setSwipeLengthDown(int length) { setSwipeLength(4, length); }
-  int getSwipeLength(int direction);
-  void setSwipeLength(int direction, int length);
-  bool showWifiDb() const { return sharedSettings.showWifiDb(); }
-  void setShowWifiDb(bool state) { sharedSettings.set_showWifiDb(state); }
-  bool showBatteryPercent() const {
-    return sharedSettings.showBatteryPercent();
-  }
-  void setShowBatteryPercent(bool state) {
-    sharedSettings.set_showBatteryPercent(state);
-  }
-  bool showBatteryTemperature() const {
-    return sharedSettings.showBatteryTemperature();
-  }
-  void setShowBatteryTemperature(bool state) {
-    sharedSettings.set_showBatteryTemperature(state);
-  }
-  int sleepAfter() const { return systemApi->autoSleep(); }
-  void setSleepAfter(int);
-  int lockAfter() const { return systemApi->autoLock(); }
-  void setLockAfter(int);
-  void setShowDate(bool showDate) { sharedSettings.set_showDate(showDate); }
-  bool showDate() { return sharedSettings.showDate(); }
-  uint notificationDisplayTime() const { return m_notificationDisplayTime; }
-  void setNotificationDisplayTime(uint displayTime) {
-    if (m_notificationDisplayTime == displayTime) {
-      return;
-    }
-    m_notificationDisplayTime = displayTime;
-    emit notificationDisplayTimeChanged(displayTime);
-  }
-  void setNotification(QString notificationText) {
-    if (m_notificationText == notificationText) {
-      return;
-    }
-    m_notificationText = notificationText;
-    emit notificationTextChanged(notificationText);
-    if (!m_hasNotification) {
-      m_hasNotification = true;
-      emit hasNotificationChanged(true);
-    }
-  }
-  void clearNotification() {
-    m_notificationText = "";
-    emit notificationTextChanged(m_notificationText);
-    m_hasNotification = false;
-    emit hasNotificationChanged(m_hasNotification);
+  QString locale() { return deviceSettings.getLocale(); }
+  void setLocale(const QString& locale) {
+    deviceSettings.setLocale(locale);
+    emit localeChanged(locale);
   }
   QString autoStartApplication() {
     return sharedSettings.autoStartApplication();
@@ -266,154 +90,20 @@ public:
   void setAutoStartApplication(QString autoStartApplication) {
     sharedSettings.set_autoStartApplication(autoStartApplication);
   }
-  bool getPowerConnected() { return m_powerConnected; }
-  WifiNetworkList* getNetworks() { return networks; }
-  NotificationList* getNotifications() { return notifications; }
-  QStringList locales() { return deviceSettings.getLocales(); }
-  QString locale() { return deviceSettings.getLocale(); }
-  void setLocale(const QString& locale) {
-    deviceSettings.setLocale(locale);
-    emit localeChanged(locale);
-  }
-  QStringList timezones() { return deviceSettings.getTimezones(); }
-  QString timezone() { return deviceSettings.getTimezone(); }
-  void setTimezone(const QString& timezone) {
-    deviceSettings.setTimezone(timezone);
-    emit timezoneChanged(timezone);
-  }
   bool powerOffInhibited() { return systemApi->powerOffInhibited(); }
   bool sleepInhibited() { return systemApi->sleepInhibited(); }
-  int maxTouchWidth() { return deviceSettings.getTouchWidth() * 0.9; }
-  int maxTouchHeight() { return deviceSettings.getTouchHeight() * 0.9; }
-  bool hasFrontlight() {
-    if (frontlightApi == nullptr) {
-      return false;
-    }
-    return frontlightApi->hasFrontlight();
-  }
-  bool extraBrightness() {
-    if (frontlightApi == nullptr) {
-      return false;
-    }
-    return frontlightApi->extraBrightness();
-  }
-  void setExtraBrightness(bool enabled) {
-    if (frontlightApi == nullptr) {
-      return;
-    }
-    frontlightApi->setExtraBrightness(enabled);
-  }
-
-  Q_INVOKABLE void disconnectWifiSignals() {
-    disconnect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
-    disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-    disconnect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
-    disconnect(
-      wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved
-    );
-  }
-  Q_INVOKABLE void connectWifiSignals() {
-    networks->clear();
-    QList<Network*> networksToAdd;
-    for (auto path : wifiApi->networks()) {
-      auto network = new Network(
-        OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
-      );
-      auto ssid = network->ssid();
-      if (ssid.isEmpty()) {
-        delete network;
-        continue;
-      }
-      networksToAdd.append(network);
-    }
-    networks->append(networksToAdd);
-    QList<BSS*> bsssToAdd;
-    for (auto path : wifiApi->bSSs()) {
-      auto bss =
-        new BSS(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this);
-      auto ssid = bss->ssid();
-      if (ssid.isEmpty()) {
-        delete bss;
-        continue;
-      }
-      bsssToAdd.append(bss);
-    }
-    networks->append(bsssToAdd);
-    networks->sort();
-    networks->setConnected(wifiApi->network());
-    connect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
-    connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-    connect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
-    connect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
-  }
   Apps* getAppsApi() { return appsApi; }
   Notifications* getNotificationApi() { return notificationApi; }
+
 signals:
   void reload();
-  void automaticSleepChanged(bool);
-  void lockOnSuspendChanged(bool);
-  void automaticLockChanged(bool);
   void columnsChanged(int);
-  void swipeLengthRightChanged(int);
-  void swipeLengthLeftChanged(int);
-  void swipeLengthUpChanged(int);
-  void swipeLengthDownChanged(int);
-  void fontSizeChanged(int);
-  void showWifiDbChanged(bool);
-  void showBatteryPercentChanged(bool);
-  void showBatteryTemperatureChanged(bool);
-  void sleepAfterChanged(int);
-  void lockAfterChanged(int);
-  void networksChanged(WifiNetworkList*);
   void localeChanged(QString);
-  void timezoneChanged(QString);
-  void wifiOnChanged(bool);
   void autoStartApplicationChanged(QString);
   void powerOffInhibitedChanged(bool);
   void sleepInhibitedChanged(bool);
-  void showDateChanged(bool);
-  void notificationDisplayTimeChanged(uint);
-  void hasNotificationChanged(bool);
-  void notificationTextChanged(QString);
-  void notificationsChanged(NotificationList*);
-  void extraBrightnessChanged(bool);
-
-public slots:
-  void updateUIElements();
 
 private slots:
-  void notificationsUpdated() {
-    if (notifications->length() > 1) {
-      setNotification(
-        QStringLiteral("%1 notifications").arg(notifications->length())
-      );
-    } else if (!notifications->empty()) {
-      setNotification("1 notification");
-    } else {
-      clearNotification();
-    }
-    emit notificationsChanged(notifications);
-  }
-  void notificationAdded(const QDBusObjectPath& path) {
-    auto notification = new Notification(
-      OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
-    );
-    notifications->append(notification);
-    // Notification UI updates will be handled by notificationsUpdated
-  }
-  void notificationRemoved(const QDBusObjectPath& path) {
-    auto notification = notifications->get(path);
-    if (notification == nullptr) {
-      return;
-    }
-    notifications->removeAll(notification);
-    notification->deleteLater();
-    // Notification UI updates will be handled by notificationsUpdated
-  }
-  void notificationChanged(const QDBusObjectPath& path) {
-    Q_UNUSED(path);
-    emit notificationsChanged(notifications);
-  }
   void unregisterApplication(QDBusObjectPath path) {
     auto pathString = path.path();
     for (auto app : applications) {
@@ -476,7 +166,6 @@ private slots:
       switch (state) {
         case BatteryCharging:
           ui->setProperty("charging", true);
-          m_powerConnected = true;
           break;
         case BatteryNotPresent:
           ui->setProperty("present", false);
@@ -536,12 +225,10 @@ private slots:
       switch (state) {
         case ChargerConnected:
           ui->setProperty("connected", true);
-          m_powerConnected = true;
           break;
         case ChargerNotConnected:
         case ChargerNotPresent:
           ui->setProperty("connected", false);
-          m_powerConnected = false;
           break;
         case ChargerUnknown:
         default:
@@ -549,138 +236,13 @@ private slots:
       }
     }
   }
-  void chargerWarning() {
-    // TODO handle charger
-  }
-  void powerStateChanged(int state) {
-    Q_UNUSED(state);
-    // TODO handle requested battery state
-  }
-  void bssFound(const QDBusObjectPath& path) {
-    auto bss =
-      new BSS(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this);
-    auto ssid = bss->ssid();
-    if (ssid.isEmpty()) {
-      delete bss;
-      return;
-    }
-    networks->append(bss);
-  }
-  void bssRemoved(const QDBusObjectPath& path) { networks->remove(path); }
-  void disconnected() {
-    wifiStateChanged(wifiApi->state());
-    networks->setConnected(QDBusObjectPath("/"));
-  }
-  void networkAdded(const QDBusObjectPath& path) {
-    auto network = new Network(
-      OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
-    );
-    auto ssid = network->ssid();
-    if (ssid.isEmpty()) {
-      delete network;
-      return;
-    }
-    networks->append(network);
-  }
-  void networkConnected(const QDBusObjectPath& path) {
-    networks->setConnected(path);
-  }
-  void networkRemoved(const QDBusObjectPath& path) { networks->remove(path); }
-  void wifiStateChanged(int state) {
-    if (state == wifiState) {
-      return;
-    }
-    wifiState = state;
-    switch (state) {
-      case WifiOff:
-        qDebug() << "Wifi state: Off";
-        break;
-      case WifiDisconnected:
-        qDebug() << "Wifi state: On+Disconnected";
-        break;
-      case WifiOffline:
-        qDebug() << "Wifi state: On+Connected+Offline";
-        break;
-      case WifiOnline:
-        qDebug() << "Wifi state: On+Connected+Online";
-        break;
-      case WifiUnknown:
-      default:
-        qDebug() << "Wifi state: Unknown";
-    }
-    if (root == nullptr) {
-      return;
-    }
-    QObject* ui = root->findChild<QObject*>("wifiState");
-    if (ui) {
-      switch (state) {
-        case WifiOff:
-          ui->setProperty("state", "down");
-          break;
-        case WifiDisconnected:
-          ui->setProperty("state", "up");
-          ui->setProperty("connected", false);
-          break;
-        case WifiOffline:
-          ui->setProperty("state", "up");
-          ui->setProperty("connected", true);
-          break;
-        case WifiOnline:
-          ui->setProperty("state", "up");
-          ui->setProperty("connected", true);
-          ui->setProperty("rssi", wifiApi->rssi());
-          break;
-        case WifiUnknown:
-        default:
-          ui->setProperty("state", "unknown");
-          ui->setProperty("connected", false);
-          ui->setProperty("rssi", -100);
-      }
-    }
-  }
-  void wifiRssiChanged(int rssi) {
-    if (root == nullptr) {
-      return;
-    }
-    QObject* ui = root->findChild<QObject*>("wifiState");
-    if (ui) {
-      if (wifiState != WifiOnline) {
-        rssi = -100;
-      }
-      ui->setProperty("rssi", rssi);
-    }
-  }
 
 private:
-  void checkUITimer();
-  bool m_automaticSleep = true;
-  bool m_lockOnSuspend = true;
-  bool m_automaticLock = true;
-  int m_swipeLengthRight = 30;
-  int m_swipeLengthLeft = 30;
-  int m_swipeLengthUp = 30;
-  int m_swipeLengthDown = 30;
-  int m_sleepAfter;
-  int m_lockAfter;
-  uint m_notificationDisplayTime = 5;
-  bool m_hasNotification = false;
-  QString m_notificationText = "";
-
-  bool m_powerConnected = false;
-  int wifiState = WifiUnknown;
-
-  bool m_wifion;
-  SysObject wifi;
-  QTimer* uiTimer;
   General* api = nullptr;
   Power* powerApi = nullptr;
-  Wifi* wifiApi = nullptr;
   System* systemApi = nullptr;
   Apps* appsApi = nullptr;
   Notifications* notificationApi = nullptr;
-  Frontlight* frontlightApi = nullptr;
   QList<QObject*> applications;
   AppItem* getApplication(QString name);
-  WifiNetworkList* networks;
-  NotificationList* notifications;
 };
