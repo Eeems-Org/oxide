@@ -1,5 +1,8 @@
 #include "wlan.h"
 
+#include <QString>
+#include <QTcpSocket>
+
 #include "bss.h"
 #include "wifiapi.h"
 
@@ -138,19 +141,15 @@ Wlan::operstate() {
 
 bool
 Wlan::pingIP(std::string ip, const char* port) {
-  QProcess process;
-  process.setProgram("/bin/bash");
-  std::string cmd(
-    "{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port +
-    "; } > /dev/null 2>&1"
+  QTcpSocket socket;
+  socket.connectToHost(
+    QString::fromStdString(ip).trimmed(), QString(port).toUShort()
   );
-  process.setArguments(QStringList() << "-c" << cmd.c_str());
-  process.start();
-  if (!process.waitForFinished(100)) {
-    process.kill();
-    return false;
+  if (socket.waitForConnected(100)) {
+    socket.disconnectFromHost();
+    return true;
   }
-  return !process.exitCode();
+  return false;
 }
 
 bool
