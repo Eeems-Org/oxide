@@ -87,12 +87,8 @@ public:
     auto state = wifiApi->state();
     return state != WifiState::WifiOff && state != WifiState::WifiUnknown;
   }
-  Q_INVOKABLE bool turnOnWifi() {
-    activate();
-    return wifiApi->enable();
-  }
+  Q_INVOKABLE bool turnOnWifi() { return wifiApi->enable(); }
   Q_INVOKABLE void turnOffWifi() {
-    activate();
     wifiApi->disable();
     networks->removeUnknown();
     wifiApi->flushBSSCache(0);
