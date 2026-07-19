@@ -181,7 +181,11 @@ Application::pauseNoSecurityCheck(bool startIfNone) {
 #else
       Q_UNUSED(t);
 #endif
+      QPointer<Application> guard(this);
       interruptApplication();
+      if (guard.isNull()) {
+        return;
+      }
       if (startIfNone) {
         appsAPI->resumeIfNone();
       }
@@ -329,9 +333,15 @@ Application::resumeNoSecurityCheck() {
         Q_UNUSED(t);
 #endif
       appsAPI->recordPreviousApplication();
-      O_INFO("Resuming " << path());
+      auto p = path();
+      O_INFO("Resuming " << p);
       appsAPI->pauseAll();
+      QPointer<Application> guard(this);
       uninterruptApplication();
+      if (guard.isNull()) {
+        O_INFO("Application deleted during resume " << p);
+        return;
+      }
       waitForResume();
       emit resumed();
       emit appsAPI->applicationResumed(qPath());
@@ -351,7 +361,6 @@ Application::uninterruptApplication() {
     "Uninterrupt Application",
     "uninterrupt",
     [this](Oxide::Sentry::Transaction* t) {
-      QPointer<Application> guard(this);
       if (flags().contains("exclusive")) {
         auto compositor = getCompositorDBus();
         compositor->enterExclusiveMode().waitForFinished();
@@ -385,7 +394,6 @@ Application::uninterruptApplication() {
       }
       Oxide::Sentry::sentry_span(
         t, "foreground", "Foreground application", [this]() {
-          QPointer<Application> innerGuard(this);
           switch (type()) {
             case Background:
             case Backgroundable:
@@ -395,8 +403,9 @@ Application::uninterruptApplication() {
               O_INFO("Waiting for SIGUSR1 ack");
               appsAPI->connectSignals(this, 1);
               kill(-m_process->processId(), SIGUSR1);
+              QPointer<Application> guard(this);
               delayUpTo(1000);
-              if (innerGuard.isNull()) {
+              if (guard.isNull()) {
                 return;
               }
               appsAPI->disconnectSignals(this, 1);
@@ -419,17 +428,15 @@ Application::uninterruptApplication() {
               kill(-m_process->processId(), SIGCONT);
               startSpan("foreground", "Application is in the foreground");
           }
+          auto compositor = getCompositorDBus();
+          compositor->raise(id());
+          compositor->focus(id());
         }
       );
-      if (guard.isNull()) {
-        return;
-      }
     }
   );
-  auto compositor = getCompositorDBus();
-  compositor->raise(id());
-  compositor->focus(id());
 }
+
 void
 Application::stop() {
   if (!hasPermission("apps")) {
