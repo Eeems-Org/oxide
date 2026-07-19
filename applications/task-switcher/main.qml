@@ -8,6 +8,7 @@ import "./widgets"
 OxideWindow {
     id: window
     objectName: "window"
+    reserveSystemSpace: true
     flags: Qt.FramelessWindowHint
     title: qsTr("Corrupt")
     color: "transparent"
