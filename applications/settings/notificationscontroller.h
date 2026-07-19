@@ -14,91 +14,64 @@ using namespace codes::eeems::oxide1;
 class NotificationsController : public QObject {
   Q_OBJECT
   Q_PROPERTY(
-    uint notificationDisplayTime MEMBER m_notificationDisplayTime WRITE
-      setNotificationDisplayTime NOTIFY notificationDisplayTimeChanged
-  )
-  Q_PROPERTY(
     NotificationList* notificationsList READ notificationsList CONSTANT
   )
 
 public:
-  explicit NotificationsController(General* api, QObject* parent = nullptr)
+  explicit NotificationsController(
+    QObject* parent,
+    Notifications* notificationApi
+  )
     : QObject(parent)
-    , api(api) {
+    , notificationApi(notificationApi) {
     m_notificationsList = new NotificationList(this);
-  }
-
-  void ensureApi() {
-    if (apiReady || api == nullptr) {
-      return;
-    }
-    auto reply = api->requestAPI("notification");
-    reply.waitForFinished();
-    if (reply.isError()) {
-      return;
-    }
-    auto path = ((QDBusObjectPath)reply).path();
-    if (path == "/") {
-      return;
-    }
-    notificationsApi = new Notifications(
-      OXIDE_SERVICE, path, QDBusConnection::systemBus(), this
-    );
-    m_notificationDisplayTime = notificationsApi->displayTime();
+    deactivate();
     connect(
-      notificationsApi,
-      &Notifications::displayTimeChanged,
-      this,
-      [this](uint v) { setNotificationDisplayTime(v); }
-    );
-    connect(
-      notificationsApi,
+      notificationApi,
       &Notifications::notificationAdded,
       this,
-      &NotificationsController::notificationAdded
+      &NotificationsController::notificationAdded,
+      Qt::UniqueConnection
     );
     connect(
-      notificationsApi,
+      notificationApi,
       &Notifications::notificationRemoved,
       this,
-      &NotificationsController::notificationRemoved
+      &NotificationsController::notificationRemoved,
+      Qt::UniqueConnection
     );
     connect(
-      notificationsApi,
+      notificationApi,
       &Notifications::notificationChanged,
       this,
-      &NotificationsController::notificationChanged
+      &NotificationsController::notificationChanged,
+      Qt::UniqueConnection
     );
-    // Populate existing notifications
-    auto allNotifications = notificationsApi->allNotifications();
+  }
+
+  Q_INVOKABLE void activate() {
+    if (notificationApi == nullptr) {
+      return;
+    }
+    notificationApi->blockSignals(false);
+    auto allNotifications = notificationApi->allNotifications();
     for (const auto& notifPath : allNotifications) {
       auto notification = new Notification(
         OXIDE_SERVICE, notifPath.path(), QDBusConnection::systemBus()
       );
       m_notificationsList->append(notification);
     }
-    apiReady = true;
-    emit notificationDisplayTimeChanged(m_notificationDisplayTime);
   }
 
-  Q_INVOKABLE void init() { ensureApi(); }
-
-  NotificationList* notificationsList() { return m_notificationsList; }
-
-  uint notificationDisplayTime() { return m_notificationDisplayTime; }
-  void setNotificationDisplayTime(uint v) {
-    if (m_notificationDisplayTime == v) {
+  Q_INVOKABLE void deactivate() {
+    if (notificationApi == nullptr) {
       return;
     }
-    m_notificationDisplayTime = v;
-    emit notificationDisplayTimeChanged(v);
-    if (notificationsApi != nullptr) {
-      notificationsApi->setDisplayTime(v);
-    }
+    notificationApi->blockSignals(true);
+    m_notificationsList->clear();
   }
 
-signals:
-  void notificationDisplayTimeChanged(uint);
+  NotificationList* notificationsList() { return m_notificationsList; }
 
 private slots:
   void notificationAdded(const QDBusObjectPath& path) {
@@ -123,9 +96,6 @@ private slots:
   }
 
 private:
-  General* api = nullptr;
-  Notifications* notificationsApi = nullptr;
+  Notifications* notificationApi = nullptr;
   NotificationList* m_notificationsList = nullptr;
-  bool apiReady = false;
-  uint m_notificationDisplayTime = 5;
 };

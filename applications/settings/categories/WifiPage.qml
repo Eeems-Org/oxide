@@ -10,7 +10,7 @@ Page {
     title: "WiFi"
     background: Rectangle { color: "white" }
     StackView.onActivated: {
-        wifiController.connectWifiSignals();
+        wifiController.activate();
         if (wifiController.wifiOn) {
             wifiController.networks.scan(false);
         }
@@ -18,7 +18,7 @@ Page {
     }
     StackView.onDeactivating: {
         sortTimer.stop();
-        wifiController.disconnectWifiSignals();
+        wifiController.deactivate();
     }
 
     Timer {

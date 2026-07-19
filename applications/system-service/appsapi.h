@@ -118,6 +118,7 @@ public slots:
   void openTaskSwitcher();
   void openTerminal();
   void openSettings(const QString& category);
+  QDBusObjectPath application();
 
 private:
   bool m_stopping;

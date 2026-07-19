@@ -21,125 +21,98 @@ enum WifiState {
 
 class WifiController : public QObject {
   Q_OBJECT
-  Q_PROPERTY(bool wifiOn MEMBER m_wifion READ wifiOn NOTIFY wifiOnChanged)
+  Q_PROPERTY(bool wifiOn READ wifiOn NOTIFY wifiOnChanged)
   Q_PROPERTY(
     WifiNetworkList* networks MEMBER networks READ getNetworks NOTIFY
       networksChanged
   )
 
 public:
-  explicit WifiController(General* api, QObject* parent = nullptr)
+  explicit WifiController(QObject* parent, Wifi* wifiApi)
     : QObject(parent)
-    , api(api) {}
+    , wifiApi(wifiApi) {
+    deactivate();
+    connect(
+      wifiApi,
+      &Wifi::stateChanged,
+      this,
+      &WifiController::wifiStateChanged,
+      Qt::UniqueConnection
+    );
+    connect(
+      wifiApi,
+      &Wifi::networkConnected,
+      this,
+      &WifiController::networkConnected,
+      Qt::UniqueConnection
+    );
+    connect(
+      wifiApi,
+      &Wifi::disconnected,
+      this,
+      &WifiController::disconnected,
+      Qt::UniqueConnection
+    );
+    connect(
+      wifiApi,
+      &Wifi::bssFound,
+      this,
+      &WifiController::bssFound,
+      Qt::UniqueConnection
+    );
+    connect(
+      wifiApi,
+      &Wifi::bssRemoved,
+      this,
+      &WifiController::bssRemoved,
+      Qt::UniqueConnection
+    );
+    connect(
+      wifiApi,
+      &Wifi::networkAdded,
+      this,
+      &WifiController::networkAdded,
+      Qt::UniqueConnection
+    );
+    connect(
+      wifiApi,
+      &Wifi::networkRemoved,
+      this,
+      &WifiController::networkRemoved,
+      Qt::UniqueConnection
+    );
+  }
 
-  bool wifiOn() { return m_wifion; }
+  bool wifiOn() {
+    auto state = wifiApi->state();
+    return state != WifiState::WifiOff && state != WifiState::WifiUnknown;
+  }
   Q_INVOKABLE bool turnOnWifi() {
-    connectWifiSignals();
-    if (wifiApi == nullptr || !wifiApi->enable()) {
-      return false;
-    }
-    m_wifion = true;
-    emit wifiOnChanged(true);
-    return true;
+    activate();
+    return wifiApi->enable();
   }
   Q_INVOKABLE void turnOffWifi() {
-    connectWifiSignals();
-    if (wifiApi == nullptr) {
-      return;
-    }
+    activate();
     wifiApi->disable();
-    m_wifion = false;
-    emit wifiOnChanged(false);
     networks->removeUnknown();
     wifiApi->flushBSSCache(0);
   }
   WifiNetworkList* getNetworks() { return networks; }
-  Q_INVOKABLE void disconnectWifiSignals() {
-    if (wifiApi == nullptr) {
-      return;
-    }
+  Q_INVOKABLE void deactivate() {
     if (networks != nullptr) {
       networks->deleteLater();
       networks = nullptr;
     }
     emit networksChanged(nullptr);
-    emit wifiOnChanged(false);
     wifiApi->blockSignals(true);
   }
 
-  Q_INVOKABLE void connectWifiSignals() {
-    if (api == nullptr) {
-      return;
-    }
-    if (wifiApi == nullptr) {
-      auto reply = api->requestAPI("wifi");
-      reply.waitForFinished();
-      if (reply.isError()) {
-        return;
-      }
-      auto path = ((QDBusObjectPath)reply).path();
-      if (path == "/") {
-        return;
-      }
-      wifiApi =
-        new Wifi(OXIDE_SERVICE, path, QDBusConnection::systemBus(), this);
-      connect(
-        wifiApi,
-        &Wifi::stateChanged,
-        this,
-        &WifiController::wifiStateChanged,
-        Qt::UniqueConnection
-      );
-      connect(
-        wifiApi,
-        &Wifi::networkConnected,
-        this,
-        &WifiController::networkConnected,
-        Qt::UniqueConnection
-      );
-      connect(
-        wifiApi,
-        &Wifi::disconnected,
-        this,
-        &WifiController::disconnected,
-        Qt::UniqueConnection
-      );
-      connect(
-        wifiApi,
-        &Wifi::bssFound,
-        this,
-        &WifiController::bssFound,
-        Qt::UniqueConnection
-      );
-      connect(
-        wifiApi,
-        &Wifi::bssRemoved,
-        this,
-        &WifiController::bssRemoved,
-        Qt::UniqueConnection
-      );
-      connect(
-        wifiApi,
-        &Wifi::networkAdded,
-        this,
-        &WifiController::networkAdded,
-        Qt::UniqueConnection
-      );
-      connect(
-        wifiApi,
-        &Wifi::networkRemoved,
-        this,
-        &WifiController::networkRemoved,
-        Qt::UniqueConnection
-      );
-    }
+  Q_INVOKABLE void activate() {
     networks = new WifiNetworkList();
     networks->setAPI(wifiApi);
     wifiApi->blockSignals(false);
     networks->blockSignals(false);
-    auto state = wifiApi->state();
-    m_wifion = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
-    emit wifiOnChanged(m_wifion);
+    emit wifiOnChanged(wifiOn());
     QList<Network*> networksToAdd;
     for (auto path : wifiApi->networks()) {
       auto network = new Network(
@@ -177,10 +150,7 @@ signals:
 private slots:
   void wifiStateChanged(int state) {
     bool on = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
-    if (m_wifion != on) {
-      m_wifion = on;
-      emit wifiOnChanged(on);
-    }
+    emit wifiOnChanged(on);
   }
   void networkConnected(const QDBusObjectPath& path) {
     networks->setConnected(path);
@@ -211,8 +181,6 @@ private slots:
   void networkRemoved(const QDBusObjectPath& path) { networks->remove(path); }
 
 private:
-  General* api = nullptr;
   Wifi* wifiApi = nullptr;
-  bool m_wifion = false;
   WifiNetworkList* networks = nullptr;
 };

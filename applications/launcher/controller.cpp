@@ -6,89 +6,15 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
-#include <QIODevice>
-#include <QSet>
 #include <QStandardPaths>
-#include <QTextStream>
 #include <fstream>
 #include <memory>
 #include <sstream>
 
-QSet<QString> settings = {"columns", "autoStartApplication"};
-QSet<QString> booleanSettings{
-  "showWifiDb",
-  "showBatteryPercent",
-  "showBatteryTemperature",
-  "showDate"
-};
 QList<QString> configDirectoryPaths =
   {"/opt/etc/draft", "/etc/draft", "/home/root/.config/draft"};
-QList<QString> configFileDirectoryPaths =
-  {"/opt/etc", "/etc", "/home/root/.config", "/home/root/.vellum/etc"};
-
-QFile*
-getConfigFile() {
-  for (auto path : configFileDirectoryPaths) {
-    QDir dir(path);
-    if (dir.exists() && !dir.isEmpty()) {
-      QFile* file = new QFile(path + "/oxide.conf");
-      if (file->exists()) {
-        return file;
-      }
-    }
-  }
-  return nullptr;
-}
-bool
-configFileExists() {
-  auto configFile = getConfigFile();
-  bool exists = configFile != nullptr && configFile->exists();
-  configFile->close();
-  delete configFile;
-  return exists;
-}
 void
 Controller::loadSettings() {
-  // If the config directory doesn't exist,
-  // then print an error and stop.
-  qDebug() << "parsing config file...";
-  if (configFileExists()) {
-    auto configFile = getConfigFile();
-    if (!configFile->open(QIODevice::ReadOnly | QIODevice::Text)) {
-      qCritical() << "Couldn't read the config file. "
-                  << configFile->fileName();
-      return;
-    }
-    QTextStream in(configFile);
-    while (!in.atEnd()) {
-      QString line = in.readLine();
-      if (!line.startsWith("#") && !line.isEmpty()) {
-        QStringList parts = line.split("=");
-        if (parts.length() != 2) {
-          O_WARNING("  Wrong format on " << line);
-          continue;
-        }
-        QString lhs = parts.at(0).trimmed();
-        QString rhs = parts.at(1).trimmed();
-        if (booleanSettings.contains(lhs)) {
-          auto property = lhs.toStdString();
-          auto value = rhs.toLower();
-          auto boolValue = value == "true" || value == "t" || value == "y" ||
-                           value == "yes" || value == "1";
-          setProperty(property.c_str(), boolValue);
-          qDebug() << "  " << (property + ":").c_str() << boolValue;
-        } else if (settings.contains(lhs)) {
-          auto property = lhs.toStdString();
-          setProperty(property.c_str(), rhs);
-          qDebug() << "  " << (property + ":").c_str()
-                   << rhs.toStdString().c_str();
-        }
-      }
-    }
-    configFile->close();
-    delete configFile;
-  }
-  qDebug() << "Finished parsing config file.";
   setNotificationDisplayTime(notificationApi->displayTime());
   auto sleepAfter = systemApi->autoSleep();
   qDebug() << "Automatic sleep" << sleepAfter;
@@ -104,7 +30,7 @@ Controller::loadSettings() {
   for (short i = 1; i <= 4; i++) {
     setSwipeLength(i, systemApi->getSwipeLength(i));
   }
-  qDebug() << "Updating UI with settings from config file...";
+  qDebug() << "Updating UI with settings...";
   if (root == nullptr) {
     return;
   }
@@ -163,75 +89,6 @@ Controller::loadSettings() {
 void
 Controller::saveSettings() {
   qDebug() << "Saving configuration...";
-  QSet<QString> items = settings;
-  items.detach();
-  QSet<QString> booleanItems = booleanSettings;
-  booleanItems.detach();
-  std::stringstream buffer;
-  auto configFile = getConfigFile();
-  if (configFile == nullptr) {
-    configFile = new QFile(configFileDirectoryPaths.last() + "/oxide.conf");
-  }
-  QTextStream stream(configFile);
-  if (configFile->exists()) {
-    if (!configFile->open(QIODevice::ReadWrite | QIODevice::Text)) {
-      qCritical() << "Unable to edit the config file. "
-                  << configFile->fileName();
-      return;
-    }
-    while (!stream.atEnd()) {
-      QString line = stream.readLine();
-      if (line.startsWith("#")) {
-        buffer << line.toStdString() << std::endl;
-        continue;
-      }
-      QStringList parts = line.split("=");
-      if (parts.length() != 2) {
-        buffer << line.toStdString() << std::endl;
-        continue;
-      }
-      QString lhs = parts.at(0);
-      QString rhs = parts.at(1);
-      auto propertyName = lhs.toStdString();
-      if (booleanItems.contains(lhs)) {
-        if (property(propertyName.c_str()).toBool()) {
-          rhs = "yes";
-        } else {
-          rhs = "no";
-        }
-        items.remove(lhs);
-        booleanItems.remove(lhs);
-      } else if (items.contains(lhs)) {
-        rhs = property(propertyName.c_str()).toString();
-        items.remove(lhs);
-      }
-      auto value = rhs.toStdString();
-      qDebug() << " " << (propertyName + ":").c_str() << value.c_str();
-      buffer << propertyName << "=" << value << std::endl;
-    }
-  } else if (!configFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
-    qCritical() << "Unable to create the config file. "
-                << configFile->fileName();
-    return;
-  }
-  for (QString item : items) {
-    auto propertyName = item.toStdString();
-    auto value = property(item.toStdString().c_str()).toString().toStdString();
-    qDebug() << " " << (propertyName + ":").c_str() << value.c_str();
-    buffer << propertyName << "=" << value << std::endl;
-  }
-  for (QString item : booleanItems) {
-    auto propertyName = item.toStdString();
-    auto value = property(item.toStdString().c_str()).toBool() ? "yes" : "no";
-    qDebug() << " " << (propertyName + ":").c_str() << value;
-    buffer << propertyName << "=" << value << std::endl;
-  }
-  configFile->resize(0);
-  configFile->seek(0);
-  stream.seek(0);
-  stream << QString::fromStdString(buffer.str());
-  configFile->close();
-  delete configFile;
   if (!m_automaticSleep) {
     systemApi->setAutoSleep(0);
   } else {
@@ -316,11 +173,6 @@ Controller::getApps() {
   );
   return applications;
 }
-void
-Controller::setAutoStartApplication(QString autoStartApplication) {
-  m_autoStartApplication = autoStartApplication;
-  emit autoStartApplicationChanged(autoStartApplication);
-}
 AppItem*
 Controller::getApplication(QString name) {
   for (auto app : applications) {
@@ -395,14 +247,6 @@ Controller::setAutomaticLock(bool state) {
   emit automaticLockChanged(state);
 }
 void
-Controller::setColumns(int columns) {
-  m_columns = columns;
-  if (root != nullptr) {
-    qDebug() << "Columns: " << columns;
-    emit columnsChanged(columns);
-  }
-}
-void
 Controller::setSwipeLength(int direction, int length) {
   switch (direction) {
     case SwipeDirection::Right:
@@ -440,33 +284,6 @@ Controller::getSwipeLength(int direction) {
     default:
       qDebug() << "Invalid swipe direction: " << direction;
       return -1;
-  }
-}
-void
-Controller::setShowWifiDb(bool state) {
-  m_showWifiDb = state;
-  if (root != nullptr) {
-    qDebug() << "Show Wifi DB: " << state;
-    emit showWifiDbChanged(state);
-  }
-  if (state) {
-    updateUIElements();
-  }
-}
-void
-Controller::setShowBatteryPercent(bool state) {
-  m_showBatteryPercent = state;
-  if (root != nullptr) {
-    qDebug() << "Show Battery Percentage: " << state;
-    emit showBatteryPercentChanged(state);
-  }
-}
-void
-Controller::setShowBatteryTemperature(bool state) {
-  m_showBatteryTemperature = state;
-  if (root != nullptr) {
-    qDebug() << "Show Battery Temperature: " << state;
-    emit showBatteryTemperatureChanged(state);
   }
 }
 void

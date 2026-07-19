@@ -6,6 +6,7 @@
         <file>categories/GeneralPage.qml</file>
         <file>categories/DisplayPage.qml</file>
         <file>categories/PowerPage.qml</file>
+        <file>categories/GesturesPage.qml</file>
         <file>categories/WifiPage.qml</file>
         <file>categories/NotificationsPage.qml</file>
         <file alias="font/icomoon.ttf">../screenshot-viewer/font/icomoon.ttf</file>

@@ -56,6 +56,9 @@
     <method name="openSettings">
       <arg name="category" type="s" direction="in"/>
     </method>
+    <method name="application">
+      <arg type="o" direction="out"/>
+    </method>
     <method name="registerApplication">
       <arg type="o" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>

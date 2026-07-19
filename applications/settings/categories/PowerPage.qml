@@ -9,7 +9,8 @@ Page {
     objectName: "power"
     title: "Power"
     background: Rectangle { color: "white" }
-    Component.onCompleted: powerController.init()
+    StackView.onActivated: powerController.activate()
+    StackView.onDeactivating: powerController.deactivate()
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
