@@ -396,7 +396,7 @@ Application::uninterruptApplication() {
         t, "foreground", "Foreground application", [this]() {
           switch (type()) {
             case Background:
-            case Backgroundable:
+            case Backgroundable: {
               if (stateNoSecurityCheck() == Paused) {
                 kill(-m_process->processId(), SIGCONT);
               }
@@ -423,6 +423,7 @@ Application::uninterruptApplication() {
               m_backgrounded = false;
               startSpan("background", "Application is in the background");
               break;
+            }
             case Foreground:
             default:
               kill(-m_process->processId(), SIGCONT);
