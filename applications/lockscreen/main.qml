@@ -13,124 +13,13 @@ OxideWindow {
     visible: true
     objectName: "window"
     title: qsTr("Oxide")
+    reserveSystemSpace: true
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted: {
         controller.startup();
         pinEntry.forceActiveFocus();
     }
-    centerMenu: [
-        Label {
-            objectName: "clock"
-            Layout.alignment: Qt.AlignCenter
-            color: window.color
-        }
-    ]
-    rightMenu: [
-        OxideStatusIcon {
-            id: wifiState
-            objectName: "wifiState"
-            property string state: "unknown"
-            property int rssi: 0
-            property bool connected: false
-            source: {
-                var icon;
-                if(state === "unknown"){
-                    icon = "unknown";
-                }else if(state === "down"){
-                    icon = "down";
-                }else if(!connected){
-                    icon = "disconnected";
-                }else if(rssi > -50) {
-                    icon = "4_bar";
-                }else if(rssi > -60){
-                    icon = "3_bar";
-                }else if(rssi > -70){
-                    icon = "2_bar";
-                }else if(rssi > -80){
-                    icon = "1_bar";
-                }else{
-                    icon = "0_bar";
-                }
-                return "qrc:/codes.eeems.oxide/img/wifi/" + icon + ".png";
-            }
-        },
-        OxideStatusIcon {
-            id: batteryLevel
-            objectName: "batteryLevel"
-            property bool alert: false
-            property bool warning: false
-            property bool charging: false
-            property bool connected: false
-            property bool present: true
-            property int level: 0
-            source: {
-                var icon = "";
-                if(alert || !present){
-                    icon = "alert";
-                }else if(warning){
-                    icon = "unknown";
-                }else{
-                    if(charging || connected){
-                        icon = "charging_";
-                    }
-                    if(level < 25){
-                        icon += "20";
-                    }else if(level < 35){
-                        icon += "30";
-                    }else if(level < 55){
-                        icon += "50";
-                    }else if(level < 65){
-                        icon += "60";
-                    }else if(level < 85){
-                        icon += "80";
-                    }else if(level < 95){
-                        icon += "90";
-                    }else{
-                        icon += 100;
-                    }
-                }
-                return "qrc:/codes.eeems.oxide/img/battery/" + icon + ".png";
-            }
-        },
-        CustomMenu {
-            OxideMenu {
-                id: powerMenu
-                title: qsTr("");
-                font.family: iconFont.name
-                width: 260
-                color: window.color
-                backgroundColor: window.headerBackgroundColor
-                activeColor: window.color
-                activeBackgroundColor: window.backgroundColor
-                borderColor: window.color
-                Action {
-                    text: qsTr(" Suspend")
-                    enabled: !controller.sleepInhibited
-                    onTriggered: {
-                        controller.breadcrumb("menu.suspend", "clicked", "ui");
-                        controller.suspend();
-                    }
-                }
-                Action {
-                    text: qsTr(" Reboot")
-                    enabled: !controller.powerOffInhibited
-                    onTriggered: {
-                        controller.breadcrumb("menu.reboot", "clicked", "ui");
-                        controller.reboot();
-                    }
-                }
-                Action {
-                    text: qsTr(" Shutdown")
-                    enabled: !controller.powerOffInhibited
-                    onTriggered: {
-                        controller.breadcrumb("menu.shutdown", "clicked", "ui");
-                        controller.powerOff();
-                    }
-                }
-            }
-        }
-    ]
     initialItem: Item {
         width: parent.width
         height: parent.height
