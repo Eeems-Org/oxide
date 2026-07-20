@@ -18,20 +18,21 @@ ApplicationWindow {
     property bool landscape: Oxide.landscape
     property int topSystemSpace: reserveSystemSpace ? Oxide.topSystemSpace : 0
     property int bottomSystemSpace: reserveSystemSpace ? Oxide.bottomSystemSpace : 0
+    property int orientationWidth: landscape ? height : width
+    property int orientationHeight: landscape ? width : height
+    property double orientationRotation: landscape ? 90 : 0
     Component.onCompleted: stack.forceActiveFocus()
-    function orientationWidth(){ return landscape ? height : width; }
-    function orientationHeight(){ return landscape ? width : height; }
-    function orientationRotation(){ return landscape ? 90 : 0 }
     signal keyPressed(var event)
     signal keyReleased(var event)
-    Overlay.overlay.rotation: orientationRotation()
-    Overlay.overlay.width: orientationWidth()
-    Overlay.overlay.height: orientationHeight()
+    Overlay.overlay.rotation: orientationRotation
+    Overlay.overlay.width: orientationWidth
+    Overlay.overlay.height: orientationHeight
     Overlay.overlay.x: landscape ? (width - height) / 2 : 0
     Overlay.overlay.y: landscape ? (height - width) / 2 : 0
-    width: Screen.width
-    height: Screen.height - topSystemSpace - bottomSystemSpace
-    y: topSystemSpace
+    width: Screen.width - (landscape ? topSystemSpace - bottomSystemSpace : 0)
+    height: Screen.height - (landscape ? 0 : topSystemSpace - bottomSystemSpace)
+    x: landscape ? bottomSystemSpace : 0
+    y: landscape ? 0 : topSystemSpace
     contentOrientation: landscape ? Qt.LandscapeOrientation : Qt.PortraitOrientation
     Page {
         id: page
@@ -39,11 +40,11 @@ ApplicationWindow {
         focus: true
         title: window.title
         visible: window.visible
-        rotation: window.orientationRotation()
+        rotation: window.orientationRotation
         // Must centerIn and specify width/height to force rotation to actually work
         anchors.centerIn: parent
-        width: window.orientationWidth()
-        height: window.orientationHeight()
+        width: window.orientationWidth
+        height: window.orientationHeight
         header: Rectangle {
             id: header
             clip: true
