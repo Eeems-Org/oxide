@@ -16,7 +16,7 @@
 #include "apibase.h"
 #include "application.h"
 
-#define OXIDE_SETTINGS_VERSION 1
+#define OXIDE_SETTINGS_VERSION 2
 
 #define appsAPI AppsAPI::singleton()
 
