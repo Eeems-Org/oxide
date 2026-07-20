@@ -120,12 +120,6 @@ OxideBackingStore::resize(const QSize& size, const QRegion& region) {
       }
     }
   }
-  if (mBuffer != nullptr && mBuffer->format != Blight::Format::Format_Invalid) {
-    if (debug()) {
-      qDebug() << "OxideBackingStore::resized" << mBuffer->surface;
-    }
-    return;
-  }
   if (debug()) {
     qDebug() << "OxideBackingStore::rezize creating new buffer";
   }
