@@ -37,7 +37,7 @@ OxideWindow {
             topPadding: 4
             bottomPadding: 4
             Layout.maximumWidth: 300
-            enabled: controller.enabled
+            enabled: controller.enabled && contentItem.visible
             contentItem: OxideStatusIcon {
                 source: "qrc:/img/notifications/black.png"
                 text: controller.notificationText

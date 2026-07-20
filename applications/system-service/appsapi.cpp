@@ -100,10 +100,10 @@ AppsAPI::startup() {
           Application* app = getDefaultApplication("lockscreen");
           if (app == nullptr) {
             O_WARNING("Could not find lockscreen application");
-            app = getDefaultApplication("startup");
+            app = getDefaultApplication("launcher");
           }
           if (app == nullptr) {
-            O_WARNING("Could not find startup application");
+            O_WARNING("Could not find launcher application");
             app = getApplication("codes.eeems.decay");
           }
           if (app == nullptr) {
@@ -111,7 +111,7 @@ AppsAPI::startup() {
             app = getApplication("codes.eeems.oxide");
           }
           if (app == nullptr) {
-            O_WARNING("Could not find backup startup application");
+            O_WARNING("Could not find backup launcher application");
             O_WARNING("Using xochitl due to invalid configuration");
             app = getApplication("xochitl");
           }
@@ -236,7 +236,7 @@ AppsAPI::reload() {
 
 Application*
 AppsAPI::getDefaultApplication() {
-  Application* app = getDefaultApplication("startup");
+  Application* app = getDefaultApplication("launcher");
   if (app != nullptr) {
     return app;
   }
@@ -249,12 +249,12 @@ AppsAPI::getDefaultApplication() {
 
 QDBusObjectPath
 AppsAPI::startupApplication() {
-  return defaultApplication("startup");
+  return defaultApplication("launcher");
 }
 
 void
 AppsAPI::setStartupApplication(QDBusObjectPath path) {
-  setDefaultApplication("startup", path);
+  setDefaultApplication("launcher", path);
 }
 
 QDBusObjectPath
@@ -630,7 +630,7 @@ AppsAPI::onDefault() {
   if (path.path() == "/") {
     return false;
   }
-  auto app = getDefaultApplication("startup");
+  auto app = getDefaultApplication("launcher");
   if (app == nullptr) {
     app = getApplication("codes.eeems.oxide");
   }
@@ -713,7 +713,7 @@ AppsAPI::openTaskSwitcher() {
     app->launchNoSecurityCheck();
     return;
   }
-  app = getDefaultApplication("startup");
+  app = getDefaultApplication("launcher");
   if (app != nullptr) {
     O_INFO("Opening task switcher");
     app->launchNoSecurityCheck();
@@ -1019,7 +1019,7 @@ AppsAPI::migrate(QSettings* settings, int fromVersion) {
   }
   if (settings->contains("startupApplication")) {
     settings->setValue(
-      "defaults/startup",
+      "defaults/launcher",
       QDBusObjectPath(settings->value("startupApplication").toString())
     );
     settings->remove("startupApplication");
