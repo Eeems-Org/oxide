@@ -99,6 +99,10 @@ public:
   void forceRecordPreviousApplication();
   void recordPreviousApplication();
   void removeFromPreviousApplications(QString name);
+  Application* getDefaultApplication(const QString& type);
+  bool onLockscreen();
+  bool onTaskSwitcher();
+  bool onDefault();
 
 signals:
   void applicationRegistered(QDBusObjectPath);
@@ -111,14 +115,16 @@ signals:
 
 public slots:
   QT_DEPRECATED void leftHeld();
-  void openDefaultApplication();
+  QT_DEPRECATED void openDefaultApplication();
   QT_DEPRECATED void homeHeld();
-  void openTaskManager();
-  void openLockScreen();
-  void openTaskSwitcher();
-  void openTerminal();
+  QT_DEPRECATED void openTaskManager();
+  QT_DEPRECATED void openLockScreen();
+  QT_DEPRECATED void openTaskSwitcher();
+  QT_DEPRECATED void openTerminal();
   void openSettings(const QString& category);
   QDBusObjectPath application();
+  QDBusObjectPath defaultApplication(const QString& type);
+  void setDefaultApplication(const QString& type, const QDBusObjectPath& path);
 
 private:
   bool m_stopping;
@@ -127,10 +133,6 @@ private:
   QMap<QString, Application*> applications;
   QStringList previousApplications;
   QSettings settings;
-  QDBusObjectPath m_startupApplication;
-  QDBusObjectPath m_lockscreenApplication;
-  QDBusObjectPath m_processManagerApplication;
-  QDBusObjectPath m_taskSwitcherApplication;
   bool m_sleeping;
   Application* resumeApp = nullptr;
   QString getPath(QString name);
@@ -149,5 +151,6 @@ private:
   static void migrate(QSettings* settings, int fromVersion);
   bool locked();
   void ensureForegroundApp();
+  Application* getDefaultApplication();
 };
 #endif // APPSAPI_H

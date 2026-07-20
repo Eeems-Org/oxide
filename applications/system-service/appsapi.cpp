@@ -4,7 +4,7 @@
 #include <liboxide.h>
 #include <liboxide/oxideqml.h>
 
-#include "dbusservice.h"
+#include "application.h"
 #include "notificationapi.h"
 #include "systemapi.h"
 
@@ -27,10 +27,6 @@ AppsAPI::AppsAPI(QObject* parent)
   , applications()
   , previousApplications()
   , settings(this)
-  , m_startupApplication("/")
-  , m_lockscreenApplication("/")
-  , m_processManagerApplication("/")
-  , m_taskSwitcherApplication("/")
   , m_sleeping(false) {
   Oxide::Sentry::sentry_transaction(
     "Init Apps API", "init", [this](Oxide::Sentry::Transaction* t) {
@@ -52,104 +48,16 @@ AppsAPI::AppsAPI(QObject* parent)
           Oxide::Sentry::sentry_span(s, "sync", "Sync settings", [this] {
             settings.sync();
           });
-          auto version = settings.value("version", 0).toInt();
-          if (version < OXIDE_SETTINGS_VERSION) {
-            Oxide::Sentry::sentry_span(
-              s, "migrate", "Migrate to latest version", [this, version] {
-                migrate(&settings, version);
-              }
-            );
-          }
+          Oxide::Sentry::sentry_span(
+            s, "migrate", "Migrate to latest version", [this] {
+              migrate(&settings, settings.value("version", 0).toInt());
+            }
+          );
         }
       );
       Oxide::Sentry::sentry_span(
         t, "application", "Read applications from disk", [this] {
           readApplications();
-        }
-      );
-      Oxide::Sentry::sentry_span(
-        t,
-        "setup",
-        "Setup lockscreen, startup, process manager, task switcher",
-        [this](Oxide::Sentry::Span* s) {
-          Oxide::Sentry::sentry_span(
-            s,
-            "lockscreenApplication",
-            "Determine what the lockscreen application is",
-            [this] {
-              auto path = QDBusObjectPath(
-                settings.value("lockscreenApplication").toString()
-              );
-              auto app = getApplication(path);
-              if (app == nullptr) {
-                app = getApplication("codes.eeems.decay");
-                if (app != nullptr) {
-                  path = app->qPath();
-                }
-              }
-              m_lockscreenApplication = path;
-            }
-          );
-          Oxide::Sentry::sentry_span(
-            s,
-            "startupApplication",
-            "Determine what the startup application is",
-            [this] {
-              auto path = QDBusObjectPath(
-                settings.value("startupApplication").toString()
-              );
-              auto app = getApplication(path);
-              if (app == nullptr) {
-                app = getApplication("codes.eeems.oxide");
-                if (app != nullptr) {
-                  path = app->qPath();
-                }
-              }
-              m_startupApplication = path;
-            }
-          );
-          Oxide::Sentry::sentry_span(
-            s,
-            "processManagerApplication",
-            "Determine what the process manager application is",
-            [this] {
-              auto path = QDBusObjectPath(
-                settings.value("processManagerApplication").toString()
-              );
-              auto app = getApplication(path);
-              if (app == nullptr) {
-                app = getApplication("codes.eeems.erode");
-                if (app != nullptr) {
-                  path = app->qPath();
-                }
-              }
-              m_processManagerApplication = path;
-            }
-          );
-          Oxide::Sentry::sentry_span(
-            s,
-            "taskSwitcherApplication",
-            "Determine what the task switcher application is",
-            [this] {
-              auto path = QDBusObjectPath(
-                settings.value("taskSwitcherApplication").toString()
-              );
-              auto app = getApplication(path);
-              if (app == nullptr) {
-                path = QDBusObjectPath(
-                  settings.value("processManagerApplication").toString()
-                );
-                app = getApplication(path);
-              }
-              if (app == nullptr) {
-                app = getApplication("codes.eeems.corrupt");
-                if (app != nullptr) {
-                  path = app->qPath();
-                }
-              }
-              m_taskSwitcherApplication = path;
-            }
-          );
         }
       );
     }
@@ -171,30 +79,39 @@ AppsAPI::startup() {
         "Launching auto start applications",
         [this](Oxide::Sentry::Span* s) {
           for (auto app : applications) {
-            if (app->autoStart()) {
-              O_INFO("Auto starting" << app->name());
-              Oxide::Sentry::sentry_span(
-                s, app->name().toStdString(), "Launching application", [app] {
-                  app->launchNoSecurityCheck();
-                  if (app->type() == Backgroundable) {
-                    O_INFO("  Pausing auto started app" << app->name());
-                    app->pauseNoSecurityCheck();
-                  }
-                }
-              );
+            if (!app->autoStart()) {
+              continue;
             }
+            O_INFO("Auto starting" << app->name());
+            Oxide::Sentry::sentry_span(
+              s, app->name().toStdString(), "Launching application", [app] {
+                app->launchNoSecurityCheck();
+                if (app->type() == Backgroundable) {
+                  O_INFO("  Pausing auto started app" << app->name());
+                  app->pauseNoSecurityCheck();
+                }
+              }
+            );
           }
         }
       );
       Oxide::Sentry::sentry_span(
         t, "start", "Launching initial application", [this] {
-          auto app = getApplication(m_lockscreenApplication);
+          Application* app = getDefaultApplication("lockscreen");
           if (app == nullptr) {
             O_WARNING("Could not find lockscreen application");
-            app = getApplication(m_startupApplication);
+            app = getDefaultApplication("startup");
           }
           if (app == nullptr) {
             O_WARNING("Could not find startup application");
+            app = getApplication("codes.eeems.decay");
+          }
+          if (app == nullptr) {
+            O_WARNING("Could not find backup lockscreen application");
+            app = getApplication("codes.eeems.oxide");
+          }
+          if (app == nullptr) {
+            O_WARNING("Could not find backup startup application");
             O_WARNING("Using xochitl due to invalid configuration");
             app = getApplication("xochitl");
           }
@@ -317,31 +234,32 @@ AppsAPI::reload() {
   );
 }
 
+Application*
+AppsAPI::getDefaultApplication() {
+  Application* app = getDefaultApplication("startup");
+  if (app != nullptr) {
+    return app;
+  }
+  app = getApplication("codes.eeems.oxide");
+  if (app != nullptr) {
+    return app;
+  }
+  return getApplication("xochitl");
+}
+
 QDBusObjectPath
 AppsAPI::startupApplication() {
-  if (!hasPermission("apps")) {
-    return QDBusObjectPath("/");
-  }
-  return m_startupApplication;
+  return defaultApplication("startup");
 }
 
 void
 AppsAPI::setStartupApplication(QDBusObjectPath path) {
-  if (!hasPermission("apps")) {
-    return;
-  }
-  if (getApplication(path) != nullptr) {
-    m_startupApplication = path;
-    settings.setValue("startupApplication", path.path());
-  }
+  setDefaultApplication("startup", path);
 }
 
 QDBusObjectPath
 AppsAPI::lockscreenApplication() {
-  if (!hasPermission("apps")) {
-    return QDBusObjectPath("/");
-  }
-  return m_lockscreenApplication;
+  return defaultApplication("lockscreen");
 }
 
 void
@@ -349,48 +267,27 @@ AppsAPI::setLockscreenApplication(QDBusObjectPath path) {
   if (!hasPermission("apps")) {
     return;
   }
-  if (getApplication(path) != nullptr) {
-    m_lockscreenApplication = path;
-    settings.setValue("lockscreenApplication", path.path());
-  }
+  setDefaultApplication("lockscreen", path);
 }
 
 QDBusObjectPath
 AppsAPI::processManagerApplication() {
-  if (!hasPermission("apps")) {
-    return QDBusObjectPath("/");
-  }
-  return m_processManagerApplication;
+  return defaultApplication("process-manager");
 }
 
 void
 AppsAPI::setProcessManagerApplication(QDBusObjectPath path) {
-  if (!hasPermission("apps")) {
-    return;
-  }
-  if (getApplication(path) != nullptr) {
-    m_processManagerApplication = path;
-    settings.setValue("processManagerApplication", path.path());
-  }
+  setDefaultApplication("process-manager", path);
 }
 
 QDBusObjectPath
 AppsAPI::taskSwitcherApplication() {
-  if (!hasPermission("apps")) {
-    return QDBusObjectPath("/");
-  }
-  return m_taskSwitcherApplication;
+  return defaultApplication("task-switcher");
 }
 
 void
 AppsAPI::setTaskSwitcherApplication(QDBusObjectPath path) {
-  if (!hasPermission("apps")) {
-    return;
-  }
-  if (getApplication(path) != nullptr) {
-    m_taskSwitcherApplication = path;
-    settings.setValue("taskSwitcherApplication", path.path());
-  }
+  setDefaultApplication("task-switcher", path);
 }
 
 QVariantMap
@@ -497,10 +394,7 @@ AppsAPI::resumeIfNone() {
   if (previousApplicationNoSecurityCheck()) {
     return;
   }
-  auto app = getApplication(m_startupApplication);
-  if (app == nullptr) {
-    app = getApplication("xochitl");
-  }
+  auto app = getDefaultApplication();
   if (app == nullptr) {
     if (applications.isEmpty()) {
       O_WARNING("No applications found");
@@ -674,25 +568,17 @@ AppsAPI::openDefaultApplication() {
   if (locked() || !hasPermission("apps")) {
     return;
   }
-  auto path = this->currentApplicationNoSecurityCheck();
-  if (path.path() != "/") {
-    auto currentApplication = getApplication(path);
-    if (
-      currentApplication != nullptr &&
-      currentApplication->stateNoSecurityCheck() != Application::Inactive &&
-      (path == m_startupApplication || path == m_lockscreenApplication)
-    ) {
-      O_DEBUG("Already in default application");
-      return;
-    }
-  }
-  auto app = getApplication(m_startupApplication);
-  if (app == nullptr) {
-    O_WARNING("Unable to find default application");
+  if (onDefault() || onLockscreen()) {
+    O_WARNING("Already in the default application");
     return;
   }
-  O_INFO("Opening default application");
-  app->launchNoSecurityCheck();
+  Application* app = getDefaultApplication();
+  if (app != nullptr) {
+    O_INFO("Opening default application");
+    app->launchNoSecurityCheck();
+    return;
+  }
+  O_WARNING("Unable to find default application");
 }
 
 void
@@ -700,30 +586,88 @@ AppsAPI::homeHeld() {
   openTaskManager();
 }
 
+bool
+AppsAPI::onLockscreen() {
+  auto path = this->currentApplicationNoSecurityCheck();
+  if (path.path() == "/") {
+    return false;
+  }
+  Application* app = getDefaultApplication("lockscreen");
+  if (app == nullptr) {
+    app = getApplication("codes.eeems.decay");
+  }
+  if (app == nullptr) {
+    return false;
+  }
+  auto currentApplication = getApplication(path);
+  return currentApplication != nullptr &&
+         currentApplication->stateNoSecurityCheck() != Application::Inactive &&
+         path == app->qPath();
+}
+
+bool
+AppsAPI::onTaskSwitcher() {
+  auto path = this->currentApplicationNoSecurityCheck();
+  if (path.path() == "/") {
+    return false;
+  }
+  Application* app = getDefaultApplication("task-switcher");
+  if (app == nullptr) {
+    app = getApplication("codes.eeems.corrupt");
+  }
+  if (app == nullptr) {
+    return false;
+  }
+  auto currentApplication = getApplication(path);
+  return currentApplication != nullptr &&
+         currentApplication->stateNoSecurityCheck() != Application::Inactive &&
+         path == app->qPath();
+}
+
+bool
+AppsAPI::onDefault() {
+  auto path = this->currentApplicationNoSecurityCheck();
+  if (path.path() == "/") {
+    return false;
+  }
+  auto app = getDefaultApplication("startup");
+  if (app == nullptr) {
+    app = getApplication("codes.eeems.oxide");
+  }
+  if (app == nullptr) {
+    app = getApplication("xochitl");
+  }
+  if (app == nullptr) {
+    return false;
+  }
+  auto currentApplication = getApplication(path);
+  return currentApplication != nullptr &&
+         currentApplication->stateNoSecurityCheck() != Application::Inactive &&
+         path == app->qPath();
+}
+
 void
 AppsAPI::openTaskManager() {
   if (locked() || !hasPermission("apps")) {
     return;
   }
-  auto path = this->currentApplicationNoSecurityCheck();
-  if (path.path() != "/") {
-    auto currentApplication = getApplication(path);
-    if (
-      currentApplication != nullptr &&
-      currentApplication->stateNoSecurityCheck() != Application::Inactive &&
-      path == m_lockscreenApplication
-    ) {
-      O_WARNING("Can't open task manager, on the lockscreen");
-      return;
-    }
-  }
-  auto app = getApplication(m_processManagerApplication);
-  if (app == nullptr) {
-    O_WARNING("Unable to find task manager");
+  if (onLockscreen()) {
+    O_WARNING("Can't open task manager, on the lockscreen");
     return;
   }
-  O_INFO("Opening task manager");
-  app->launchNoSecurityCheck();
+  Application* app = getDefaultApplication("process-manager");
+  if (app != nullptr) {
+    O_INFO("Opening task manager");
+    app->launchNoSecurityCheck();
+    return;
+  }
+  app = getApplication("codes.eeems.erode");
+  if (app != nullptr) {
+    O_INFO("Opening task manager");
+    app->launchNoSecurityCheck();
+    return;
+  }
+  O_WARNING("Unable to find task manager");
 }
 
 void
@@ -731,25 +675,23 @@ AppsAPI::openLockScreen() {
   if (locked() || !hasPermission("apps")) {
     return;
   }
-  auto path = this->currentApplicationNoSecurityCheck();
-  if (path.path() != "/") {
-    auto currentApplication = getApplication(path);
-    if (
-      currentApplication != nullptr &&
-      currentApplication->stateNoSecurityCheck() != Application::Inactive &&
-      path == m_lockscreenApplication
-    ) {
-      O_DEBUG("Already on the lockscreen");
-      return;
-    }
-  }
-  auto app = getApplication(m_lockscreenApplication);
-  if (app == nullptr) {
-    O_WARNING("Unable to find lockscreen");
+  if (onLockscreen()) {
+    O_WARNING("Already on the lockscreen");
     return;
   }
-  O_INFO("Opening lock screen");
-  app->launchNoSecurityCheck();
+  Application* app = getDefaultApplication("lockscreen");
+  if (app != nullptr) {
+    O_INFO("Opening lock screen");
+    app->launchNoSecurityCheck();
+    return;
+  }
+  app = getApplication("codes.eeems.decay");
+  if (app != nullptr) {
+    O_INFO("Opening lock screen");
+    app->launchNoSecurityCheck();
+    return;
+  }
+  O_WARNING("Unable to find lockscreen");
 }
 
 void
@@ -757,35 +699,40 @@ AppsAPI::openTaskSwitcher() {
   if (locked() || !hasPermission("apps")) {
     return;
   }
-  auto path = this->currentApplicationNoSecurityCheck();
-  if (path.path() != "/") {
-    auto currentApplication = getApplication(path);
-    if (
-      currentApplication != nullptr &&
-      currentApplication->stateNoSecurityCheck() != Application::Inactive
-    ) {
-      if (path == m_lockscreenApplication) {
-        O_WARNING("Can't open task switcher, on the lockscreen");
-        return;
-      }
-      if (path == m_taskSwitcherApplication) {
-        O_WARNING("Already on the task switcher");
-        return;
-      }
-    }
+  if (onLockscreen()) {
+    O_WARNING("Can't open task switcher, on the lockscreen");
+    return;
   }
-  auto app = getApplication(m_taskSwitcherApplication);
+  if (onTaskSwitcher()) {
+    O_WARNING("Already on the task switcher");
+    return;
+  }
+  Application* app = getDefaultApplication("task-switcher");
   if (app != nullptr) {
+    O_INFO("Opening task switcher");
     app->launchNoSecurityCheck();
     return;
   }
-  app = getApplication(m_startupApplication);
-  if (app == nullptr) {
-    O_WARNING("Unable to find default application");
+  app = getDefaultApplication("startup");
+  if (app != nullptr) {
+    O_INFO("Opening task switcher");
+    app->launchNoSecurityCheck();
     return;
   }
-  O_INFO("Opening task switcher");
-  app->launchNoSecurityCheck();
+  app = getApplication("codes.eeems.corrupt");
+  if (app != nullptr) {
+    O_INFO("Opening task switcher");
+    app->launchNoSecurityCheck();
+    return;
+  }
+  app = getApplication("codes.eeems.oxide");
+  if (app != nullptr) {
+    O_INFO("Opening task switcher");
+    app->launchNoSecurityCheck();
+    return;
+  }
+  O_WARNING("Unable to find task switcher");
+  return;
 }
 
 void
@@ -793,36 +740,37 @@ AppsAPI::openTerminal() {
   if (locked() || !hasPermission("apps")) {
     return;
   }
-  auto path = this->currentApplicationNoSecurityCheck();
-  if (path.path() != "/") {
-    auto currentApplication = getApplication(path);
-    if (
-      currentApplication != nullptr &&
-      currentApplication->stateNoSecurityCheck() != Application::Inactive
-    ) {
-      if (path == m_lockscreenApplication) {
-        O_WARNING("Can't open terminal, on the lockscreen");
-        return;
-      }
-    }
+  if (onLockscreen()) {
+    O_WARNING("Can't open terminal, on the lockscreen");
+    return;
   }
-  auto app = getApplication("yaft");
+  Application* app = getDefaultApplication("terminal");
   if (app != nullptr) {
+    O_INFO("Opening terminal");
+    app->launchNoSecurityCheck();
+    return;
+  }
+  app = getApplication("yaft");
+  if (app != nullptr) {
+    O_INFO("Opening terminal");
     app->launchNoSecurityCheck();
     return;
   }
   app = getApplication("fingerterm");
-  if (app == nullptr) {
-    O_WARNING("Unable to find terminal application");
+  if (app != nullptr) {
+    O_INFO("Opening terminal");
+    app->launchNoSecurityCheck();
     return;
   }
-  O_INFO("Opening terminal");
-  app->launchNoSecurityCheck();
+  O_WARNING("Unable to find terminal application");
 }
 
 void
 AppsAPI::openSettings(const QString& category) {
-  auto app = getApplication("codes.eeems.settings");
+  Application* app = getDefaultApplication("settings");
+  if (app == nullptr) {
+    app = getApplication("codes.eeems.settings");
+  }
   if (app == nullptr) {
     O_WARNING("Unable to find settings application");
     return;
@@ -872,6 +820,32 @@ AppsAPI::application() {
     return QDBusObjectPath("/");
   }
   return APIBase::application();
+}
+
+QDBusObjectPath
+AppsAPI::defaultApplication(const QString& type) {
+  if (!hasPermission("apps")) {
+    return QDBusObjectPath("/");
+  }
+  QString path = settings.value(QString("defaults/%1").arg(type)).toString();
+  return QDBusObjectPath(path.isEmpty() ? "/" : path);
+}
+
+Application*
+AppsAPI::getDefaultApplication(const QString& type) {
+  QDBusObjectPath path = defaultApplication(type);
+  return getApplication(path);
+}
+
+void
+AppsAPI::setDefaultApplication(
+  const QString& type,
+  const QDBusObjectPath& path
+) {
+  if (!hasPermission("apps")) {
+    return;
+  }
+  settings.setValue(QString("defaults/%1").arg(type), path.path());
 }
 
 QString
@@ -1027,10 +1001,35 @@ AppsAPI::readApplications() {
 
 void
 AppsAPI::migrate(QSettings* settings, int fromVersion) {
-  if (fromVersion != 0) {
-    throw "Unknown settings version";
+  Q_UNUSED(fromVersion);
+  if (settings->contains("lockscreenApplication")) {
+    settings->setValue(
+      "defaults/lockscreen",
+      QDBusObjectPath(settings->value("lockscreenApplication").toString())
+    );
+    settings->remove("lockscreenApplication");
   }
-  // In the future migrate changes to settings between versions
+  if (settings->contains("startupApplication")) {
+    settings->setValue(
+      "defaults/startup",
+      QDBusObjectPath(settings->value("startupApplication").toString())
+    );
+    settings->remove("startupApplication");
+  }
+  if (settings->contains("processManagerApplication")) {
+    settings->setValue(
+      "defaults/process-manager",
+      QDBusObjectPath(settings->value("processManagerApplication").toString())
+    );
+    settings->remove("processManagerApplication");
+  }
+  if (settings->contains("taskSwitcherApplication")) {
+    settings->setValue(
+      "defaults/task-switcher",
+      QDBusObjectPath(settings->value("taskSwitcherApplication").toString())
+    );
+    settings->remove("taskSwitcherApplication");
+  }
   settings->setValue("version", OXIDE_SETTINGS_VERSION);
   settings->sync();
 }
