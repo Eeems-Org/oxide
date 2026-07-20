@@ -773,6 +773,9 @@ AppsAPI::openTerminal() {
 
 void
 AppsAPI::openSettings(const QString& category) {
+  if (locked() || !hasPermission("apps")) {
+    return;
+  }
   Application* app = getDefaultApplication("settings");
   if (app == nullptr) {
     app = getApplication("codes.eeems.settings");
@@ -1012,29 +1015,27 @@ AppsAPI::migrate(QSettings* settings, int fromVersion) {
   }
   if (settings->contains("lockscreenApplication")) {
     settings->setValue(
-      "defaults/lockscreen",
-      QDBusObjectPath(settings->value("lockscreenApplication").toString())
+      "defaults/lockscreen", settings->value("lockscreenApplication").toString()
     );
     settings->remove("lockscreenApplication");
   }
   if (settings->contains("startupApplication")) {
     settings->setValue(
-      "defaults/launcher",
-      QDBusObjectPath(settings->value("startupApplication").toString())
+      "defaults/launcher", settings->value("startupApplication").toString()
     );
     settings->remove("startupApplication");
   }
   if (settings->contains("processManagerApplication")) {
     settings->setValue(
       "defaults/process-manager",
-      QDBusObjectPath(settings->value("processManagerApplication").toString())
+      settings->value("processManagerApplication").toString()
     );
     settings->remove("processManagerApplication");
   }
   if (settings->contains("taskSwitcherApplication")) {
     settings->setValue(
       "defaults/task-switcher",
-      QDBusObjectPath(settings->value("taskSwitcherApplication").toString())
+      settings->value("taskSwitcherApplication").toString()
     );
     settings->remove("taskSwitcherApplication");
   }
