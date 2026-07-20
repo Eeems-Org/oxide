@@ -591,7 +591,11 @@ SystemAPI::setAutoLock(int _autoLock) {
   }
   O_INFO("Auto Lock" << _autoLock);
   sharedSettings.set_autoLock(_autoLock);
-  lockTimer.setInterval(_autoLock * 60 * 1000);
+  if (_autoLock) {
+    lockTimer.setInterval(_autoLock * 60 * 1000);
+  } else {
+    lockTimer.stop();
+  }
   sharedSettings.sync();
   emit autoLockChanged(_autoLock);
 }
