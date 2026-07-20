@@ -59,6 +59,14 @@
     <method name="application">
       <arg type="o" direction="out"/>
     </method>
+    <method name="defaultApplication">
+      <arg type="o" direction="out"/>
+      <arg name="type" type="s" direction="in"/>
+    </method>
+    <method name="setDefaultApplication">
+      <arg name="type" type="s" direction="in"/>
+      <arg name="path" type="o" direction="in"/>
+    </method>
     <method name="registerApplication">
       <arg type="o" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>
