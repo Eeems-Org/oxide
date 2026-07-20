@@ -630,13 +630,7 @@ AppsAPI::onDefault() {
   if (path.path() == "/") {
     return false;
   }
-  auto app = getDefaultApplication("launcher");
-  if (app == nullptr) {
-    app = getApplication("codes.eeems.oxide");
-  }
-  if (app == nullptr) {
-    app = getApplication("xochitl");
-  }
+  Application* app = getDefaultApplication();
   if (app == nullptr) {
     return false;
   }
@@ -794,7 +788,7 @@ AppsAPI::openSettings(const QString& category) {
   properties["bin"] = app->bin();
   properties["displayName"] = app->displayName();
   properties["description"] = app->description();
-  properties["type"] = (int)ApplicationType::Background;
+  properties["type"] = app->type();
   properties["icon"] = app->icon();
   properties["workingDirectory"] = app->workingDirectory();
   properties["user"] = app->user();
