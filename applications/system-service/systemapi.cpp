@@ -306,6 +306,7 @@ SystemAPI::SystemAPI(QObject* parent)
   : APIBase(parent)
   , suspendTimer(this)
   , lockTimer(this)
+  , activityTimer(this)
   , settings(this)
   , sleepInhibitors()
   , powerOffInhibitors()
@@ -517,6 +518,28 @@ SystemAPI::SystemAPI(QObject* parent)
       O_INFO("System API ready to use");
     }
   );
+  activityTimer.setSingleShot(true);
+  connect(&activityTimer, &QTimer::timeout, this, [this]() {
+    auto active = suspendTimer.isActive();
+    suspendTimer.stop();
+    if (autoSleep() && powerAPI->m_chargerState != PowerAPI::ChargerConnected) {
+      if (!active) {
+        O_DEBUG("Suspend timer re-enabled due to activity");
+      }
+      suspendTimer.start(autoSleep() * 60 * 1000);
+    } else if (active) {
+      O_DEBUG("Suspend timer disabled");
+    }
+    active = lockTimer.isActive();
+    if (autoLock()) {
+      if (!active) {
+        O_DEBUG("Lock timer re-enabled due to activity");
+      }
+      lockTimer.start(autoLock() * 60 * 1000);
+    } else if (active) {
+      O_DEBUG("Lock timer disabled");
+    }
+  });
 }
 
 void
@@ -849,25 +872,7 @@ SystemAPI::reboot() {
 }
 void
 SystemAPI::activity() {
-  auto active = suspendTimer.isActive();
-  suspendTimer.stop();
-  if (autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected) {
-    if (!active) {
-      O_DEBUG("Suspend timer re-enabled due to activity");
-    }
-    suspendTimer.start(autoSleep() * 60 * 1000);
-  } else if (active) {
-    O_DEBUG("Suspend timer disabled");
-  }
-  active = lockTimer.isActive();
-  if (autoLock()) {
-    if (!active) {
-      O_DEBUG("Lock timer re-enabled due to activity");
-    }
-    lockTimer.start(autoLock() * 60 * 1000);
-  } else if (active) {
-    O_DEBUG("Lock timer disabled");
-  }
+  activityTimer.start(1000);
 }
 
 void
