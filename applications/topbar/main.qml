@@ -12,7 +12,6 @@ OxideWindow {
     focus: true
     color: "transparent"
     headerBackgroundColor: "white"
-    // page.height: page.header.height
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Binding {
         target: Oxide
