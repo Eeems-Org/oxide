@@ -58,11 +58,11 @@ OxideWindow {
         CustomMenu {
             OxideMenu {
                 id: optionsMenu
-                title: qsTr("");
+                title: qsTr("");
                 font.family: iconFont.name
                 width: 310
                 Action {
-                    text: qsTr(" Reload")
+                    text: qsTr(" Reload")
                     onTriggered: {
                         controller.breadcrumb("menu.reload", "click", "ui");
                         controller.startup();
@@ -70,11 +70,18 @@ OxideWindow {
                     }
                 }
                 Action {
-                    text: qsTr(" Import Apps")
+                    text: qsTr(" Import Apps")
                     onTriggered:{
                         controller.breadcrumb("menu.import", "click", "ui");
                         controller.importDraftApps();
                         appsView.model = controller.getApps();
+                    }
+                }
+                Action {
+                    text: qsTr(" Options")
+                    onTriggered: {
+                        controller.breadcrumb("menu.options", "click", "ui");
+                        stateController.state = "settings";
                     }
                 }
             }
@@ -163,7 +170,6 @@ OxideWindow {
                 if(calculatedWidth < minWidth){
                     return minWidth;
                 }
-
                 return calculatedWidth;
             }
             height: itemContent.height + itemAutoStartButton.height + 10
