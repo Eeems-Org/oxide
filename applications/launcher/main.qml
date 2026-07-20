@@ -77,13 +77,6 @@ OxideWindow {
                         appsView.model = controller.getApps();
                     }
                 }
-                Action {
-                    text: qsTr(" Options")
-                    onTriggered: {
-                        controller.breadcrumb("menu.options", "click", "ui");
-                        stateController.state = "settings";
-                    }
-                }
             }
         }
     ]
