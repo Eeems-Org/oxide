@@ -761,6 +761,12 @@ AppsAPI::openTerminal() {
     app->launchNoSecurityCheck();
     return;
   }
+  app = getApplication("YAFT");
+  if (app != nullptr) {
+    O_INFO("Opening terminal");
+    app->launchNoSecurityCheck();
+    return;
+  }
   app = getApplication("fingerterm");
   if (app != nullptr) {
     O_INFO("Opening terminal");
@@ -1006,7 +1012,9 @@ AppsAPI::readApplications() {
 
 void
 AppsAPI::migrate(QSettings* settings, int fromVersion) {
-  Q_UNUSED(fromVersion);
+  if (fromVersion >= OXIDE_SETTINGS_VERSION) {
+    return;
+  }
   if (settings->contains("lockscreenApplication")) {
     settings->setValue(
       "defaults/lockscreen",
