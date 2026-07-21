@@ -29,8 +29,8 @@ ApplicationWindow {
     Overlay.overlay.height: orientationHeight
     Overlay.overlay.x: landscape ? (width - height) / 2 : 0
     Overlay.overlay.y: landscape ? (height - width) / 2 : 0
-    width: Screen.width - (landscape ? topSystemSpace - bottomSystemSpace : 0)
-    height: Screen.height - (landscape ? 0 : topSystemSpace - bottomSystemSpace)
+    width: Screen.width - (landscape ? topSystemSpace + bottomSystemSpace : 0)
+    height: Screen.height - (landscape ? 0 : topSystemSpace + bottomSystemSpace)
     x: landscape ? bottomSystemSpace : 0
     y: landscape ? 0 : topSystemSpace
     contentOrientation: landscape ? Qt.LandscapeOrientation : Qt.PortraitOrientation
