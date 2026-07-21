@@ -30,7 +30,6 @@ Window{
     function shouldResume(){
         return controller.lidOpen;
     }
-
     Connections{
         target: controller
         property alias enableHeldKeys: window.enableHeldKeys
@@ -193,7 +192,7 @@ Window{
         onActivated: controller.processManager()
     }
     Shortcut{
-        sequences: ["Meta+Backspace", "End+Backspace", StandardKey.Back]
+        sequences: ["Meta+Backspace", "End+Backspace"]
         context: Qt.ApplicationShortcut
         onActivated: controller.back()
     }
@@ -236,6 +235,7 @@ Window{
         }
         contentItem: ColumnLayout {
             spacing: 10
+            rotation: Oxide.landscape ? 90 : 0
             Slider {
                 id: brightnessSlider
                 visible: controller.hasFrontlight
