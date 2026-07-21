@@ -67,7 +67,6 @@ public:
   void setShowDate(bool showDate) { sharedSettings.set_showDate(showDate); }
   bool showDate() { return sharedSettings.showDate(); }
   void setNotification(QString notificationText);
-  bool getPowerConnected() { return m_powerConnected; }
 
 signals:
   void visibleChanged(bool);
@@ -103,7 +102,6 @@ private:
   bool m_hasNotification = false;
   bool m_enabled = true;
   QString m_notificationText = "";
-  bool m_powerConnected = false;
   int wifiState = WifiUnknown;
   General* api = nullptr;
   Power* powerApi = nullptr;
