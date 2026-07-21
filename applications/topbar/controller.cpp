@@ -323,7 +323,6 @@ Controller::batteryStateChanged(int state) {
     switch (state) {
       case BatteryCharging:
         ui->setProperty("charging", true);
-        m_powerConnected = true;
         break;
       case BatteryNotPresent:
         ui->setProperty("present", false);
@@ -389,12 +388,10 @@ Controller::chargerStateChanged(int state) {
     switch (state) {
       case ChargerConnected:
         ui->setProperty("connected", true);
-        m_powerConnected = true;
         break;
       case ChargerNotConnected:
       case ChargerNotPresent:
         ui->setProperty("connected", false);
-        m_powerConnected = false;
         break;
       case ChargerUnknown:
       default:
