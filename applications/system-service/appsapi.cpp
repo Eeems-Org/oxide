@@ -541,10 +541,10 @@ AppsAPI::recordPreviousApplication() {
     O_WARNING("Unable to find current application");
     return;
   }
-  if (currentApplication->qPath() == lockscreenApplication()) {
+  if (onLockscreen()) {
     return;
   }
-  if (currentApplication->qPath() == taskSwitcherApplication()) {
+  if (onTaskSwitcher()) {
     return;
   }
   auto name = currentApplication->name();
