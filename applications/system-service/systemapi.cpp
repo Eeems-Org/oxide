@@ -876,7 +876,9 @@ SystemAPI::reboot() {
 }
 void
 SystemAPI::activity() {
-  activityTimer.start(1000);
+  if (!activityTimer.isActive()) {
+    activityTimer.start(1000);
+  }
 }
 
 void
