@@ -13,6 +13,12 @@ Window{
     visible: true
     color: powerMenu.opened ? "white" : "transparent"
     property bool enableHeldKeys: controller.deviceName === "reMarkable 1"
+    Connections{
+        target: controller
+        function onLandscapeChanged(landscape){
+            console.log("landscape changed", landscape)
+        }
+    }
     function getState(){
         return {
             "powerMenu": powerMenu.opened,
@@ -24,11 +30,15 @@ Window{
         window.show();
         powerMenu.resumeApplication = state["resumeApplication"];
         if(state['powerMenu']){
-            powerMenu.open();
+            showPowerMenu();
         }
     }
     function shouldResume(){
         return controller.lidOpen;
+    }
+    function showPowerMenu(){
+        window.raise();
+        powerMenu.open();
     }
     Connections{
         target: controller
@@ -112,7 +122,7 @@ Window{
         running: false
         repeat: false
         interval: 700
-        onTriggered: powerMenu.open()
+        onTriggered: showPowerMenu()
     }
 
     Item{
@@ -126,17 +136,17 @@ Window{
 
             function isSwipeLow(start, end, portraitLength, landscapeLength){
                 return start < offset
-                    && end > start + (Oxide.landscape ? landscapeLength : portraitLength);
+                    && end > start + (controller.landscape ? landscapeLength : portraitLength);
             }
             function isSwipeHigh(start, end, portraitLength, landscapeLength, size){
                 return start > size - offset
-                    && end < start - (Oxide.landscape ? landscapeLength : portraitLength);
+                    && end < start - (controller.landscape ? landscapeLength : portraitLength);
             }
             function isEnabled(swiped, portraitEnabled, landscapeEnabled){
-                return swiped && (Oxide.landscape ? landscapeEnabled : portraitEnabled);
+                return swiped && (controller.landscape ? landscapeEnabled : portraitEnabled);
             }
             function swipeAction(portraitFn, landscapeFn){
-                if(Oxide.landscape){
+                if(controller.landscape){
                     landscapeFn();
                 }else{
                     portraitFn();
@@ -234,8 +244,8 @@ Window{
             }
         }
         contentItem: ColumnLayout {
+            rotation: controller.landscape ? 90 : 0
             spacing: 10
-            rotation: Oxide.landscape ? 90 : 0
             Slider {
                 id: brightnessSlider
                 visible: controller.hasFrontlight

@@ -842,6 +842,9 @@ SystemAPI::getSwipeLength(SwipeDirection direction) {
 
 void
 SystemAPI::suspend() {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (sleepInhibited()) {
     O_INFO("Unable to suspend. Action is currently inhibited.");
     return;
@@ -865,6 +868,9 @@ SystemAPI::powerOff() {
 
 void
 SystemAPI::reboot() {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (powerOffInhibited()) {
     O_INFO("Unable to reboot. Action is currently inhibited.");
     return;
@@ -883,6 +889,9 @@ SystemAPI::activity() {
 
 void
 SystemAPI::inhibitSleep(QDBusMessage message) {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (!sleepInhibited()) {
     emit sleepInhibitedChanged(true);
   }
@@ -900,6 +909,9 @@ SystemAPI::inhibitSleep(QDBusMessage message) {
 
 void
 SystemAPI::uninhibitSleep(QDBusMessage message) {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (!sleepInhibited()) {
     return;
   }
@@ -924,6 +936,9 @@ SystemAPI::uninhibitSleep(QDBusMessage message) {
 
 void
 SystemAPI::inhibitPowerOff(QDBusMessage message) {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (!powerOffInhibited()) {
     emit powerOffInhibitedChanged(true);
   }
@@ -940,6 +955,10 @@ SystemAPI::inhibitPowerOff(QDBusMessage message) {
 
 void
 SystemAPI::uninhibitPowerOff(QDBusMessage message) {
+  Q_UNUSED(message);
+  if (!hasPermission("system")) {
+    return;
+  }
   if (!powerOffInhibited()) {
     return;
   }
@@ -952,8 +971,21 @@ SystemAPI::uninhibitPowerOff(QDBusMessage message) {
 
 void
 SystemAPI::reload(QDBusMessage message) {
+  Q_UNUSED(message);
+  if (!hasPermission("system")) {
+    return;
+  }
   O_INFO("Reloading overlays");
   dbusService->reload();
+}
+
+void
+SystemAPI::showPowerMenu(QDBusMessage message) {
+  Q_UNUSED(message);
+  if (!hasPermission("system")) {
+    return;
+  }
+  Controller::singleton()->showPowerMenu();
 }
 
 void

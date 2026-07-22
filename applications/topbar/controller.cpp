@@ -197,6 +197,18 @@ Controller::Controller(QObject* parent)
     }
   );
   emit showDateChanged(sharedSettings.showDate());
+  reply = api->requestAPI("system");
+  reply.waitForFinished();
+  if (reply.isError()) {
+    qDebug() << reply.error();
+    qFatal("Could not request system API");
+  }
+  path = ((QDBusObjectPath)reply).path();
+  if (path == "/") {
+    qDebug() << "API not available";
+    qFatal("System API was not available");
+  }
+  systemApi = new System(OXIDE_SERVICE, path, bus);
 }
 
 void
@@ -224,6 +236,11 @@ Controller::checkCurrentApplication(QDBusObjectPath path) {
 void
 Controller::openSettings(const QString& category) {
   appsApi->openSettings(category);
+}
+
+void
+Controller::showPowerMenu() {
+  systemApi->showPowerMenu();
 }
 
 void
