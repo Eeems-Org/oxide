@@ -39,9 +39,6 @@ main(int argc, char* argv[]) {
   qmlRegisterAnonymousType<AppItem>("codes.eeems.oxide", 2);
   qmlRegisterAnonymousType<Controller>("codes.eeems.oxide", 2);
   registerQML(&engine);
-  context->setContextProperty(
-    "apps", QVariant::fromValue(controller->getApps())
-  );
   context->setContextProperty("controller", controller);
   QTimer::singleShot(0, [&app, &engine, controller] {
     QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
@@ -62,7 +59,7 @@ main(int argc, char* argv[]) {
   });
   shutdown_handler = [&controller](int signum) {
     Q_UNUSED(signum)
-    QTimer::singleShot(300, [=]() { emit controller->reload(); });
+    QTimer::singleShot(300, [=]() { controller->refreshApps(); });
   };
   signal(SIGCONT, signalHandler2);
   return app.exec();

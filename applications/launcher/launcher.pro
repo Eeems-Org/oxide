@@ -35,10 +35,10 @@ DISTFILES += \
 HEADERS += \
     controller.h \
     appitem.h \
+    applistmodel.h \
     mxcfb.h \
     notificationlist.h \
-    oxide_stable.h \
-    wifinetworklist.h
+    oxide_stable.h
 
 PRECOMPILED_HEADER = \
     oxide_stable.h
