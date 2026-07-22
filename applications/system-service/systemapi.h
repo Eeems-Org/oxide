@@ -130,6 +130,7 @@ public slots:
   void uninhibitPowerOff(QDBusMessage message);
   void toggleSwipes();
   void reload(QDBusMessage message);
+  void showPowerMenu(QDBusMessage message);
 
 signals:
   void leftAction();
