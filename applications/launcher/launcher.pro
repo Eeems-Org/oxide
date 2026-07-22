@@ -37,7 +37,6 @@ HEADERS += \
     appitem.h \
     applistmodel.h \
     mxcfb.h \
-    notificationlist.h \
     oxide_stable.h
 
 PRECOMPILED_HEADER = \
