@@ -69,6 +69,8 @@
     </method>
     <method name="reload">
     </method>
+    <method name="showPowerMenu">
+    </method>
     <method name="setSwipeEnabled">
       <arg name="direction" type="i" direction="in"/>
       <arg name="enabled" type="b" direction="in"/>

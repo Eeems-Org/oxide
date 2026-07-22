@@ -80,6 +80,7 @@ signals:
 
 public slots:
   void openSettings(const QString& category = {});
+  void showPowerMenu();
 
 private slots:
   void checkCurrentApplication(QDBusObjectPath path = QDBusObjectPath());
@@ -107,6 +108,7 @@ private:
   Power* powerApi = nullptr;
   Wifi* wifiApi = nullptr;
   Apps* appsApi = nullptr;
+  System* systemApi = nullptr;
   Notifications* notificationApi = nullptr;
   int m_notificationCount = 0;
   void updateNotificationText();
