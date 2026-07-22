@@ -59,7 +59,6 @@ class Controller : public QObject {
     int frontlightBrightness READ frontlightBrightness WRITE
       setFrontlightBrightness NOTIFY frontlightBrightnessChanged
   )
-  Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged)
 
 public:
   static Controller* singleton() {
@@ -218,7 +217,6 @@ public:
       QMetaObject::invokeMethod(rootObject, "showPowerMenu");
     }
   }
-  bool landscape() { return systemAPI->landscape(); }
 
 signals:
   void keyPressed(int, int, const QString&);
@@ -237,7 +235,6 @@ signals:
   void penDetached();
   void lidOpenChanged(bool open);
   void frontlightBrightnessChanged(int);
-  void landscapeChanged(bool);
 
 private slots:
   void debouncedReload(const QString& path) {
@@ -449,12 +446,6 @@ private:
             break;
         }
       }
-    );
-    connect(
-      systemAPI,
-      &SystemAPI::landscapeChanged,
-      this,
-      &Controller::landscapeChanged
     );
     eventListener->append([this](QObject* object, QEvent* event) {
       if (!enabled) {
