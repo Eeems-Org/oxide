@@ -28,7 +28,7 @@ namespace Oxide {
       , m_contentType{Blight::ContentType::Color}
       , m_updateMode{Blight::UpdateMode::PartialUpdate} {
       deviceSettings.onKeyboardAttachedChanged([this] {
-        qDebug() << "landscape changed";
+        O_DEBUG("landscape changed");
         emit landscapeChanged(landscape());
       });
       connect(
