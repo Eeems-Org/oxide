@@ -188,6 +188,7 @@ Controller::Controller(QObject* parent)
 
   // Setup clock timer
   clockTimer = new QTimer(this);
+  clockTimer->setSingleShot(true);
   auto currentTime = QTime::currentTime();
   QTime nextTime = currentTime.addSecs(60 - currentTime.second());
   clockTimer->setInterval(currentTime.msecsTo(nextTime));
@@ -418,6 +419,9 @@ Controller::clockText() {
 void
 Controller::updateClock() {
   emit clockTextChanged();
+  auto currentTime = QTime::currentTime();
+  QTime nextTime = currentTime.addSecs(60 - currentTime.second());
+  clockTimer->start(currentTime.msecsTo(nextTime));
 }
 
 void
