@@ -19,18 +19,6 @@ OxideWindow {
         value: page.header.height
         when: page.header.height > 0
     }
-    // function onVisibleChanged(visible){
-    //     if(visible){
-    //         window.raise()
-    //     }else{
-    //         window.lower()
-    //     }
-    // }
-    // Component.onCompleted: window.onVisibleChanged(controller.visible)
-    // Connections {
-    //     target: controller
-    //     function onVisibleChanged(visible){ window.onVisibleChanged(visible); }
-    // }
     leftMenu: [
         AbstractButton {
             leftPadding: 4
@@ -60,6 +48,7 @@ OxideWindow {
     centerMenu: [
         Label {
             objectName: "clock"
+            text: controller.clockText
             Layout.alignment: Qt.AlignCenter
             MouseArea {
                 anchors.fill: parent
@@ -76,31 +65,28 @@ OxideWindow {
             id: wifiState
             objectName: "wifiState"
             Layout.alignment: Qt.AlignCenter
-            property string state: "unknown"
-            property int rssi: 0
-            property bool connected: false
             source: {
                 var icon;
-                if(state === "unknown"){
+                if(controller.wifiStateStr === "unknown"){
                     icon = "unknown";
-                }else if(state === "down"){
+                }else if(controller.wifiStateStr === "down"){
                     icon = "down";
-                }else if(!connected){
+                }else if(!controller.wifiConnected){
                     icon = "disconnected";
-                }else if(rssi > -50) {
+                }else if(controller.wifiRssi > -50) {
                     icon = "4_bar";
-                }else if(rssi > -60){
+                }else if(controller.wifiRssi > -60){
                     icon = "3_bar";
-                }else if(rssi > -70){
+                }else if(controller.wifiRssi > -70){
                     icon = "2_bar";
-                }else if(rssi > -80){
+                }else if(controller.wifiRssi > -80){
                     icon = "1_bar";
                 }else{
                     icon = "0_bar";
                 }
                 return "qrc:/codes.eeems.oxide/img/wifi/" + icon + ".png";
             }
-            text: controller.showWifiDb ? rssi + "dBm" : ""
+            text: controller.showWifiDb ? controller.wifiRssi + "dBm" : ""
             MouseArea {
                 anchors.fill: parent
                 enabled: controller.enabled
@@ -114,34 +100,27 @@ OxideWindow {
             id: batteryLevel
             objectName: "batteryLevel"
             Layout.alignment: Qt.AlignCenter
-            property bool alert: false
-            property bool warning: false
-            property bool charging: false
-            property bool connected: false
-            property bool present: true
-            property int level: 0
-            property int temperature: 0
             source: {
                 var icon = "";
-                if(alert || !present){
+                if(controller.batteryAlert || !controller.batteryPresent){
                     icon = "alert";
-                }else if(warning){
+                }else if(controller.batteryWarning){
                     icon = "unknown";
                 }else{
-                    if(charging || connected){
+                    if(controller.batteryCharging || controller.chargerConnected){
                         icon = "charging_";
                     }
-                    if(level < 25){
+                    if(controller.batteryLevel < 25){
                         icon += "20";
-                    }else if(level < 35){
+                    }else if(controller.batteryLevel < 35){
                         icon += "30";
-                    }else if(level < 55){
+                    }else if(controller.batteryLevel < 55){
                         icon += "50";
-                    }else if(level < 65){
+                    }else if(controller.batteryLevel < 65){
                         icon += "60";
-                    }else if(level < 85){
+                    }else if(controller.batteryLevel < 85){
                         icon += "80";
-                    }else if(level < 95){
+                    }else if(controller.batteryLevel < 95){
                         icon += "90";
                     }else{
                         icon += 100;
@@ -149,7 +128,8 @@ OxideWindow {
                 }
                 return "qrc:/codes.eeems.oxide/img/battery/" + icon + ".png";
             }
-            text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
+            text: (controller.showBatteryPercent ? controller.batteryLevel + "% " : "") +
+                (controller.showBatteryTemperature ? controller.batteryTemperature + "C" : "")
             MouseArea {
                 anchors.fill: parent
                 enabled: controller.enabled

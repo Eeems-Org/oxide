@@ -40,18 +40,12 @@ Controller::Controller(QObject* parent)
     qFatal("Power API was not available");
   }
   powerApi = new Power(OXIDE_SERVICE, path, bus);
-  // Connect to signals
+  // Connect to power signals
   connect(
     powerApi,
     &Power::batteryLevelChanged,
     this,
     &Controller::batteryLevelChanged
-  );
-  connect(
-    powerApi,
-    &Power::batteryStateChanged,
-    this,
-    &Controller::batteryStateChanged
   );
   connect(
     powerApi,
@@ -61,14 +55,26 @@ Controller::Controller(QObject* parent)
   );
   connect(
     powerApi,
+    &Power::batteryStateChanged,
+    this,
+    &Controller::onBatteryStateChanged
+  );
+  connect(
+    powerApi,
     &Power::chargerStateChanged,
     this,
-    &Controller::chargerStateChanged
+    &Controller::onChargerStateChanged
   );
-  connect(powerApi, &Power::stateChanged, this, &Controller::powerStateChanged);
-  connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
-  connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
-  connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
+  connect(
+    powerApi, &Power::stateChanged, this, &Controller::onPowerStateChanged
+  );
+  connect(powerApi, &Power::batteryAlert, this, &Controller::onBatteryAlert);
+  connect(
+    powerApi, &Power::batteryWarning, this, &Controller::onBatteryWarning
+  );
+  connect(
+    powerApi, &Power::chargerWarning, this, &Controller::onChargerWarning
+  );
   reply = api->requestAPI("wifi");
   reply.waitForFinished();
   if (reply.isError()) {
@@ -81,23 +87,9 @@ Controller::Controller(QObject* parent)
     qFatal("Wifi API was not available");
   }
   wifiApi = new Wifi(OXIDE_SERVICE, path, bus);
-  connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
-  connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-  connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
-  QTimer::singleShot(1000, [this]() {
-    while (this->root == nullptr) {
-      qApp->processEvents(QEventLoop::AllEvents, 100);
-    }
-    // Get initial values when UI is ready
-    batteryLevelChanged(powerApi->batteryLevel());
-    batteryStateChanged(powerApi->batteryState());
-    batteryTemperatureChanged(powerApi->batteryTemperature());
-    chargerStateChanged(powerApi->chargerState());
-    powerStateChanged(powerApi->state());
-
-    wifiStateChanged(wifiApi->state());
-    wifiRssiChanged(wifiApi->rssi());
-  });
+  connect(wifiApi, &Wifi::disconnected, this, &Controller::onDisconnected);
+  connect(wifiApi, &Wifi::stateChanged, this, &Controller::onWifiStateChanged);
+  connect(wifiApi, &Wifi::rssiChanged, this, &Controller::onWifiRssiChanged);
   reply = api->requestAPI("apps");
   reply.waitForFinished();
   if (reply.isError()) {
@@ -178,23 +170,7 @@ Controller::Controller(QObject* parent)
     &sharedSettings,
     &Oxide::SharedSettings::showDateChanged,
     this,
-    [this](bool showDate) {
-      if (root == nullptr) {
-        return;
-      }
-      QObject* clock = root->findChild<QObject*>("clock");
-      if (clock == nullptr) {
-        return;
-      }
-      QString text = "";
-      if (showDate) {
-        text = QDate::currentDate().toString(Qt::TextDate) + " ";
-      }
-      clock->setProperty(
-        "text", text + QTime::currentTime().toString("h:mm a")
-      );
-      emit showDateChanged(showDate);
-    }
+    &Controller::onShowDateChanged
   );
   emit showDateChanged(sharedSettings.showDate());
   reply = api->requestAPI("system");
@@ -209,6 +185,14 @@ Controller::Controller(QObject* parent)
     qFatal("System API was not available");
   }
   systemApi = new System(OXIDE_SERVICE, path, bus);
+
+  // Setup clock timer
+  clockTimer = new QTimer(this);
+  auto currentTime = QTime::currentTime();
+  QTime nextTime = currentTime.addSecs(60 - currentTime.second());
+  clockTimer->setInterval(currentTime.msecsTo(nextTime));
+  connect(clockTimer, &QTimer::timeout, this, &Controller::updateClock);
+  clockTimer->start();
 }
 
 void
@@ -291,30 +275,12 @@ Controller::notificationRemoved(const QDBusObjectPath& path) {
 }
 
 void
-Controller::batteryAlert() {
-  if (root == nullptr) {
-    return;
-  }
-  QObject* ui = root->findChild<QObject*>("batteryLevel");
-  if (ui) {
-    ui->setProperty("alert", true);
-  }
+Controller::onBatteryAlert() {
+  emit batteryAlertChanged();
 }
 
 void
-Controller::batteryLevelChanged(int level) {
-  qDebug() << "Battery level: " << level;
-  if (root == nullptr) {
-    return;
-  }
-  QObject* ui = root->findChild<QObject*>("batteryLevel");
-  if (ui) {
-    ui->setProperty("level", level);
-  }
-}
-
-void
-Controller::batteryStateChanged(int state) {
+Controller::onBatteryStateChanged(int state) {
   switch (state) {
     case BatteryCharging:
       qDebug() << "Battery state: Charging";
@@ -329,57 +295,18 @@ Controller::batteryStateChanged(int state) {
     default:
       qDebug() << "Battery state: Unknown";
   }
-  if (root == nullptr) {
-    return;
-  }
-  QObject* ui = root->findChild<QObject*>("batteryLevel");
-  if (ui) {
-    if (state != BatteryNotPresent) {
-      ui->setProperty("present", true);
-    }
-    switch (state) {
-      case BatteryCharging:
-        ui->setProperty("charging", true);
-        break;
-      case BatteryNotPresent:
-        ui->setProperty("present", false);
-        break;
-      case BatteryDischarging:
-        ui->setProperty("charging", false);
-        break;
-      case BatteryUnknown:
-      default:
-        ui->setProperty("charging", false);
-    }
-  }
+  emit batteryChargingChanged();
+  emit batteryPresentChanged();
 }
 
 void
-Controller::batteryTemperatureChanged(int temperature) {
-  qDebug() << "Battery temperature: " << temperature;
-  if (root == nullptr) {
-    return;
-  }
-  QObject* ui = root->findChild<QObject*>("batteryLevel");
-  if (ui) {
-    ui->setProperty("temperature", temperature);
-  }
-}
-
-void
-Controller::batteryWarning() {
+Controller::onBatteryWarning() {
   qDebug() << "Battery Warning!";
-  if (root == nullptr) {
-    return;
-  }
-  QObject* ui = root->findChild<QObject*>("batteryLevel");
-  if (ui) {
-    ui->setProperty("warning", true);
-  }
+  emit batteryWarningChanged();
 }
 
 void
-Controller::chargerStateChanged(int state) {
+Controller::onChargerStateChanged(int state) {
   switch (state) {
     case ChargerConnected:
       qDebug() << "Charger state: Connected";
@@ -394,55 +321,27 @@ Controller::chargerStateChanged(int state) {
     default:
       qDebug() << "Charger state: Unknown";
   }
-  if (root == nullptr) {
-    return;
-  }
-  QObject* ui = root->findChild<QObject*>("batteryLevel");
-  if (ui) {
-    if (state != ChargerNotPresent) {
-      ui->setProperty("present", true);
-    }
-    switch (state) {
-      case ChargerConnected:
-        ui->setProperty("connected", true);
-        break;
-      case ChargerNotConnected:
-      case ChargerNotPresent:
-        ui->setProperty("connected", false);
-        break;
-      case ChargerUnknown:
-      default:
-        ui->setProperty("connected", false);
-    }
-  }
+  emit chargerConnectedChanged();
 }
 
 void
-Controller::chargerWarning() {
+Controller::onChargerWarning() {
   // TODO handle charger
 }
 
 void
-Controller::powerStateChanged(int state) {
+Controller::onPowerStateChanged(int state) {
   Q_UNUSED(state);
   // TODO handle requested battery state
 }
 
 void
-Controller::disconnected() {
-  wifiStateChanged(wifiApi->state());
+Controller::onDisconnected() {
+  onWifiStateChanged(wifiApi->state());
 }
 
 void
-Controller::wifiStateChanged(int state) {
-  if (root == nullptr) {
-    wifiState = state;
-    return;
-  }
-  if (state == wifiState) {
-    return;
-  }
-  wifiState = state;
+Controller::onWifiStateChanged(int state) {
   switch (state) {
     case WifiOff:
       qDebug() << "Wifi state: Off";
@@ -460,46 +359,72 @@ Controller::wifiStateChanged(int state) {
     default:
       qDebug() << "Wifi state: Unknown";
   }
-  QObject* ui = root->findChild<QObject*>("wifiState");
-  if (ui) {
-    switch (state) {
-      case WifiOff:
-        ui->setProperty("state", "down");
-        break;
-      case WifiDisconnected:
-        ui->setProperty("state", "up");
-        ui->setProperty("connected", false);
-        break;
-      case WifiOffline:
-        ui->setProperty("state", "up");
-        ui->setProperty("connected", true);
-        break;
-      case WifiOnline:
-        ui->setProperty("state", "up");
-        ui->setProperty("connected", true);
-        ui->setProperty("rssi", wifiApi->rssi());
-        break;
-      case WifiUnknown:
-      default:
-        ui->setProperty("state", "unknown");
-        ui->setProperty("connected", false);
-        ui->setProperty("rssi", -100);
-    }
-  }
+  emit wifiStateChanged();
 }
 
 void
-Controller::wifiRssiChanged(int rssi) {
-  if (root == nullptr) {
-    return;
+Controller::onWifiRssiChanged(int rssi) {
+  Q_UNUSED(rssi);
+  emit wifiRssiChanged();
+}
+
+QString
+Controller::wifiStateStr() {
+  if (wifiApi == nullptr) {
+    return "unknown";
   }
-  QObject* ui = root->findChild<QObject*>("wifiState");
-  if (ui) {
-    if (wifiState != WifiOnline) {
-      rssi = -100;
-    }
-    ui->setProperty("rssi", rssi);
+  switch (wifiApi->state()) {
+    case WifiOff:
+      return "down";
+    case WifiDisconnected:
+    case WifiOffline:
+    case WifiOnline:
+      return "up";
+    case WifiUnknown:
+    default:
+      return "unknown";
   }
+}
+
+bool
+Controller::wifiConnected() {
+  if (wifiApi == nullptr) {
+    return false;
+  }
+  auto state = wifiApi->state();
+  return state == WifiOffline || state == WifiOnline;
+}
+
+int
+Controller::wifiRssi() {
+  if (wifiApi == nullptr) {
+    return -100;
+  }
+  if (wifiApi->state() != WifiOnline) {
+    return -100;
+  }
+  return wifiApi->rssi();
+}
+
+QString
+Controller::clockText() {
+  QString text = "";
+  if (sharedSettings.showDate()) {
+    text = QDate::currentDate().toString(Qt::TextDate) + " ";
+  }
+  return text + QTime::currentTime().toString("h:mm a");
+}
+
+void
+Controller::updateClock() {
+  emit clockTextChanged();
+}
+
+void
+Controller::onShowDateChanged(bool showDate) {
+  Q_UNUSED(showDate);
+  emit showDateChanged(showDate);
+  emit clockTextChanged();
 }
 
 #include "moc_controller.cpp"
