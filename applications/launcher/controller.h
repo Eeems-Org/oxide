@@ -2,10 +2,10 @@
 
 #include <liboxide.h>
 
+#include "appitem.h"
+#include "applistmodel.h"
 #include <QGuiApplication>
 #include <QObject>
-
-#include "appitem.h"
 
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
@@ -42,6 +42,7 @@ class Controller : public QObject {
   Q_PROPERTY(
     bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged
   )
+  Q_PROPERTY(AppListModel* appList READ appList NOTIFY appListChanged)
 public:
   QObject* root = nullptr;
   explicit Controller(QObject* parent = 0);
@@ -50,7 +51,7 @@ public:
       qDebug() << "No auto start application";
       return;
     }
-    auto app = getApplication(autoStartApplication());
+    auto app = m_appList->findByName(autoStartApplication());
     if (app == nullptr) {
       qDebug() << "Unable to find auto start application";
       return;
@@ -59,7 +60,7 @@ public:
   }
   Q_INVOKABLE void loadSettings() {}
   Q_INVOKABLE void saveSettings() {}
-  Q_INVOKABLE QList<QObject*> getApps();
+  Q_INVOKABLE void refreshApps();
   Q_INVOKABLE void importDraftApps();
   Q_INVOKABLE void suspend();
   Q_INVOKABLE void lock();
@@ -94,9 +95,10 @@ public:
   bool sleepInhibited() { return systemApi->sleepInhibited(); }
   Apps* getAppsApi() { return appsApi; }
   Notifications* getNotificationApi() { return notificationApi; }
+  AppListModel* appList() { return m_appList; }
 
 signals:
-  void reload();
+  void appListChanged();
   void columnsChanged(int);
   void localeChanged(QString);
   void autoStartApplicationChanged(QString);
@@ -105,21 +107,12 @@ signals:
 
 private slots:
   void unregisterApplication(QDBusObjectPath path) {
-    auto pathString = path.path();
-    for (auto app : applications) {
-      if (app->property("path") == pathString) {
-        applications.removeAll(app);
-        delete app;
-        emit reload();
-        qDebug() << "Removed" << pathString << "application";
-        return;
-      }
-    }
-    qDebug() << "Unable to find application " << pathString << "to remove";
+    Q_UNUSED(path)
+    refreshApps();
   }
   void registerApplication(QDBusObjectPath path) {
     qDebug() << "New application detected" << path.path();
-    emit reload();
+    refreshApps();
   }
   void batteryAlert() {
     if (root == nullptr) {
@@ -243,6 +236,5 @@ private:
   System* systemApi = nullptr;
   Apps* appsApi = nullptr;
   Notifications* notificationApi = nullptr;
-  QList<QObject*> applications;
-  AppItem* getApplication(QString name);
+  AppListModel* m_appList = nullptr;
 };

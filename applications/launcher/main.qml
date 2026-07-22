@@ -20,13 +20,7 @@ OxideWindow {
         if (stateController.state == "loading") {
             stateController.state = "loaded"
             controller.startup();
-            appsView.model = controller.getApps();
-        }
-    }
-    Connections {
-        target: controller
-        function onReload() {
-            appsView.model = controller.getApps();
+            controller.refreshApps();
         }
     }
     Shortcut{
@@ -42,7 +36,7 @@ OxideWindow {
     Shortcut{
         sequence: StandardKey.Refresh
         context: Qt.ApplicationShortcut
-        onActivated: controller.reload()
+        onActivated: controller.refreshApps()
     }
     Shortcut{
         sequence: "Ctrl+I"
@@ -66,7 +60,7 @@ OxideWindow {
                     onTriggered: {
                         controller.breadcrumb("menu.reload", "click", "ui");
                         controller.startup();
-                        appsView.model = controller.getApps();
+                        controller.refreshApps();
                     }
                 }
                 Action {
@@ -74,7 +68,7 @@ OxideWindow {
                     onTriggered:{
                         controller.breadcrumb("menu.import", "click", "ui");
                         controller.importDraftApps();
-                        appsView.model = controller.getApps();
+                        controller.refreshApps();
                     }
                 }
             }
@@ -94,7 +88,7 @@ OxideWindow {
             boundsBehavior: Flickable.StopAtBounds
             cellWidth: parent.width / controller.columns
             cellHeight: cellWidth
-            model: apps
+            model: controller.appList
             ScrollBar.vertical: ScrollBar {
                 id: scrollbar
                 snapMode: ScrollBar.SnapAlways
@@ -114,19 +108,19 @@ OxideWindow {
             }
             delegate: AppItem {
                 enabled: appsView.enabled
-                imgFile: model.modelData.imgFile
-                text: (model.modelData.running ? "* " : "") + model.modelData.displayName
-                bold: model.modelData.running
+                imgFile: model.display.imgFile
+                text: (model.display.running ? "* " : "") + model.display.displayName
+                bold: model.display.running
                 width: appsView.cellWidth
                 height: appsView.cellHeight
                 onLongPress: {
                     controller.breadcrumb("appItem", "longPress", "ui");
-                    itemInfo.model = model.modelData;
+                    itemInfo.model = model.display;
                     stateController.state = "itemInfo"
                 }
                 onClicked: {
                     controller.breadcrumb("appItem", "click", "ui");
-                    model.modelData.execute();
+                    model.display.execute();
                 }
             }
         }
@@ -249,7 +243,7 @@ OxideWindow {
                             controller.breadcrumb("appItem.kill", "click", "ui");
                             if(itemInfo.model){
                                 itemInfo.model.stop();
-                                appsView.model = controller.getApps();
+                                controller.refreshApps();
                             }
                         }
                     }
