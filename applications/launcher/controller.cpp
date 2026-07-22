@@ -6,10 +6,11 @@
 #include <QDebug>
 #include <QFile>
 #include <QSettings>
+#include <QTimer>
 
 Controller::Controller(QObject* parent)
   : QObject(parent)
-  , applications() {
+  , m_appList(new AppListModel(this)) {
   for (const auto& path : {
          "/home/root/.config/oxide.conf",
          "/opt/etc/oxide.conf",
@@ -177,8 +178,8 @@ Controller::Controller(QObject* parent)
   );
 }
 
-QList<QObject*>
-Controller::getApps() {
+void
+Controller::refreshApps() {
   auto bus = QDBusConnection::systemBus();
   auto running = appsApi->runningApplications();
   auto paused = appsApi->pausedApplications();
@@ -188,60 +189,7 @@ Controller::getApps() {
     }
     running.insert(key, paused[key]);
   }
-  for (auto item : appsApi->applications()) {
-    auto path = item.value<QDBusObjectPath>().path();
-    Application app(OXIDE_SERVICE, path, bus, this);
-    if (app.hidden() || app.transient()) {
-      continue;
-    }
-    auto name = app.name();
-    auto appItem = getApplication(name);
-    if (appItem == nullptr) {
-      qDebug() << "New application:" << name;
-      appItem = new AppItem(this);
-      applications.append(appItem);
-    }
-    auto displayName = app.displayName();
-    if (displayName.isEmpty()) {
-      displayName = name;
-    }
-    appItem->setProperty("path", path);
-    appItem->setProperty("name", name);
-    appItem->setProperty("displayName", displayName);
-    appItem->setProperty("desc", app.description());
-    appItem->setProperty("call", app.bin());
-    appItem->setProperty("running", running.contains(name));
-    auto icon = app.icon();
-    if (!icon.isEmpty() && QFile(icon).exists()) {
-      appItem->setProperty("imgFile", "file:" + icon);
-    } else {
-      appItem->setProperty("imgFile", "");
-    }
-    if (!appItem->ok()) {
-      qDebug() << "Invalid item" << appItem->property("name").toString();
-      applications.removeAll(appItem);
-      appItem->deleteLater();
-    }
-  }
-  // Sort by name
-  std::sort(
-    applications.begin(),
-    applications.end(),
-    [=](const QObject* a, const QObject* b) -> bool {
-      return a->property("displayName").toString() <
-             b->property("displayName").toString();
-    }
-  );
-  return applications;
-}
-AppItem*
-Controller::getApplication(QString name) {
-  for (auto app : applications) {
-    if (app->property("name").toString() == name) {
-      return reinterpret_cast<AppItem*>(app);
-    }
-  }
-  return nullptr;
+  m_appList->update(OXIDE_SERVICE, this, appsApi->applications(), running);
 }
 
 void
