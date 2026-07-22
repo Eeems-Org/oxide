@@ -7,7 +7,7 @@ import "qrc:/codes.eeems.oxide"
 OxideWindow {
     id: window
     objectName: "window"
-    visible: true
+    visible: controller.visible
     title: qsTr("Stain")
     focus: true
     color: "transparent"
@@ -19,18 +19,18 @@ OxideWindow {
         value: page.header.height
         when: page.header.height > 0
     }
-    function onVisibleChanged(visible){
-        if(visible){
-            window.raise()
-        }else{
-            window.lower()
-        }
-    }
-    Component.onCompleted: window.onVisibleChanged(controller.visible)
-    Connections {
-        target: controller
-        function onVisibleChanged(visible){ window.onVisibleChanged(visible); }
-    }
+    // function onVisibleChanged(visible){
+    //     if(visible){
+    //         window.raise()
+    //     }else{
+    //         window.lower()
+    //     }
+    // }
+    // Component.onCompleted: window.onVisibleChanged(controller.visible)
+    // Connections {
+    //     target: controller
+    //     function onVisibleChanged(visible){ window.onVisibleChanged(visible); }
+    // }
     leftMenu: [
         AbstractButton {
             leftPadding: 4
@@ -177,7 +177,7 @@ OxideWindow {
             }
             onClicked: {
                 console.log("power icon clicked")
-                // TODO open power menu
+                controller.showPowerMenu()
             }
         }
     ]

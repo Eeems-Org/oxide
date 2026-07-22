@@ -983,10 +983,12 @@ DbusInterface::sortedSurfaces() {
       if (surface1 == nullptr || !surface1->visible()) {
         return true;
       }
-      if (surface0->has("system")) {
+      bool system0 = surface0->has("system");
+      bool system1 = surface1->has("system");
+      if (system0 && !system1) {
         return false;
       }
-      if (surface1->has("system")) {
+      if (!system0 && system1) {
         return true;
       }
       return surface0->z() < surface1->z();
