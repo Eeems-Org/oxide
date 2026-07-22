@@ -12,6 +12,10 @@ OxideWindow {
     focus: true
     color: "transparent"
     headerBackgroundColor: "white"
+    width: landscape ? page.header.height : Screen.width
+    height: landscape ? Screen.height : page.header.height
+    x: landscape ? Screen.width - page.header.height : 0
+    y: 0
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Binding {
         target: Oxide
