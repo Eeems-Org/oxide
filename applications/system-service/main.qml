@@ -13,12 +13,6 @@ Window{
     visible: true
     color: powerMenu.opened ? "white" : "transparent"
     property bool enableHeldKeys: controller.deviceName === "reMarkable 1"
-    Connections{
-        target: controller
-        function onLandscapeChanged(landscape){
-            console.log("landscape changed", landscape)
-        }
-    }
     function getState(){
         return {
             "powerMenu": powerMenu.opened,
@@ -136,17 +130,17 @@ Window{
 
             function isSwipeLow(start, end, portraitLength, landscapeLength){
                 return start < offset
-                    && end > start + (controller.landscape ? landscapeLength : portraitLength);
+                    && end > start + (Oxide.landscape ? landscapeLength : portraitLength);
             }
             function isSwipeHigh(start, end, portraitLength, landscapeLength, size){
                 return start > size - offset
-                    && end < start - (controller.landscape ? landscapeLength : portraitLength);
+                    && end < start - (Oxide.landscape ? landscapeLength : portraitLength);
             }
             function isEnabled(swiped, portraitEnabled, landscapeEnabled){
-                return swiped && (controller.landscape ? landscapeEnabled : portraitEnabled);
+                return swiped && (Oxide.landscape ? landscapeEnabled : portraitEnabled);
             }
             function swipeAction(portraitFn, landscapeFn){
-                if(controller.landscape){
+                if(Oxide.landscape){
                     landscapeFn();
                 }else{
                     portraitFn();
@@ -244,7 +238,7 @@ Window{
             }
         }
         contentItem: ColumnLayout {
-            rotation: controller.landscape ? 90 : 0
+            rotation: Oxide.landscape ? 90 : 0
             spacing: 10
             Slider {
                 id: brightnessSlider
