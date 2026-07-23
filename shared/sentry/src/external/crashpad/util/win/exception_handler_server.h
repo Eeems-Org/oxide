@@ -146,6 +146,7 @@ class ExceptionHandlerServer {
   std::wstring pipe_name_;
   ScopedKernelHANDLE port_;
   ScopedFileHandle first_pipe_instance_;
+  DWORD owner_process_id_;
 
   base::Lock clients_lock_;
   std::set<internal::ClientData*> clients_;

@@ -16,6 +16,7 @@
 
 #include "debug.h"
 #include "liboxide.h"
+#include "sharedsettings.h"
 
 static std::atomic<unsigned int> marker = 0;
 
@@ -27,8 +28,21 @@ namespace Oxide {
       , m_contentType{Blight::ContentType::Color}
       , m_updateMode{Blight::UpdateMode::PartialUpdate} {
       deviceSettings.onKeyboardAttachedChanged([this] {
-        emit landscapeChanged(deviceSettings.keyboardAttached());
+        O_DEBUG("landscape changed");
+        emit landscapeChanged(landscape());
       });
+      connect(
+        &sharedSettings,
+        &SharedSettings::topSystemSpaceChanged,
+        this,
+        &OxideQml::topSystemSpaceChanged
+      );
+      connect(
+        &sharedSettings,
+        &SharedSettings::bottomSystemSpaceChanged,
+        this,
+        &OxideQml::bottomSystemSpaceChanged
+      );
     }
 
     bool OxideQml::landscape() {
@@ -67,6 +81,22 @@ namespace Oxide {
 
     QString OxideQml::deviceName() {
       return deviceSettings.getDeviceName();
+    }
+
+    int OxideQml::topSystemSpace() {
+      return sharedSettings.topSystemSpace();
+    }
+
+    void OxideQml::setTopSystemSpace(int height) {
+      sharedSettings.set_topSystemSpace(height);
+    }
+
+    int OxideQml::bottomSystemSpace() {
+      return sharedSettings.bottomSystemSpace();
+    }
+
+    void OxideQml::setBottomSystemSpace(int height) {
+      sharedSettings.set_bottomSystemSpace(height);
     }
 
     QBrush OxideQml::brushFromColor(const QColor& color, Qt::BrushStyle style) {
@@ -199,7 +229,8 @@ namespace Oxide {
         painter.drawLine(m_lastPoint, event->position());
       }
       const QPoint globalStart = mapToScene(m_lastPoint).toPoint();
-      const QPoint globalEnd = event->globalPosition().toPoint();
+      const QPoint globalEnd =
+        event->globalPosition().toPoint() - window()->position();
       int margin = qMax(24, (int)qCeil(m_pen.widthF() / 2.0) + 4);
       auto rect = QRect(globalStart, globalEnd)
                     .normalized()
