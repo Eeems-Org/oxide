@@ -81,6 +81,29 @@ AppItem::stop() {
   }
   app->stop();
 }
+
+void
+AppItem::update(
+  const QString& path,
+  const QString& displayName,
+  const QString& desc,
+  const QString& call,
+  bool running,
+  const QString& imgFile
+) {
+  setProperty("path", path);
+  setProperty("displayName", displayName);
+  setProperty("desc", desc);
+  setProperty("call", call);
+  setProperty("running", running);
+  setProperty(
+    "imgFile",
+    (!imgFile.isEmpty() && QFile(imgFile).exists())
+      ? "file:" + imgFile
+      : "qrc:/img/icon.png"
+  );
+}
+
 Application*
 AppItem::getApp() {
   if (app != nullptr) {

@@ -10,7 +10,11 @@
 
 Controller::Controller(QObject* parent)
   : QObject(parent)
-  , m_appList(new AppListModel(this)) {
+  , m_appList(new AppListModel(this))
+  , m_refreshTimer(new QTimer(this)) {
+  m_refreshTimer->setSingleShot(true);
+  m_refreshTimer->setInterval(100);
+  connect(m_refreshTimer, &QTimer::timeout, this, &Controller::refreshApps);
   for (const auto& path : {
          "/home/root/.config/oxide.conf",
          "/opt/etc/oxide.conf",
@@ -34,10 +38,17 @@ Controller::Controller(QObject* parent)
   }
 
   auto bus = QDBusConnection::systemBus();
+  if (!bus.isConnected() || !bus.interface()) {
+    qFatal("D-Bus system bus connection unavailable");
+  }
   qDebug() << "Waiting for tarnish to start up";
+  int retries = 30;
   while (!bus.interface()->registeredServiceNames().value().contains(
     OXIDE_SERVICE
   )) {
+    if (!retries--) {
+      qFatal("Timed out waiting for %s to register on D-Bus", OXIDE_SERVICE);
+    }
     struct timespec args{
       .tv_sec = 1,
       .tv_nsec = 0,
@@ -87,16 +98,6 @@ Controller::Controller(QObject* parent)
   );
   connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
   connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
-  QTimer::singleShot(1000, [this]() {
-    while (this->root == nullptr) {
-      qApp->processEvents(QEventLoop::AllEvents, 100);
-    }
-    // Get initial values when UI is ready
-    batteryLevelChanged(powerApi->batteryLevel());
-    batteryStateChanged(powerApi->batteryState());
-    batteryTemperatureChanged(powerApi->batteryTemperature());
-    chargerStateChanged(powerApi->chargerState());
-  });
   reply = api->requestAPI("system");
   reply.waitForFinished();
   if (reply.isError()) {
@@ -179,6 +180,53 @@ Controller::Controller(QObject* parent)
 }
 
 void
+Controller::setRoot(QObject* newRoot) {
+  root = newRoot;
+  if (newRoot == nullptr) {
+    return;
+  }
+  batteryLevelChanged(powerApi->batteryLevel());
+  batteryStateChanged(powerApi->batteryState());
+  batteryTemperatureChanged(powerApi->batteryTemperature());
+  chargerStateChanged(powerApi->chargerState());
+}
+
+void
+Controller::startup() {
+  if (autoStartApplication().isEmpty()) {
+    qDebug() << "No auto start application";
+    return;
+  }
+  auto app = m_appList->findByName(autoStartApplication());
+  if (app == nullptr) {
+    qDebug() << "Unable to find auto start application";
+    return;
+  }
+  app->execute();
+}
+
+void
+Controller::setLocale(const QString& locale) {
+  deviceSettings.setLocale(locale);
+  emit localeChanged(locale);
+}
+
+void
+Controller::breadcrumb(QString category, QString message, QString type) {
+#ifdef SENTRY
+  sentry_breadcrumb(
+    category.toStdString().c_str(),
+    message.toStdString().c_str(),
+    type.toStdString().c_str()
+  );
+#else
+  Q_UNUSED(category);
+  Q_UNUSED(message);
+  Q_UNUSED(type);
+#endif
+}
+
+void
 Controller::refreshApps() {
   auto bus = QDBusConnection::systemBus();
   auto running = appsApi->runningApplications();
@@ -190,6 +238,11 @@ Controller::refreshApps() {
     running.insert(key, paused[key]);
   }
   m_appList->update(OXIDE_SERVICE, this, appsApi->applications(), running);
+}
+
+void
+Controller::scheduleRefresh() {
+  m_refreshTimer->start();
 }
 
 void
@@ -206,6 +259,145 @@ void
 Controller::lock() {
   qDebug() << "Locking...";
   appsApi->openLockScreen();
+}
+
+void
+Controller::unregisterApplication(QDBusObjectPath path) {
+  Q_UNUSED(path)
+  scheduleRefresh();
+}
+
+void
+Controller::registerApplication(QDBusObjectPath path) {
+  qDebug() << "New application detected" << path.path();
+  scheduleRefresh();
+}
+
+void
+Controller::batteryAlert() {
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("alert", true);
+  }
+}
+
+void
+Controller::batteryLevelChanged(int level) {
+  qDebug() << "Battery level: " << level;
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("level", level);
+  }
+}
+
+void
+Controller::batteryStateChanged(int state) {
+  switch (state) {
+    case BatteryCharging:
+      qDebug() << "Battery state: Charging";
+      break;
+    case BatteryNotPresent:
+      qDebug() << "Battery state: Not Present";
+      break;
+    case BatteryDischarging:
+      qDebug() << "Battery state: Discharging";
+      break;
+    case BatteryUnknown:
+    default:
+      qDebug() << "Battery state: Unknown";
+  }
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    if (state != BatteryNotPresent) {
+      ui->setProperty("present", true);
+    }
+    switch (state) {
+      case BatteryCharging:
+        ui->setProperty("charging", true);
+        break;
+      case BatteryNotPresent:
+        ui->setProperty("present", false);
+        break;
+      case BatteryDischarging:
+        ui->setProperty("charging", false);
+        break;
+      case BatteryUnknown:
+      default:
+        ui->setProperty("charging", false);
+    }
+  }
+}
+
+void
+Controller::batteryTemperatureChanged(int temperature) {
+  qDebug() << "Battery temperature: " << temperature;
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("temperature", temperature);
+  }
+}
+
+void
+Controller::batteryWarning() {
+  qDebug() << "Battery Warning!";
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("warning", true);
+  }
+}
+
+void
+Controller::chargerStateChanged(int state) {
+  switch (state) {
+    case ChargerConnected:
+      qDebug() << "Charger state: Connected";
+      break;
+    case ChargerNotPresent:
+      qDebug() << "Charger state: Not Present";
+      break;
+    case ChargerNotConnected:
+      qDebug() << "Charger state: Not Connected";
+      break;
+    case ChargerUnknown:
+    default:
+      qDebug() << "Charger state: Unknown";
+  }
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    if (state != ChargerNotPresent) {
+      ui->setProperty("present", true);
+    }
+    switch (state) {
+      case ChargerConnected:
+        ui->setProperty("connected", true);
+        break;
+      case ChargerNotConnected:
+      case ChargerNotPresent:
+        ui->setProperty("connected", false);
+        break;
+      case ChargerUnknown:
+      default:
+        ui->setProperty("connected", false);
+    }
+  }
 }
 
 #include "moc_controller.cpp"
