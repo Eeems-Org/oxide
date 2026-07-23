@@ -1,7 +1,6 @@
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
 #include <liboxide/oxideqml.h>
-#include <signal.h>
 
 #include <QGuiApplication>
 #include <QObject>
@@ -16,12 +15,6 @@ using namespace std;
 using namespace Oxide;
 using namespace Oxide::QML;
 using namespace Oxide::Sentry;
-
-function<void(int)> shutdown_handler;
-void
-signalHandler2(int signal) {
-  shutdown_handler(signal);
-}
 
 int
 main(int argc, char* argv[]) {
@@ -47,20 +40,20 @@ main(int argc, char* argv[]) {
       qApp->exit(EXIT_FAILURE);
       return;
     }
-    controller->root = root;
+    controller->setRoot(root);
     root->installEventFilter(new EventFilter(&app));
-    QObject* stateController = root->findChild<QObject*>("stateController");
-    if (!stateController) {
-      qDebug() << "Can't find stateController";
-      qApp->exit(EXIT_FAILURE);
-      return;
-    }
-    Q_UNUSED(stateController);
   });
-  shutdown_handler = [&controller](int signum) {
-    Q_UNUSED(signum)
-    QTimer::singleShot(300, [=]() { controller->refreshApps(); });
-  };
-  signal(SIGCONT, signalHandler2);
+  signalHandler->removeNotifier(SIGTERM);
+  signalHandler->removeNotifier(SIGINT);
+  signalHandler->removeNotifier(SIGUSR1);
+  signalHandler->removeNotifier(SIGUSR2);
+  signalHandler->removeNotifier(SIGPIPE);
+  signalHandler->removeNotifier(SIGSEGV);
+  signalHandler->removeNotifier(SIGBUS);
+  QObject::connect(signalHandler, &SignalHandler::sigCont, [controller]() {
+    QTimer::singleShot(300, controller, [controller]() {
+      controller->refreshApps();
+    });
+  });
   return app.exec();
 }

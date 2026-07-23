@@ -46,18 +46,8 @@ class Controller : public QObject {
 public:
   QObject* root = nullptr;
   explicit Controller(QObject* parent = 0);
-  Q_INVOKABLE void startup() {
-    if (autoStartApplication().isEmpty()) {
-      qDebug() << "No auto start application";
-      return;
-    }
-    auto app = m_appList->findByName(autoStartApplication());
-    if (app == nullptr) {
-      qDebug() << "Unable to find auto start application";
-      return;
-    }
-    app->execute();
-  }
+  void setRoot(QObject* newRoot);
+  Q_INVOKABLE void startup();
   Q_INVOKABLE void loadSettings() {}
   Q_INVOKABLE void saveSettings() {}
   Q_INVOKABLE void refreshApps();
@@ -65,26 +55,11 @@ public:
   Q_INVOKABLE void suspend();
   Q_INVOKABLE void lock();
   Q_INVOKABLE void
-  breadcrumb(QString category, QString message, QString type = "default") {
-#ifdef SENTRY
-    sentry_breadcrumb(
-      category.toStdString().c_str(),
-      message.toStdString().c_str(),
-      type.toStdString().c_str()
-    );
-#else
-    Q_UNUSED(category);
-    Q_UNUSED(message);
-    Q_UNUSED(type);
-#endif
-  }
+  breadcrumb(QString category, QString message, QString type = "default");
   int columns() const { return sharedSettings.columns(); }
   void setColumns(int columns) { sharedSettings.set_columns(columns); }
   QString locale() { return deviceSettings.getLocale(); }
-  void setLocale(const QString& locale) {
-    deviceSettings.setLocale(locale);
-    emit localeChanged(locale);
-  }
+  void setLocale(const QString& locale);
   QString autoStartApplication() {
     return sharedSettings.autoStartApplication();
   }
@@ -106,135 +81,22 @@ signals:
   void sleepInhibitedChanged(bool);
 
 private slots:
-  void unregisterApplication(QDBusObjectPath path) {
-    Q_UNUSED(path)
-    refreshApps();
-  }
-  void registerApplication(QDBusObjectPath path) {
-    qDebug() << "New application detected" << path.path();
-    refreshApps();
-  }
-  void batteryAlert() {
-    if (root == nullptr) {
-      return;
-    }
-    QObject* ui = root->findChild<QObject*>("batteryLevel");
-    if (ui) {
-      ui->setProperty("alert", true);
-    }
-  }
-  void batteryLevelChanged(int level) {
-    qDebug() << "Battery level: " << level;
-    if (root == nullptr) {
-      return;
-    }
-    QObject* ui = root->findChild<QObject*>("batteryLevel");
-    if (ui) {
-      ui->setProperty("level", level);
-    }
-  }
-  void batteryStateChanged(int state) {
-    switch (state) {
-      case BatteryCharging:
-        qDebug() << "Battery state: Charging";
-        break;
-      case BatteryNotPresent:
-        qDebug() << "Battery state: Not Present";
-        break;
-      case BatteryDischarging:
-        qDebug() << "Battery state: Discharging";
-        break;
-      case BatteryUnknown:
-      default:
-        qDebug() << "Battery state: Unknown";
-    }
-    if (root == nullptr) {
-      return;
-    }
-    QObject* ui = root->findChild<QObject*>("batteryLevel");
-    if (ui) {
-      if (state != BatteryNotPresent) {
-        ui->setProperty("present", true);
-      }
-      switch (state) {
-        case BatteryCharging:
-          ui->setProperty("charging", true);
-          break;
-        case BatteryNotPresent:
-          ui->setProperty("present", false);
-          break;
-        case BatteryDischarging:
-          ui->setProperty("charging", false);
-          break;
-        case BatteryUnknown:
-        default:
-          ui->setProperty("charging", false);
-      }
-    }
-  }
-  void batteryTemperatureChanged(int temperature) {
-    qDebug() << "Battery temperature: " << temperature;
-    if (root == nullptr) {
-      return;
-    }
-    QObject* ui = root->findChild<QObject*>("batteryLevel");
-    if (ui) {
-      ui->setProperty("temperature", temperature);
-    }
-  }
-  void batteryWarning() {
-    qDebug() << "Battery Warning!";
-    if (root == nullptr) {
-      return;
-    }
-    QObject* ui = root->findChild<QObject*>("batteryLevel");
-    if (ui) {
-      ui->setProperty("warning", true);
-    }
-  }
-  void chargerStateChanged(int state) {
-    switch (state) {
-      case ChargerConnected:
-        qDebug() << "Charger state: Connected";
-        break;
-      case ChargerNotPresent:
-        qDebug() << "Charger state: Not Present";
-        break;
-      case ChargerNotConnected:
-        qDebug() << "Charger state: Not Connected";
-        break;
-      case ChargerUnknown:
-      default:
-        qDebug() << "Charger state: Unknown";
-    }
-    if (root == nullptr) {
-      return;
-    }
-    QObject* ui = root->findChild<QObject*>("batteryLevel");
-    if (ui) {
-      if (state != ChargerNotPresent) {
-        ui->setProperty("present", true);
-      }
-      switch (state) {
-        case ChargerConnected:
-          ui->setProperty("connected", true);
-          break;
-        case ChargerNotConnected:
-        case ChargerNotPresent:
-          ui->setProperty("connected", false);
-          break;
-        case ChargerUnknown:
-        default:
-          ui->setProperty("connected", false);
-      }
-    }
-  }
+  void unregisterApplication(QDBusObjectPath path);
+  void registerApplication(QDBusObjectPath path);
+  void batteryAlert();
+  void batteryLevelChanged(int level);
+  void batteryStateChanged(int state);
+  void batteryTemperatureChanged(int temperature);
+  void batteryWarning();
+  void chargerStateChanged(int state);
 
 private:
+  void scheduleRefresh();
   General* api = nullptr;
   Power* powerApi = nullptr;
   System* systemApi = nullptr;
   Apps* appsApi = nullptr;
   Notifications* notificationApi = nullptr;
   AppListModel* m_appList = nullptr;
+  QTimer* m_refreshTimer = nullptr;
 };
