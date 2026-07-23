@@ -3,7 +3,6 @@
 
 #include <QAbstractListModel>
 #include <QFile>
-#include <QSet>
 #include <QVariant>
 
 #include "appitem.h"
@@ -47,17 +46,6 @@ public:
     }
     return QVariant::fromValue(apps[index.row()]);
   }
-  void append(AppItem* app) {
-    beginInsertRows(QModelIndex(), apps.length(), apps.length());
-    apps.append(app);
-    endInsertRows();
-  }
-  void removeAt(int index) {
-    beginRemoveRows(QModelIndex(), index, index);
-    auto app = apps.takeAt(index);
-    app->deleteLater();
-    endRemoveRows();
-  }
   AppItem* findByName(const QString& name) {
     for (auto app : apps) {
       if (app->property("name").toString() == name) {
@@ -66,9 +54,6 @@ public:
     }
     return nullptr;
   }
-  Q_INVOKABLE int length() { return apps.length(); }
-  Q_INVOKABLE bool empty() { return apps.empty(); }
-
   void update(
     const QString& serviceName,
     QObject* parent,
@@ -76,29 +61,14 @@ public:
     const QVariantMap& running
   ) {
     auto bus = QDBusConnection::systemBus();
-    // Track which names are still registered
-    QSet<QString> seen;
-    bool changed = false;
-    // Add or update items
+    QList<AppItem*> newItems;
     for (auto it = registered.constBegin(); it != registered.constEnd(); ++it) {
       auto name = it.key();
       auto path = it.value().value<QDBusObjectPath>().path();
-      seen.insert(name);
-      auto appItem = findByName(name);
-      if (appItem != nullptr) {
-        // Existing app — only update running state, no D-Bus calls
-        auto isRunning = running.contains(name);
-        if (appItem->property("running") != isRunning) {
-          appItem->setProperty("running", isRunning);
-        }
-        continue;
-      }
-      // New app — need D-Bus proxy to read properties
       Application app(serviceName, path, bus, parent);
       if (app.hidden() || app.transient()) {
         continue;
       }
-      qDebug() << "New application:" << name;
       auto displayName = app.displayName();
       if (displayName.isEmpty()) {
         displayName = name;
@@ -107,55 +77,41 @@ public:
       auto call = app.bin();
       auto isRunning = running.contains(name);
       auto icon = app.icon();
-      auto imgFile =
-        (!icon.isEmpty() && QFile(icon).exists()) ? "file:" + icon : "";
+      auto appItem = findByName(name);
+      if (appItem != nullptr) {
+        appItem->update(path, displayName, desc, call, isRunning, icon);
+        continue;
+      }
       appItem = new AppItem(parent);
-      appItem->setProperty("path", path);
       appItem->setProperty("name", name);
-      appItem->setProperty("displayName", displayName);
-      appItem->setProperty("desc", desc);
-      appItem->setProperty("call", call);
-      appItem->setProperty("running", isRunning);
-      appItem->setProperty("imgFile", imgFile);
+      appItem->update(path, displayName, desc, call, isRunning, icon);
       if (!appItem->ok()) {
         qDebug() << "Invalid item" << name;
         appItem->deleteLater();
         continue;
       }
-      append(appItem);
-      changed = true;
+      newItems.append(appItem);
     }
-    // Remove items no longer registered
-    QMutableListIterator<AppItem*> i(apps);
-    while (i.hasNext()) {
-      auto appItem = i.next();
-      auto name = appItem->property("name").toString();
-      if (!seen.contains(name)) {
-        auto idx = apps.indexOf(appItem);
-        if (idx >= 0) {
-          removeAt(idx);
-          changed = true;
+    for (auto appItem : newItems) {
+      auto pos = std::lower_bound(
+        apps.begin(), apps.end(), appItem, [](AppItem* a, AppItem* b) {
+          return a->property("displayName").toString() <
+                 b->property("displayName").toString();
         }
-      }
+      );
+      auto idx = pos - apps.begin();
+      beginInsertRows(QModelIndex(), idx, idx);
+      apps.insert(pos, appItem);
+      endInsertRows();
     }
-    if (!changed) {
-      return;
-    }
-    // Sort by displayName
-    auto oldOrder = apps;
-    std::sort(
-      apps.begin(), apps.end(), [](const AppItem* a, const AppItem* b) -> bool {
-        return a->property("displayName").toString() <
-               b->property("displayName").toString();
+    for (int i = apps.size() - 1; i >= 0; --i) {
+      if (!registered.contains(apps[i]->property("name").toString())) {
+        beginRemoveRows(QModelIndex(), i, i);
+        apps.takeAt(i)->deleteLater();
+        endRemoveRows();
       }
-    );
-    if (apps != oldOrder) {
-      emit layoutChanged();
     }
   }
-
-signals:
-  void updated();
 
 private:
   QList<AppItem*> apps;
