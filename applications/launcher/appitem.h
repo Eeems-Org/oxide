@@ -65,9 +65,8 @@ private slots:
   void onIconChanged(QString path) {
     setProperty(
       "imgFile",
-      (!path.isEmpty() && QFile(path).exists())
-        ? "file:" + path
-        : "qrc:/img/icon.png"
+      (!path.isEmpty() && QFile(path).exists()) ? "file:" + path
+                                                : "qrc:/img/icon.png"
     );
   }
 
