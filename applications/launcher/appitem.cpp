@@ -98,9 +98,8 @@ AppItem::update(
   setProperty("running", running);
   setProperty(
     "imgFile",
-    (!imgFile.isEmpty() && QFile(imgFile).exists())
-      ? "file:" + imgFile
-      : "qrc:/img/icon.png"
+    (!imgFile.isEmpty() && QFile(imgFile).exists()) ? "file:" + imgFile
+                                                    : "qrc:/img/icon.png"
   );
 }
 
