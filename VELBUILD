@@ -116,9 +116,6 @@ postinstall() {
 postupgrade() {
     set -e
     postinstall
-    if [ -f /home/root/.vellum/bin/update-desktop-database ]; then
-        /home/root/.vellum/bin/update-desktop-database
-    fi
     if systemctl is-active --quiet tarnish; then
         echo "Oxide is currently running and will need to be restarted"
     fi
@@ -142,11 +139,11 @@ postosupgrade() {
 
 predeinstall() {
     set -e
-    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2> /dev/null)" -eq 1 ]; then
-        if systemctl --quiet is-active tarnish.service 2> /dev/null; then
+    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2>/dev/null)" -eq 1 ]; then
+        if systemctl --quiet is-active tarnish.service 2>/dev/null; then
             systemctl stop tarnish.service
         fi
-        if systemctl --quiet is-enabled tarnish.service 2> /dev/null; then
+        if systemctl --quiet is-enabled tarnish.service 2>/dev/null; then
             systemctl disable tarnish.service
         fi
     fi
@@ -224,11 +221,11 @@ oxide_display() {
 
     predeinstall() {
         set -e
-        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2> /dev/null)" -eq 1 ]; then
-            if systemctl --quiet is-active blight.service 2> /dev/null; then
+        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2>/dev/null)" -eq 1 ]; then
+            if systemctl --quiet is-active blight.service 2>/dev/null; then
                 systemctl stop blight.service
             fi
-            if systemctl --quiet is-enabled blight.service 2> /dev/null; then
+            if systemctl --quiet is-enabled blight.service 2>/dev/null; then
                 systemctl disable blight.service
             fi
         fi
@@ -303,14 +300,6 @@ oxide_extra() {
         echo "https://github.com/Eeems/oxide" > \
             "$subpkgdir/home/root/.vellum/licenses/oxide-extra/SOURCES"
     }
-
-    postinstall() {
-        /home/root/.vellum/bin/update-desktop-database
-    }
-
-    postupgrade() {
-        postinstall
-    }
 }
 
 oxide_utils() {
@@ -355,17 +344,12 @@ oxide_utils() {
         echo "https://github.com/Eeems/oxide" > \
             "$subpkgdir/home/root/.vellum/licenses/oxide-utils/SOURCES"
     }
-
-    postinstall() {
+    triggers='
+    /home/root/.local/share/applications
+    /home/root/xovi/exthome/appload
+    '
+    trigger() {
         /home/root/.vellum/bin/update-desktop-database
-    }
-
-    postupgrade() {
-        postinstall
-    }
-
-    postosupgrade() {
-        postinstall
     }
 }
 
@@ -479,16 +463,6 @@ oxide_tests() {
         echo "https://github.com/Eeems/oxide" > \
             "$subpkgdir/home/root/.vellum/licenses/oxide-tests/SOURCES"
     }
-
-    postinstall() {
-        if [ -f /home/root/.vellum/bin/update-desktop-database ]; then
-            /home/root/.vellum/bin/update-desktop-database
-        fi
-    }
-
-    postupgrade() {
-        postinstall
-    }
 }
 
 oxide_xovi() {
@@ -506,16 +480,6 @@ oxide_xovi() {
             "$subpkgdir/home/root/.vellum/licenses/oxide-xovi/LICENSE"
         echo "https://github.com/Eeems/oxide" > \
             "$subpkgdir/home/root/.vellum/licenses/oxide-xovi/SOURCES"
-    }
-
-    postinstall() {
-        if [ -f /home/root/.vellum/bin/update-desktop-database ]; then
-            /home/root/.vellum/bin/update-desktop-database
-        fi
-    }
-
-    postupgrade() {
-        postinstall
     }
 }
 
