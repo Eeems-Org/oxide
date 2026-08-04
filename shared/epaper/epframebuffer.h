@@ -320,7 +320,7 @@ public:
    *
    * - ARM32 (rM1/rM2): tries EPFramebufferSwtcon::sync() first,
    *   then falls back to EPFramebufferTcon::sync() for older units.
-   * - aarch64 (rM3+):   only EPFramebufferSwtcon::sync() exists.
+   * - aarch64:   only EPFramebufferSwtcon::sync() exists.
    */
   inline void sync() {
     static auto* fn = []() -> void (*)(void*) {
