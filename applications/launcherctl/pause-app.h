@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <cstdlib>
 
 class PauseAppCommand : ICommand {
   O_COMMAND(
@@ -18,7 +19,9 @@ class PauseAppCommand : ICommand {
     }
     auto app = args.first();
     checkLauncherHasApp(app);
-    queryActive({"pause", app});
+    if (!queryActive({"pause", app})) {
+      return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
   }
 };

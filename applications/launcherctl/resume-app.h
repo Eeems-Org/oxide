@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <cstdlib>
 
 class ResumeAppCommand : ICommand {
   O_COMMAND(
@@ -18,7 +19,9 @@ class ResumeAppCommand : ICommand {
     }
     auto app = args.first();
     checkLauncherHasApp(app);
-    queryActive({"resume", app});
+    if (!queryActive({"resume", app})) {
+      return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
   }
 };

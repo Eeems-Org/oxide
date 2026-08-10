@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <cstdlib>
 
 class ListPausedAppsCommand : ICommand {
   O_COMMAND(
@@ -18,8 +19,8 @@ class ListPausedAppsCommand : ICommand {
       parser.showHelp(EXIT_FAILURE);
     }
     QString output;
-    queryActive({"paused"}, &output);
+    bool success = queryActive({"paused"}, &output);
     qStdOut() << output;
-    return EXIT_SUCCESS;
+    return success ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 };

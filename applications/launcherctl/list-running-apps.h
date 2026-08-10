@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <cstdlib>
 
 class ListRunningAppsCommand : ICommand {
   O_COMMAND(
@@ -18,8 +19,8 @@ class ListRunningAppsCommand : ICommand {
       parser.showHelp(EXIT_FAILURE);
     }
     QString output;
-    queryActive({"running"}, &output);
+    bool success = queryActive({"running"}, &output);
     qStdOut() << output;
-    return EXIT_SUCCESS;
+    return success ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 };
