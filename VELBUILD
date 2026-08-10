@@ -493,7 +493,7 @@ lockscreen_hook() {
         cd "$srcdir"/release
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/usr/lib \
             usr/lib/liblockscreen_hook.so*
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \
             etc/systemd/system/xochitl.service.d/lockscreen_hook.conf
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \
             usr/libexec/lockscreen-hook
