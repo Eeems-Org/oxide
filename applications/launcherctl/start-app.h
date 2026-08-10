@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <cstdlib>
 
 class StartAppCommand : ICommand {
   O_COMMAND(
@@ -18,7 +19,9 @@ class StartAppCommand : ICommand {
     }
     auto app = args.first();
     checkLauncherHasApp(app);
-    queryActive({"launch", app});
+    if (!queryActive({"launch", app})) {
+      return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
   }
 };

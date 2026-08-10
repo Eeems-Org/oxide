@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <cstdlib>
 
 class StopLauncherCommand : ICommand {
   O_COMMAND(
@@ -17,7 +18,9 @@ class StopLauncherCommand : ICommand {
     if (!args.isEmpty()) {
       parser.showHelp(EXIT_FAILURE);
     }
-    queryActive({"stop"});
+    if (!queryActive({"stop"})) {
+      return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
   }
 };

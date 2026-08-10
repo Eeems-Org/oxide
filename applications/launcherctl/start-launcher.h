@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include <cstdlib>
 
 class StartLauncherCommand : ICommand {
   O_COMMAND(
@@ -28,7 +29,9 @@ class StartLauncherCommand : ICommand {
     if (query("current", {"is-active"})) {
       return EXIT_SUCCESS;
     }
-    query("current", {"start"});
+    if (!query("current", {"start"})) {
+      return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
   }
 
