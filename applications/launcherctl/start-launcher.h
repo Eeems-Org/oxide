@@ -29,10 +29,7 @@ class StartLauncherCommand : ICommand {
     if (query("current", {"is-active"})) {
       return EXIT_SUCCESS;
     }
-    if (!query("current", {"start"})) {
-      return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
+    return query("current", {"start"}) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 
 private:

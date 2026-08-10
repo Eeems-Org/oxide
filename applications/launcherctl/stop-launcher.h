@@ -18,9 +18,6 @@ class StopLauncherCommand : ICommand {
     if (!args.isEmpty()) {
       parser.showHelp(EXIT_FAILURE);
     }
-    if (!queryActive({"stop"})) {
-      return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
+    return queryActive({"stop"}) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 };

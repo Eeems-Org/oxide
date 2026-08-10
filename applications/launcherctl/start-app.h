@@ -19,9 +19,6 @@ class StartAppCommand : ICommand {
     }
     auto app = args.first();
     checkLauncherHasApp(app);
-    if (!queryActive({"launch", app})) {
-      return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
+    return queryActive({"launch", app}) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 };

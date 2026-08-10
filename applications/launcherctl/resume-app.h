@@ -19,9 +19,6 @@ class ResumeAppCommand : ICommand {
     }
     auto app = args.first();
     checkLauncherHasApp(app);
-    if (!queryActive({"resume", app})) {
-      return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
+    return queryActive({"resume", app}) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 };

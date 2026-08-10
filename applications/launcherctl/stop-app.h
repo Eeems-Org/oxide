@@ -19,9 +19,6 @@ class StopAppCommand : ICommand {
     }
     auto app = args.first();
     checkLauncherHasApp(app);
-    if (!queryActive({"close", app})) {
-      return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
+    return queryActive({"close", app}) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 };

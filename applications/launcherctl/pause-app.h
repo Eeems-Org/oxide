@@ -19,9 +19,6 @@ class PauseAppCommand : ICommand {
     }
     auto app = args.first();
     checkLauncherHasApp(app);
-    if (!queryActive({"pause", app})) {
-      return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
+    return queryActive({"pause", app}) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 };
