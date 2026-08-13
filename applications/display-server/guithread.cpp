@@ -360,14 +360,13 @@ GUIThread::redraw(RepaintRequest& event) {
 EPScreenMode
 mapMode(Blight::WaveformMode waveform) {
   switch (waveform) {
-    case BlightWaveformMode::Content:
-      return EPScreenMode::UI;
-    case BlightWaveformMode::UI:
+    case Blight::WaveformMode::Content:
       return EPScreenMode::Content;
+    case Blight::WaveformMode::UI:
+      return EPScreenMode::UI;
     default:
       return (EPScreenMode)waveform;
   }
-}
 }
 
 void
