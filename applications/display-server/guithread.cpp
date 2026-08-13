@@ -244,7 +244,7 @@ GUIThread::clearFrameBuffer() {
   EPFramebuffer::instance()->swapBuffers(
     m_screenGeometry,
     EPContentType::Color,
-    EPScreenMode::Content,
+    EPScreenMode::Full,
     EPFramebuffer::UpdateFlag::FullUpdate
   );
 }
@@ -357,6 +357,18 @@ GUIThread::redraw(RepaintRequest& event) {
   );
 }
 
+EPScreenMode
+mapMode(Blight::WaveformMode waveform) {
+  switch (waveform) {
+    case Blight::WaveformMode::Content:
+      return EPScreenMode::Grayscale;
+    case Blight::WaveformMode::UI:
+      return EPScreenMode::Content;
+    default:
+      return (EPScreenMode)waveform;
+  }
+}
+
 void
 GUIThread::sendUpdate(
   const QRect& rect,
@@ -371,7 +383,7 @@ GUIThread::sendUpdate(
   instance->swapBuffers(
     rect,
     (EPContentType)contentType,
-    (EPScreenMode)waveform,
+    mapMode(waveform),
     (EPFramebuffer::UpdateFlag)mode
   );
   QPainter(&instance->previousBuffer)

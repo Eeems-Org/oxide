@@ -89,20 +89,20 @@ namespace BlightProtocol {
    * \brief Waveform to use for a repaint
    */
   typedef enum {
-    UltraFast = 0,
-    Fast = 1,
-    Animate = 2,
-    Content = 3,
-    UI = 4,
-    Full = 5,
+    UltraFast = 0, //!< Extremely fast update, meant for when drawing with a pen
+    Fast = 1,      //!< Fast update, meant for use with monochrome text
+    Animate = 2,   //!< Update meant for use with animation
+    Content = 3,   //!< High quality grayscale
+    UI = 4,        //!< Update meant for standard content (text, images, etc)
+    Full = 5,      //!< Full screen refresh
   } BlightWaveformMode;
 
   /*!
-   * \brief Waveform to use for a repaint
+   * \brief Content type hint for an update
    */
   typedef enum {
-    Monochrome = 0,
-    Color = 1,
+    Monochrome = 0, //!< Content is monochrome
+    Color = 1,      //!< Content has colour
   } BlightContentType;
 
   /*!
