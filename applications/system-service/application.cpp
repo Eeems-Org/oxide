@@ -7,6 +7,7 @@
 #include <signal.h>
 
 #include <QFile>
+#include <QPointer>
 #include <QTimer>
 #include <QTransform>
 
@@ -180,7 +181,11 @@ Application::pauseNoSecurityCheck(bool startIfNone) {
 #else
       Q_UNUSED(t);
 #endif
+      QPointer<Application> guard(this);
       interruptApplication();
+      if (guard.isNull()) {
+        return;
+      }
       if (startIfNone) {
         appsAPI->resumeIfNone();
       }
@@ -202,6 +207,7 @@ Application::interruptApplication() {
     "Interrupt Application",
     "interrupt",
     [this](Oxide::Sentry::Transaction* t) {
+      QPointer<Application> guard(this);
 #ifdef SENTRY
       if (t != nullptr) {
         sentry_transaction_set_tag(
@@ -222,7 +228,7 @@ Application::interruptApplication() {
         );
       }
       Oxide::Sentry::sentry_span(
-        t, "background", "Background application", [this]() {
+        t, "background", "Background application", [this, guard]() {
           switch (type()) {
             case Background:
               // Already in the background. How did we get here?
@@ -234,6 +240,9 @@ Application::interruptApplication() {
               kill(-m_process->processId(), SIGUSR2);
               timer.restart();
               delayUpTo(1000);
+              if (guard.isNull()) {
+                return;
+              }
               appsAPI->disconnectSignals(this, 2);
               if (stateNoSecurityCheck() == Inactive) {
                 O_INFO("Application crashed while pausing");
@@ -256,6 +265,9 @@ Application::interruptApplication() {
           }
         }
       );
+      if (guard.isNull()) {
+        return;
+      }
       if (flags().contains("exclusive")) {
         getCompositorDBus()->exitExclusiveMode().waitForFinished();
       }
@@ -321,9 +333,15 @@ Application::resumeNoSecurityCheck() {
         Q_UNUSED(t);
 #endif
       appsAPI->recordPreviousApplication();
-      O_INFO("Resuming " << path());
+      auto p = path();
+      O_INFO("Resuming " << p);
       appsAPI->pauseAll();
+      QPointer<Application> guard(this);
       uninterruptApplication();
+      if (guard.isNull()) {
+        O_INFO("Application deleted during resume " << p);
+        return;
+      }
       waitForResume();
       emit resumed();
       emit appsAPI->applicationResumed(qPath());
@@ -378,14 +396,18 @@ Application::uninterruptApplication() {
         t, "foreground", "Foreground application", [this]() {
           switch (type()) {
             case Background:
-            case Backgroundable:
+            case Backgroundable: {
               if (stateNoSecurityCheck() == Paused) {
                 kill(-m_process->processId(), SIGCONT);
               }
               O_INFO("Waiting for SIGUSR1 ack");
               appsAPI->connectSignals(this, 1);
               kill(-m_process->processId(), SIGUSR1);
+              QPointer<Application> guard(this);
               delayUpTo(1000);
+              if (guard.isNull()) {
+                return;
+              }
               appsAPI->disconnectSignals(this, 1);
               if (timer.isValid()) {
                 // No need to fall through, we've just assumed
@@ -401,19 +423,21 @@ Application::uninterruptApplication() {
               m_backgrounded = false;
               startSpan("background", "Application is in the background");
               break;
+            }
             case Foreground:
             default:
               kill(-m_process->processId(), SIGCONT);
               startSpan("foreground", "Application is in the foreground");
           }
+          auto compositor = getCompositorDBus();
+          compositor->raise(id());
+          compositor->focus(id());
         }
       );
     }
   );
-  auto compositor = getCompositorDBus();
-  compositor->raise(id());
-  compositor->focus(id());
 }
+
 void
 Application::stop() {
   if (!hasPermission("apps")) {
@@ -505,6 +529,7 @@ Application::stopNoSecurityCheck() {
     }
   );
 }
+
 void
 Application::signal(int signal) {
   if (m_process->processId()) {
@@ -659,7 +684,9 @@ Application::setConfig(const QVariantMap& config) {
 }
 void
 Application::started() {
-  if (flags().contains("exclusive")) {
+  bool exclusive = flags().contains("exclusive");
+  bool system = flags().contains("privileged");
+  if (exclusive || system) {
     O_DEBUG("Setting exclusive flag for " << name());
     QElapsedTimer waitTimer;
     waitTimer.start();
@@ -678,7 +705,14 @@ Application::started() {
       }
       QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
     }
-    compositor->setFlags(identifier, QStringList() << "exclusive");
+    QStringList flags;
+    if (exclusive) {
+      flags.append("exclusive");
+    }
+    if (system) {
+      flags.append("system");
+    }
+    compositor->setFlags(identifier, flags);
   }
   if (m_notification != nullptr) {
     m_notification->remove();
@@ -854,7 +888,9 @@ void
 Application::delayUpTo(int milliseconds) {
   timer.invalidate();
   timer.start();
-  while (timer.isValid() && !timer.hasExpired(milliseconds)) {
+  QPointer<Application> guard(this);
+  while (!guard.isNull() && timer.isValid() &&
+         !timer.hasExpired(milliseconds)) {
     QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
   }
 }

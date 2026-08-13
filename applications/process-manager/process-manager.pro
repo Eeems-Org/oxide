@@ -16,7 +16,7 @@ include(../../qmake/common.pri)
 target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
-applications.files = ../../assets/opt/usr/share/applications/codes.eeems.erode.oxide
+applications.files = codes.eeems.erode.oxide
 applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 

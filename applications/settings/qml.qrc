@@ -1,0 +1,15 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>widgets/BetterCheckBox.qml</file>
+        <file>widgets/BetterSpinBox.qml</file>
+        <file>categories/GeneralPage.qml</file>
+        <file>categories/DisplayPage.qml</file>
+        <file>categories/PowerPage.qml</file>
+        <file>categories/GesturesPage.qml</file>
+        <file>categories/WifiPage.qml</file>
+        <file>categories/NotificationsPage.qml</file>
+        <file alias="font/icomoon.ttf">../screenshot-viewer/font/icomoon.ttf</file>
+        <file alias="img/notifications/black.png">../launcher/img/notifications/black.png</file>
+    </qresource>
+</RCC>

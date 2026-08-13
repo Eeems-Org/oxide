@@ -68,6 +68,32 @@ namespace Oxide {
        * \accessors deviceName()
        */
       Q_PROPERTY(QString deviceName READ deviceName CONSTANT)
+      /*!
+       * \brief The height in pixels of the top system bar (topbar header)
+       *
+       * Set by the topbar on startup so that other OxideWindow instances can
+       * reserve the correct amount of space below it. Backed by
+       * SharedSettings so the value persists across processes.
+       *
+       * \accessors topSystemSpace(), setTopSystemSpace(int)
+       * \notifier topSystemSpaceChanged(int)
+       */
+      Q_PROPERTY(
+        int topSystemSpace READ topSystemSpace WRITE setTopSystemSpace NOTIFY
+          topSystemSpaceChanged
+      )
+      /*!
+       * \brief The height in pixels of the bottom system bar
+       *
+       * Backed by SharedSettings so the value persists across processes.
+       *
+       * \accessors bottomSystemSpace(), setBottomSystemSpace(int)
+       * \notifier bottomSystemSpaceChanged(int)
+       */
+      Q_PROPERTY(
+        int bottomSystemSpace READ bottomSystemSpace WRITE setBottomSystemSpace
+          NOTIFY bottomSystemSpaceChanged
+      )
       QML_NAMED_ELEMENT(Oxide)
       QML_SINGLETON
 
@@ -128,6 +154,32 @@ namespace Oxide {
        */
       QString deviceName();
       /*!
+       * \brief Get the top system bar height in pixels
+       * \return The top system bar height in pixels
+       * \sa topSystemSpace, setTopSystemSpace(int)
+       * \sa topSystemSpaceChanged(int)
+       */
+      int topSystemSpace();
+      /*!
+       * \brief Set the top system bar height in pixels
+       * \param height The top system bar height in pixels
+       * \sa topSystemSpace(), topSystemSpaceChanged(int)
+       */
+      void setTopSystemSpace(int height);
+      /*!
+       * \brief Get the bottom system bar height in pixels
+       * \return The bottom system bar height in pixels
+       * \sa bottomSystemSpace, setBottomSystemSpace(int)
+       * \sa bottomSystemSpaceChanged(int)
+       */
+      int bottomSystemSpace();
+      /*!
+       * \brief Set the bottom system bar height in pixels
+       * \param height The bottom system bar height in pixels
+       * \sa bottomSystemSpace(), bottomSystemSpaceChanged(int)
+       */
+      void setBottomSystemSpace(int height);
+      /*!
        * \brief Get a QBrush for a colour
        * \param color Colour
        * \param style Style
@@ -160,6 +212,16 @@ namespace Oxide {
        * \sa landscape, landscape()
        */
       void landscapeChanged(bool);
+      /*!
+       * \brief The value of topSystemSpace changed
+       * \sa topSystemSpace, topSystemSpace()
+       */
+      void topSystemSpaceChanged(int);
+      /*!
+       * \brief The value of bottomSystemSpace changed
+       * \sa bottomSystemSpace, bottomSystemSpace()
+       */
+      void bottomSystemSpaceChanged(int);
       /*!
        * \brief The value of waveform changed
        * \sa waveform, waveform(), setWaveform(Blight::WaveformMode waveform)

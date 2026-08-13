@@ -16,6 +16,7 @@
 #define CRASHPAD_HANDLER_MAC_EXCEPTION_HANDLER_SERVER_H_
 
 #include <mach/mach.h>
+#include <sys/types.h>
 
 #include "base/apple/scoped_mach_port.h"
 #include "base/files/file_path.h"
@@ -54,8 +55,11 @@ class ExceptionHandlerServer {
   //!     launchd. \a receive_port is not monitored for no-senders
   //!     notifications, and instead, Stop() must be called to provide a “quit”
   //!     signal.
+  //! \param[in] owner_process_id The process ID allowed to send runtime
+  //!     control messages.
   ExceptionHandlerServer(base::apple::ScopedMachReceiveRight receive_port,
-                         bool launchd);
+                         bool launchd,
+                         pid_t owner_process_id = -1);
 
   ExceptionHandlerServer(const ExceptionHandlerServer&) = delete;
   ExceptionHandlerServer& operator=(const ExceptionHandlerServer&) = delete;
@@ -94,6 +98,7 @@ class ExceptionHandlerServer {
  private:
   base::apple::ScopedMachReceiveRight receive_port_;
   base::apple::ScopedMachReceiveRight notify_port_;
+  pid_t owner_process_id_;
   bool launchd_;
 };
 

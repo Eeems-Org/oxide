@@ -3,6 +3,6 @@
     "description": "Application launcher",
     "bin": "/home/root/.vellum/bin/oxide",
     "type": "foreground",
-    "flags": ["hidden", "nopreload"],
+    "flags": ["hidden", "nopreload", "topbar"],
     "permissions": ["apps", "wifi", "power", "system", "notification", "frontlight"]
 }

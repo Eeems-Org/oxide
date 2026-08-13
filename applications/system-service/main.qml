@@ -24,13 +24,16 @@ Window{
         window.show();
         powerMenu.resumeApplication = state["resumeApplication"];
         if(state['powerMenu']){
-            powerMenu.open();
+            showPowerMenu();
         }
     }
     function shouldResume(){
         return controller.lidOpen;
     }
-
+    function showPowerMenu(){
+        window.raise();
+        powerMenu.open();
+    }
     Connections{
         target: controller
         property alias enableHeldKeys: window.enableHeldKeys
@@ -113,7 +116,7 @@ Window{
         running: false
         repeat: false
         interval: 700
-        onTriggered: powerMenu.open()
+        onTriggered: showPowerMenu()
     }
 
     Item{
@@ -193,7 +196,7 @@ Window{
         onActivated: controller.processManager()
     }
     Shortcut{
-        sequences: ["Meta+Backspace", "End+Backspace", StandardKey.Back]
+        sequences: ["Meta+Backspace", "End+Backspace"]
         context: Qt.ApplicationShortcut
         onActivated: controller.back()
     }
@@ -235,6 +238,7 @@ Window{
             }
         }
         contentItem: ColumnLayout {
+            rotation: Oxide.landscape ? 90 : 0
             spacing: 10
             Slider {
                 id: brightnessSlider

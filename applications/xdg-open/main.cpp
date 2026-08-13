@@ -4,6 +4,7 @@
 
 #include <QCommandLineParser>
 #include <QUrlQuery>
+#include <QUuid>
 #include <string>
 
 using namespace Oxide::Sentry;
@@ -26,10 +27,48 @@ launchOxideApp(const QString& name, const QStringList& launchArgs = {}) {
     return EXIT_FAILURE;
   }
   Application app(OXIDE_SERVICE, path.path(), bus);
+  if (!app.forking()) {
+    if (launchArgs.isEmpty()) {
+      app.launch().waitForFinished();
+    } else {
+      app.launchWithArgs(launchArgs).waitForFinished();
+    }
+    return EXIT_SUCCESS;
+  }
+  // Register a transient background clone and launch it
+  QVariantMap properties;
+  properties["name"] = QUuid::createUuid().toString(QUuid::Id128);
+  properties["bin"] = app.bin();
+  properties["displayName"] = app.displayName();
+  properties["description"] = app.description();
+  properties["type"] = (int)ApplicationType::Background;
+  properties["icon"] = app.icon();
+  properties["workingDirectory"] = app.workingDirectory();
+  properties["user"] = app.user();
+  properties["group"] = app.group();
+  properties["environment"] = app.environment();
+  properties["permissions"] = app.permissions();
+  properties["directories"] = app.directories();
+  properties["onPause"] = app.onPause();
+  properties["onResume"] = app.onResume();
+  properties["onStop"] = app.onStop();
+  QStringList cloneFlags = app.flags();
+  if (!cloneFlags.contains("transient")) {
+    cloneFlags.prepend("transient");
+  }
+  cloneFlags.removeAll("forking");
+  properties["flags"] = cloneFlags;
+  QDBusObjectPath clonePath = apps.registerApplication(properties);
+  if (clonePath.path() == "/") {
+    qDebug() << "Failed to register transient instance of"
+             << name.toStdString().c_str();
+    return EXIT_FAILURE;
+  }
+  Application clone(OXIDE_SERVICE, clonePath.path(), bus);
   if (launchArgs.isEmpty()) {
-    app.launch().waitForFinished();
+    clone.launch().waitForFinished();
   } else {
-    app.launchWithArgs(launchArgs).waitForFinished();
+    clone.launchWithArgs(launchArgs).waitForFinished();
   }
   return EXIT_SUCCESS;
 }

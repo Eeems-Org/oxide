@@ -48,7 +48,8 @@ OxideWindow::setGeometry(const QRect& rect) {
     qDebug() << "OxideWindow::setGeometry:" << mBackingStore->buffer()->surface
              << geometry() << rect;
   }
-  QPlatformWindow::setGeometry(rect);
+  QWindowSystemInterface::handleGeometryChange<
+    QWindowSystemInterface::SynchronousDelivery>(window(), rect);
   Blight::connection()->move(buffer, rect.x(), rect.y());
 }
 

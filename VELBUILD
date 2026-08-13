@@ -81,8 +81,6 @@ package() {
     # Launcher
     install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
         home/root/.vellum/bin/oxide
-    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/ \
-        home/root/.config/oxide.conf
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
         home/root/.local/share/applications/codes.eeems.oxide.oxide
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/icons/oxide/702x702/splash \
@@ -97,6 +95,18 @@ package() {
         home/root/.vellum/bin/corrupt
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
         home/root/.local/share/applications/codes.eeems.corrupt.oxide
+    # Top bar
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
+        home/root/.vellum/bin/stain
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/codes.eeems.stain.oxide
+    # Settings
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/share/oxide/libexec \
+        home/root/.vellum/share/oxide/libexec/codes.eeems.settings
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/codes.eeems.settings.oxide
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
+        home/root/.local/share/icons/oxide/48x48/apps/settings.png
     # Keyd configuration
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
         home/root/.config/keyd/oxide.conf
