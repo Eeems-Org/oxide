@@ -1,6 +1,5 @@
 #include "guithread.h"
 #ifdef EPAPER
-#include <epframebuffer.h>
 #include <fcntl.h>
 #include <libblight/clock.h>
 #include <liboxide/debug.h>
@@ -358,7 +357,7 @@ GUIThread::redraw(RepaintRequest& event) {
 }
 
 EPScreenMode
-mapMode(Blight::WaveformMode waveform) {
+GUIThread::mapMode(Blight::WaveformMode waveform) {
   switch (waveform) {
     case Blight::WaveformMode::Content:
       return EPScreenMode::Content;
