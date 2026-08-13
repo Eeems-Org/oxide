@@ -244,7 +244,7 @@ GUIThread::clearFrameBuffer() {
   EPFramebuffer::instance()->swapBuffers(
     m_screenGeometry,
     EPContentType::Color,
-    EPScreenMode::Full,
+    mapMode(Blight::WaveformMode::Full),
     EPFramebuffer::UpdateFlag::FullUpdate
   );
 }
@@ -360,13 +360,14 @@ GUIThread::redraw(RepaintRequest& event) {
 EPScreenMode
 mapMode(Blight::WaveformMode waveform) {
   switch (waveform) {
-    case Blight::WaveformMode::Content:
-      return EPScreenMode::Grayscale;
-    case Blight::WaveformMode::UI:
+    case BlightWaveformMode::Content:
+      return EPScreenMode::UI;
+    case BlightWaveformMode::UI:
       return EPScreenMode::Content;
     default:
       return (EPScreenMode)waveform;
   }
+}
 }
 
 void

@@ -35,10 +35,10 @@
 enum EPScreenMode {
   Pen = 0,       //!< Pen/handwriting overlay (fast, low-artifact)
   Mono = 1,      //!< Fast monochrome text update
-  Animate = 2,   //!< Animation-optimized update (no ghost accumulation)
-  Grayscale = 3, //!< High quality grayscale update
+  Animation = 2, //!< Animation-optimized update (no ghost accumulation)
+  UI = 3,        //!< User interface (high quality grayscale)
   Content = 4,   //!< General content (text, images, line art)
-  Full = 5,      //!< Full-screen refresh / persistent UI
+  Sleep = 5,     //!< Sleep screen / persistent UI
 };
 
 /*! Content type hint for the framebuffer controller. */
