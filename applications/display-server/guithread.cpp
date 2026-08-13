@@ -1,6 +1,5 @@
 #include "guithread.h"
 #ifdef EPAPER
-#include <epframebuffer.h>
 #include <fcntl.h>
 #include <libblight/clock.h>
 #include <liboxide/debug.h>
@@ -244,7 +243,7 @@ GUIThread::clearFrameBuffer() {
   EPFramebuffer::instance()->swapBuffers(
     m_screenGeometry,
     EPContentType::Color,
-    EPScreenMode::Content,
+    mapMode(Blight::WaveformMode::Full),
     EPFramebuffer::UpdateFlag::FullUpdate
   );
 }
@@ -357,6 +356,18 @@ GUIThread::redraw(RepaintRequest& event) {
   );
 }
 
+EPScreenMode
+GUIThread::mapMode(Blight::WaveformMode waveform) {
+  switch (waveform) {
+    case Blight::WaveformMode::Content:
+      return EPScreenMode::Content;
+    case Blight::WaveformMode::UI:
+      return EPScreenMode::UI;
+    default:
+      return (EPScreenMode)waveform;
+  }
+}
+
 void
 GUIThread::sendUpdate(
   const QRect& rect,
@@ -371,7 +382,7 @@ GUIThread::sendUpdate(
   instance->swapBuffers(
     rect,
     (EPContentType)contentType,
-    (EPScreenMode)waveform,
+    mapMode(waveform),
     (EPFramebuffer::UpdateFlag)mode
   );
   QPainter(&instance->previousBuffer)

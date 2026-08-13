@@ -1,5 +1,6 @@
 #pragma once
 #ifdef EPAPER
+#include <epframebuffer.h>
 #include <libblight/concurrentqueue.h>
 #include <libblight/libblight.h>
 #include <liboxide/threading.h>
@@ -87,5 +88,6 @@ private:
   void redraw(RepaintRequest& event);
   QList<std::shared_ptr<Surface>> visibleSurfaces();
   static QImage* getFrameBuffer();
+  EPScreenMode mapMode(Blight::WaveformMode waveform);
 };
 #endif
