@@ -115,7 +115,7 @@ SystemAPI::PrepareForSleep(bool suspending) {
             // Repaint to attempt to reduce ghosting
             Blight::connection()->repaint(
               m_buffer,
-              Blight::WaveformMode::UI,
+              Blight::WaveformMode::Full,
               Blight::ContentType::Color,
               Blight::UpdateMode::FullUpdate
             );
