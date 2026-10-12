@@ -462,7 +462,8 @@ namespace FB {
       case Client::DeviceType::RMPP:
         return 1620;
       case Client::DeviceType::RMPPM:
-        return 954;
+        // Chiappa framebuffer. Qt Screen and the DRM mode are not this size.
+        return 960;
       default:
         return 0;
     }
@@ -507,7 +508,7 @@ namespace FB {
       case Client::DeviceType::RMPP:
         return 1.153846;
       case Client::DeviceType::RMPPM:
-        return 0.6795;
+        return 960.0 / 1404.0;
       default:
         _WARN("Unknown device type, unable to scale rM1 screen to fit");
         return 1.0;

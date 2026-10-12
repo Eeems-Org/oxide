@@ -135,6 +135,7 @@ postosupgrade() {
         /etc/systemd/system/
     systemctl daemon-reload
     systemctl reload dbus
+    systemctl enable tarnish.service
 }
 
 predeinstall() {
@@ -217,6 +218,7 @@ oxide_display() {
             /etc/systemd/system/
         systemctl daemon-reload
         systemctl reload dbus
+        systemctl enable blight.service
     }
 
     predeinstall() {

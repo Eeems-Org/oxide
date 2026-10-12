@@ -5,7 +5,11 @@
 #include <liboxide/devicesettings.h>
 #include <private/qhighdpiscaling_p.h>
 #if defined(__arm__) || defined(__aarch64__)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+#include <private/qtouchfilter_p.h>
+#else
 #include <private/qevdevtouchfilter_p.h>
+#endif
 #endif
 
 #include <QFile>

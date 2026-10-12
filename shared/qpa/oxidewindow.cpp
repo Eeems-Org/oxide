@@ -41,14 +41,20 @@ OxideWindow::platformScreen() const {
 
 void
 OxideWindow::setGeometry(const QRect& rect) {
+  QPlatformWindow::setGeometry(rect);
+  if (mBackingStore == nullptr) {
+    return;
+  }
   auto buffer = mBackingStore->buffer();
+  if (buffer == nullptr) {
+    return;
+  }
   if (
     OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)
   ) {
-    qDebug() << "OxideWindow::setGeometry:" << mBackingStore->buffer()->surface
-             << geometry() << rect;
+    qDebug() << "OxideWindow::setGeometry:" << buffer->surface << geometry()
+             << rect;
   }
-  QPlatformWindow::setGeometry(rect);
   Blight::connection()->move(buffer, rect.x(), rect.y());
 }
 
@@ -72,12 +78,15 @@ OxideWindow::raise() {
   if (mBackingStore == nullptr) {
     return;
   }
+  auto buffer = mBackingStore->buffer();
+  if (buffer == nullptr) {
+    return;
+  }
   if (
     OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)
   ) {
-    qDebug() << "OxideWindow::raise" << mBackingStore->buffer()->surface;
+    qDebug() << "OxideWindow::raise" << buffer->surface;
   }
-  auto buffer = mBackingStore->buffer();
   auto maybe = Blight::connection()->raise(buffer);
   if (maybe.has_value()) {
     maybe.value()->wait();
@@ -89,12 +98,15 @@ OxideWindow::lower() {
   if (mBackingStore == nullptr) {
     return;
   }
+  auto buffer = mBackingStore->buffer();
+  if (buffer == nullptr) {
+    return;
+  }
   if (
     OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)
   ) {
-    qDebug() << "OxideWindow::lower" << mBackingStore->buffer()->surface;
+    qDebug() << "OxideWindow::lower" << buffer->surface;
   }
-  auto buffer = mBackingStore->buffer();
   auto maybe = Blight::connection()->lower(buffer);
   if (maybe.has_value()) {
     maybe.value()->wait();
@@ -104,7 +116,12 @@ OxideWindow::lower() {
 bool
 OxideWindow::close() {
   if (QPlatformWindow::close()) {
-    Blight::connection()->remove(mBackingStore->buffer());
+    if (mBackingStore != nullptr) {
+      auto buffer = mBackingStore->buffer();
+      if (buffer != nullptr) {
+        Blight::connection()->remove(buffer);
+      }
+    }
     return true;
   }
   return false;

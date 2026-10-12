@@ -28,7 +28,15 @@ OxideBackingStore::OxideBackingStore(QWindow* window)
 }
 
 OxideBackingStore::~OxideBackingStore() {
-  Blight::connection()->remove(mBuffer);
+  if (window() != nullptr && window()->handle() != nullptr) {
+    auto* handle = static_cast<OxideWindow*>(window()->handle());
+    if (handle->backingStore() == this) {
+      handle->setBackingStore(nullptr);
+    }
+  }
+  if (mBuffer != nullptr) {
+    Blight::connection()->remove(mBuffer);
+  }
 }
 
 QPaintDevice*

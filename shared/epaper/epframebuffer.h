@@ -21,10 +21,13 @@
 #define EPFR_OFFSET_FRAMEBUFFER 0x60
 #define EPFR_OFFSET_RENDERTARGET 0x6c
 #elif defined(__aarch64__)
+// Chiappa libqsgepaper EPFramebuffer::EPFramebuffer(): QImage at 0x88,
+// QImage* at 0xa0, QImage at 0xa8. swapBuffers_impl reads the QImage at 0x88.
+// 0xc8 is a flag word, not a QImage; painting it SIGBUSes.
 #define EPFR_SIZE 0x110
-#define EPFR_OFFSET_PREVIOUSBUFFER 0xc8
-#define EPFR_OFFSET_FRAMEBUFFER 0xa8
-#define EPFR_OFFSET_RENDERTARGET 0xc0
+#define EPFR_OFFSET_PREVIOUSBUFFER 0xa8
+#define EPFR_OFFSET_FRAMEBUFFER 0x88
+#define EPFR_OFFSET_RENDERTARGET 0xa0
 #else
 #error "Unsupported architecture"
 #endif
@@ -241,55 +244,25 @@ public:
   /*!
    * \brief Submit a display update for a region.
    *
-   * This writes the content of frameBuffer to frameBuffer before calling
-   * update() or sendTConUpdate()
-   *
    * \param region  Rectangle to update
-   * \param epct    Content type hint
    * \param type    Waveform mode.
    * \param flags   Update flags.
    */
   void swapBuffers(
     QRect region,
-    EPContentType epct,
     EPScreenMode type,
     QFlags<EPFramebuffer::UpdateFlag> flags
   );
 
   /*!
-   * \brief Submit a classified display update using content and mode maps.
-   *
-   * Unlike the simpler swapBuffers(QRect, EPContentType, EPScreenMode, ...)
-   * overload, this variant accepts per-pixel classification so the
-   * backend can apply different waveforms to different regions of the
-   * screen in a single update transaction.
-   *
-   * The implementation copies frameBuffer to frameBuffer, then builds
-   * an internal TCon command from the content and mode maps, and
-   * finally submits the update to the display hardware.
+   * \brief Submit a display update using a per-region screen mode map.
    *
    * \param region         Bounding rectangle of the dirty area
-   * \param contentMap     Per-rectangle content classification. Dictates which
-   *                       hardware waveform slots are used for different
-   *                       content types within the update region.
-   * \param screenModeMap  Per-region screen mode assignment. Controls the
-   *                       quality-vs-speed trade-off for each part of the
-   *                       display.
+   * \param screenModeMap  Per-region screen mode assignment.
    * \param flags          Update flags.
-   *
-   * Example usage:
-   * auto size = instance->frameBuffer.size();
-   * EPContentMap contentMap(size);
-   * contentMap.setTypeForRect(rect, EPContentType::Monochrome);
-   * EPScreenModeMap screenModeMap(size, {});
-   * screenModeMap.setModeForRegion(QRegion(rect), screenMode);
-   * EPFramebuffer::instance()->swapBuffers(
-   *   QRegion(rect), contentMap, screenModeMap, (EPFramebuffer::UpdateFlag)mode
-   * );
    */
   void swapBuffers(
     const QRegion& region,
-    const EPContentMap& contentMap,
     const EPScreenModeMap& screenModeMap,
     QFlags<UpdateFlag> flags
   );

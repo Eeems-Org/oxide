@@ -332,7 +332,8 @@ namespace Oxide {
       case DeviceType::RMPP:
         return 1620;
       case DeviceType::RMPPM:
-        return 954;
+        // Chiappa framebuffer. Qt Screen and the DRM mode are not this size.
+        return 960;
       default:
 #ifdef EPAPER
         return 0;

@@ -153,7 +153,7 @@ GUIThread::enqueue(
   Q_ASSERT(global || surface != nullptr);
   QRect intersected;
   if (global) {
-    intersected = region;
+    intersected = region.intersected(m_screenRect);
   } else {
     if (!surface->visible()) {
       O_WARNING("Surface is not currently visible" << surface->id());
@@ -242,7 +242,6 @@ GUIThread::clearFrameBuffer() {
   getFrameBuffer()->fill(Qt::white);
   EPFramebuffer::instance()->swapBuffers(
     m_screenGeometry,
-    EPContentType::Color,
     mapMode(Blight::WaveformMode::Full),
     EPFramebuffer::UpdateFlag::FullUpdate
   );
@@ -377,11 +376,11 @@ GUIThread::sendUpdate(
   unsigned int marker
 ) {
   Q_UNUSED(marker);
+  Q_UNUSED(contentType);
   auto instance = EPFramebuffer::instance();
   O_DEBUG("Sending screen update" << rect << waveform << contentType << mode);
   instance->swapBuffers(
     rect,
-    (EPContentType)contentType,
     mapMode(waveform),
     (EPFramebuffer::UpdateFlag)mode
   );

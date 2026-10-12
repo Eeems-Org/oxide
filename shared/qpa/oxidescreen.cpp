@@ -35,7 +35,13 @@ OxideScreen::format() const {
 
 QSizeF
 OxideScreen::physicalSize() const {
-  static const int dpi = 228;
+  int dpi = 228;
+  if (
+    deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RMPPM
+  ) {
+    // Paper Pro Move panel is 264 pixels per inch.
+    dpi = 264;
+  }
   return QSizeF(geometry().size()) / dpi * qreal(25.4);
 }
 

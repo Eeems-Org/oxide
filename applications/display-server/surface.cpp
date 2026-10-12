@@ -99,11 +99,19 @@ Surface::Surface(
 
 Surface::~Surface() {
   S_INFO("Surface destroyed");
-  if (data != MAP_FAILED) {
-    ::munmap(data, m_stride * m_geometry.height());
-  }
-  ::close(m_fd);
   setVisible(false);
+  m_image.reset();
+  if (data != reinterpret_cast<uchar*>(MAP_FAILED)) {
+    ::munmap(
+      data,
+      static_cast<size_t>(m_stride) * static_cast<size_t>(m_geometry.height())
+    );
+    data = reinterpret_cast<uchar*>(MAP_FAILED);
+  }
+  if (m_fd >= 0) {
+    ::close(m_fd);
+    m_fd = -1;
+  }
 #ifdef EPAPER
   repaint();
 #else

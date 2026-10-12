@@ -19,10 +19,11 @@
 #include <thread>
 #include <vector>
 
-#if defined(__arm__) || defined(__aarch64__)
-namespace KeyboardMap = QEvdevKeyboardMap;
-#else
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0) || \
+  !(defined(__arm__) || defined(__aarch64__))
 namespace KeyboardMap = QKeyboardMap;
+#else
+namespace KeyboardMap = QEvdevKeyboardMap;
 #endif
 
 class OxideEventManager;
