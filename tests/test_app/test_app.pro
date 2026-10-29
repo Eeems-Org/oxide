@@ -16,7 +16,7 @@ include(../../qmake/common.pri)
 target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
-applications.files = ../../assets/opt/usr/share/applications/test_app.oxide
+applications.files = test_app.oxide
 applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 

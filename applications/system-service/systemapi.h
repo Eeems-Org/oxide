@@ -130,6 +130,7 @@ public slots:
   void uninhibitPowerOff(QDBusMessage message);
   void toggleSwipes();
   void reload(QDBusMessage message);
+  void showPowerMenu(QDBusMessage message);
 
 signals:
   void leftAction();
@@ -161,6 +162,7 @@ private:
   qint64 lockTimestamp = 0;
   QTimer suspendTimer;
   QTimer lockTimer;
+  QTimer activityTimer;
   QSettings settings;
   QStringList sleepInhibitors;
   QStringList powerOffInhibitors;

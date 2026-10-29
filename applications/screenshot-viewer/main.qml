@@ -8,6 +8,7 @@ import "./widgets"
 OxideWindow {
     id: window
     objectName: "window"
+    reserveSystemSpace: true
     headerBackgroundColor: "white"
     backgroundColor: "white"
     color: "black"

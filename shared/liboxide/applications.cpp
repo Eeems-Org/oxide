@@ -10,21 +10,18 @@
 
 using namespace codes::eeems::oxide1;
 
-const QList<QString> SystemFlags{
-  "system",
-  "transient",
-};
+const QList<QString> SystemFlags{"system", "transient", "privileged"};
 const QList<QString> Flags{
   "autoStart",
   "hidden",
   "forking",
   "noannounce",
   "nosavescreen",
-  "system",
   "nopreload",
   "nopreload.sysfs",
   "nopreload.compositor",
-  "exclusive"
+  "exclusive",
+  "topbar"
 };
 const QList<QString> DeprecatedFlags{"chroot", "nosplash"};
 

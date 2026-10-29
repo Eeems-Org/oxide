@@ -19,6 +19,7 @@
 #include <mach/mach.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include <memory>
 #include <tuple>
@@ -407,6 +408,7 @@ class HandlerStarter final : public NotifyServer::DefaultInterface {
       argv.push_back("--wait-for-upload");
     }
 
+    argv.push_back(FormatArgumentInt("client-pid", getpid()));
     argv.push_back(FormatArgumentInt("handshake-fd", server_write_fd.get()));
 
     // When restarting, reset the system default crash handler first. Otherwise,

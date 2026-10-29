@@ -3,7 +3,7 @@
     "description": "A simple drawing application",
     "icon": "oxide:ether-48",
     "bin": "/home/root/.vellum/bin/ether",
-    "flags": ["nopreload"],
+    "flags": ["nopreload", "topbar"],
     "type": "foreground",
     "permissions": []
 }

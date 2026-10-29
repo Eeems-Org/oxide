@@ -1,19 +1,10 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
-        <file>widgets/MenuButton.qml</file>
         <file>widgets/CustomMenu.qml</file>
         <file>font/icomoon.ttf</file>
-        <file>widgets/BetterCheckBox.qml</file>
-        <file>widgets/BetterSpinBox.qml</file>
         <file>img/icon.png</file>
-        <file>widgets/WifiMenu.qml</file>
-        <file>widgets/SettingsPopup.qml</file>
-        <file>widgets/SwipeArea.qml</file>
         <file>widgets/CalendarMenu.qml</file>
-        <file>widgets/NotificationsPopup.qml</file>
-        <file>img/notifications/black.png</file>
-        <file>img/notifications/white.png</file>
         <file>widgets/AppItem.qml</file>
         <file>js/moment.js</file>
     </qresource>

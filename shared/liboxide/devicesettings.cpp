@@ -460,8 +460,8 @@ namespace Oxide {
     std::function<void()> callback
   ) {
     bool initialValue = keyboardAttached();
-    onInputDevicesChanged([this, callback, initialValue] {
-      static bool attached = initialValue;
+    bool attached = initialValue;
+    onInputDevicesChanged([this, callback, initialValue, attached] mutable {
       bool nowAttached = keyboardAttached();
       if (attached != nowAttached) {
         callback();

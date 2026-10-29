@@ -82,7 +82,7 @@ namespace Oxide {
         delete entry.notifier;
         entry.notifier = nullptr;
       }
-      if (entry.fd > 0) {
+      if (entry.fd >= 0) {
         ::close(entry.fd);
         entry.fd = -1;
       }
@@ -221,7 +221,24 @@ namespace Oxide {
       return false;
     }
     auto& entry = notifiers[idx];
-    return entry.notifier != nullptr && entry.fd > 0;
+    return entry.notifier != nullptr && entry.fd >= 0;
+  }
+  void SignalHandler::removeNotifier(int signal) {
+    int idx = signalIndex(signal);
+    if (idx < 0 || idx > 7) {
+      return;
+    }
+    auto& entry = notifiers[idx];
+    if (entry.notifier != nullptr) {
+      entry.notifier->disconnect();
+      delete entry.notifier;
+      entry.notifier = nullptr;
+    }
+    if (entry.fd >= 0) {
+      ::close(entry.fd);
+      entry.fd = -1;
+    }
+    ::signal(signal, SIG_DFL);
   }
 } // namespace Oxide
 

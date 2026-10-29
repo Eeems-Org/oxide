@@ -20,6 +20,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickItem>
 #include <QSet>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QStringList>
 #include <QTextStream>

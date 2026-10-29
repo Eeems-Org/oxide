@@ -67,6 +67,7 @@ An array of flags for the application.
 - ``"exclusive"``: Application is to be run in exclusive mode. This means that the compositor will not be sending input to the application, or handling displaying anything to the screen while this application is in the foreground.
 - ``"noannounce"``: Do not announce when this application is being started
 - ``"forking"``: Allow this application to be launched multiple times from the launcher. Each launch from the launcher creates a fresh independent instance. The task switcher will show all running instances.
+- ``privileged``: This application is to be given system privileges with the compositor.
 
 displayName
 -----------

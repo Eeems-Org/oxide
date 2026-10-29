@@ -11,6 +11,7 @@
 #include <QTimer>
 
 #include "apibase.h"
+#include "systemapi.h"
 
 #define powerAPI PowerAPI::singleton()
 
@@ -25,6 +26,8 @@ class PowerAPI : public APIBase {
       batteryTemperatureChanged
   )
   Q_PROPERTY(int chargerState READ chargerState NOTIFY chargerStateChanged)
+
+  friend class SystemAPI;
 
 public:
   static PowerAPI* singleton(PowerAPI* self = nullptr);

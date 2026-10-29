@@ -4,263 +4,230 @@
 #include <unistd.h>
 
 #include <QDebug>
-#include <QDir>
 #include <QFile>
-#include <QIODevice>
-#include <QSet>
-#include <QStandardPaths>
-#include <QTextStream>
-#include <fstream>
-#include <memory>
-#include <sstream>
+#include <QSettings>
+#include <QTimer>
 
-QSet<QString> settings = {"columns", "autoStartApplication"};
-QSet<QString> booleanSettings{
-  "showWifiDb",
-  "showBatteryPercent",
-  "showBatteryTemperature",
-  "showDate"
-};
-QList<QString> configDirectoryPaths =
-  {"/opt/etc/draft", "/etc/draft", "/home/root/.config/draft"};
-QList<QString> configFileDirectoryPaths =
-  {"/opt/etc", "/etc", "/home/root/.config", "/home/root/.vellum/etc"};
-
-QFile*
-getConfigFile() {
-  for (auto path : configFileDirectoryPaths) {
-    QDir dir(path);
-    if (dir.exists() && !dir.isEmpty()) {
-      QFile* file = new QFile(path + "/oxide.conf");
-      if (file->exists()) {
-        return file;
-      }
+Controller::Controller(QObject* parent)
+  : QObject(parent)
+  , m_appList(new AppListModel(this))
+  , m_refreshTimer(new QTimer(this)) {
+  m_refreshTimer->setSingleShot(true);
+  m_refreshTimer->setInterval(100);
+  connect(m_refreshTimer, &QTimer::timeout, this, &Controller::refreshApps);
+  for (const auto& path : {
+         "/home/root/.config/oxide.conf",
+         "/opt/etc/oxide.conf",
+         "/etc/oxide.conf",
+       }) {
+    QFile file(path);
+    if (!file.exists()) {
+      continue;
     }
+    qDebug() << "Migrating settings from" << path;
+    QSettings oxideConf(path, QSettings::IniFormat);
+    if (oxideConf.contains("columns")) {
+      sharedSettings.set_columns(oxideConf.value("columns").toInt());
+    }
+    if (oxideConf.contains("autoStartApplication")) {
+      sharedSettings.set_autoStartApplication(
+        oxideConf.value("autoStartApplication").toString()
+      );
+    }
+    file.remove();
   }
-  return nullptr;
+
+  auto bus = QDBusConnection::systemBus();
+  if (!bus.isConnected() || !bus.interface()) {
+    qFatal("D-Bus system bus connection unavailable");
+  }
+  qDebug() << "Waiting for tarnish to start up";
+  int retries = 30;
+  while (!bus.interface()->registeredServiceNames().value().contains(
+    OXIDE_SERVICE
+  )) {
+    if (!retries--) {
+      qFatal("Timed out waiting for %s to register on D-Bus", OXIDE_SERVICE);
+    }
+    struct timespec args{
+      .tv_sec = 1,
+      .tv_nsec = 0,
+    },
+      res;
+    nanosleep(&args, &res);
+  }
+  qDebug() << "Requesting APIs";
+  api = new General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+  connect(api, &General::aboutToQuit, qApp, &QGuiApplication::quit);
+  auto reply = api->requestAPI("power");
+  reply.waitForFinished();
+  if (reply.isError()) {
+    qDebug() << reply.error();
+    qFatal("Could not request power API");
+  }
+  auto path = ((QDBusObjectPath)reply).path();
+  if (path == "/") {
+    qDebug() << "API not available";
+    qFatal("Power API was not available");
+  }
+  powerApi = new Power(OXIDE_SERVICE, path, bus);
+  // Connect to signals
+  connect(
+    powerApi,
+    &Power::batteryLevelChanged,
+    this,
+    &Controller::batteryLevelChanged
+  );
+  connect(
+    powerApi,
+    &Power::batteryStateChanged,
+    this,
+    &Controller::batteryStateChanged
+  );
+  connect(
+    powerApi,
+    &Power::batteryTemperatureChanged,
+    this,
+    &Controller::batteryTemperatureChanged
+  );
+  connect(
+    powerApi,
+    &Power::chargerStateChanged,
+    this,
+    &Controller::chargerStateChanged
+  );
+  connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
+  connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
+  reply = api->requestAPI("system");
+  reply.waitForFinished();
+  if (reply.isError()) {
+    qDebug() << reply.error();
+    qFatal("Could not request system API");
+  }
+  path = ((QDBusObjectPath)reply).path();
+  if (path == "/") {
+    qDebug() << "API not available";
+    qFatal("System API was not available");
+  }
+  systemApi = new System(OXIDE_SERVICE, path, bus);
+  connect(
+    systemApi,
+    &System::powerOffInhibitedChanged,
+    this,
+    &Controller::powerOffInhibitedChanged
+  );
+  connect(systemApi, &System::powerOffInhibitedChanged, [=](bool value) {
+    qDebug() << "Power Off Inhibited:" << value;
+  });
+  connect(
+    systemApi,
+    &System::sleepInhibitedChanged,
+    this,
+    &Controller::sleepInhibitedChanged
+  );
+  emit powerOffInhibitedChanged(powerOffInhibited());
+  emit sleepInhibitedChanged(sleepInhibited());
+  reply = api->requestAPI("apps");
+  reply.waitForFinished();
+  if (reply.isError()) {
+    qDebug() << reply.error();
+    qFatal("Could not request apps API");
+  }
+  path = ((QDBusObjectPath)reply).path();
+  if (path == "/") {
+    qDebug() << "API not available";
+    qFatal("Apps API was not available");
+  }
+  appsApi = new Apps(OXIDE_SERVICE, path, bus);
+  connect(
+    appsApi,
+    &Apps::applicationUnregistered,
+    this,
+    &Controller::unregisterApplication
+  );
+  connect(
+    appsApi,
+    &Apps::applicationRegistered,
+    this,
+    &Controller::registerApplication
+  );
+  reply = api->requestAPI("notification");
+  reply.waitForFinished();
+  if (reply.isError()) {
+    qDebug() << reply.error();
+    qFatal("Could not request notification API");
+  }
+  path = ((QDBusObjectPath)reply).path();
+  if (path == "/") {
+    qDebug() << "API not available";
+    qFatal("Notification API was not available");
+  }
+  notificationApi = new Notifications(OXIDE_SERVICE, path, bus);
+
+  // SharedSettings signal forwarding
+  connect(
+    &sharedSettings,
+    &Oxide::SharedSettings::columnsChanged,
+    this,
+    &Controller::columnsChanged
+  );
+  connect(
+    &sharedSettings,
+    &Oxide::SharedSettings::autoStartApplicationChanged,
+    this,
+    &Controller::autoStartApplicationChanged
+  );
 }
-bool
-configFileExists() {
-  auto configFile = getConfigFile();
-  bool exists = configFile != nullptr && configFile->exists();
-  configFile->close();
-  delete configFile;
-  return exists;
-}
+
 void
-Controller::loadSettings() {
-  // If the config directory doesn't exist,
-  // then print an error and stop.
-  qDebug() << "parsing config file...";
-  if (configFileExists()) {
-    auto configFile = getConfigFile();
-    if (!configFile->open(QIODevice::ReadOnly | QIODevice::Text)) {
-      qCritical() << "Couldn't read the config file. "
-                  << configFile->fileName();
-      return;
-    }
-    QTextStream in(configFile);
-    while (!in.atEnd()) {
-      QString line = in.readLine();
-      if (!line.startsWith("#") && !line.isEmpty()) {
-        QStringList parts = line.split("=");
-        if (parts.length() != 2) {
-          O_WARNING("  Wrong format on " << line);
-          continue;
-        }
-        QString lhs = parts.at(0).trimmed();
-        QString rhs = parts.at(1).trimmed();
-        if (booleanSettings.contains(lhs)) {
-          auto property = lhs.toStdString();
-          auto value = rhs.toLower();
-          auto boolValue = value == "true" || value == "t" || value == "y" ||
-                           value == "yes" || value == "1";
-          setProperty(property.c_str(), boolValue);
-          qDebug() << "  " << (property + ":").c_str() << boolValue;
-        } else if (settings.contains(lhs)) {
-          auto property = lhs.toStdString();
-          setProperty(property.c_str(), rhs);
-          qDebug() << "  " << (property + ":").c_str()
-                   << rhs.toStdString().c_str();
-        }
-      }
-    }
-    configFile->close();
-    delete configFile;
-  }
-  qDebug() << "Finished parsing config file.";
-  setNotificationDisplayTime(notificationApi->displayTime());
-  auto sleepAfter = systemApi->autoSleep();
-  qDebug() << "Automatic sleep" << sleepAfter;
-  setAutomaticSleep(sleepAfter);
-  setSleepAfter(sleepAfter);
-  auto lockOnSuspend = systemApi->lockOnSuspend();
-  qDebug() << "Lock on suspend" << lockOnSuspend;
-  setLockOnSuspend(lockOnSuspend);
-  auto autoLock = systemApi->autoLock();
-  qDebug() << "Automatic lock" << autoLock;
-  setAutomaticLock(autoLock);
-  setLockAfter(autoLock);
-  for (short i = 1; i <= 4; i++) {
-    setSwipeLength(i, systemApi->getSwipeLength(i));
-  }
-  qDebug() << "Updating UI with settings from config file...";
-  if (root == nullptr) {
+Controller::setRoot(QObject* newRoot) {
+  root = newRoot;
+  if (newRoot == nullptr) {
     return;
   }
-  // Populate settings in UI
-  QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
-  if (!columnsSpinBox) {
-    qDebug() << "Can't find columnsSpinBox";
-  } else {
-    columnsSpinBox->setProperty("value", columns());
-  }
-  QObject* sleepAfterSpinBox = root->findChild<QObject*>("sleepAfterSpinBox");
-  if (!sleepAfterSpinBox) {
-    qDebug() << "Can't find sleepAfterSpinBox";
-  } else {
-    sleepAfterSpinBox->setProperty("value", this->sleepAfter());
-  }
-  QObject* swipeLengthRightSpinBox =
-    root->findChild<QObject*>("swipeLengthRightSpinBox");
-  if (!swipeLengthRightSpinBox) {
-    qDebug() << "Can't find swipeLengthRightSpinBox";
-  } else {
-    swipeLengthRightSpinBox->setProperty("value", this->swipeLengthRight());
-  }
-  QObject* swipeLengthLeftSpinBox =
-    root->findChild<QObject*>("swipeLengthLeftSpinBox");
-  if (!swipeLengthLeftSpinBox) {
-    qDebug() << "Can't find swipeLengthLeftSpinBox";
-  } else {
-    swipeLengthLeftSpinBox->setProperty("value", this->swipeLengthLeft());
-  }
-  QObject* swipeLengthUpSpinBox =
-    root->findChild<QObject*>("swipeLengthUpSpinBox");
-  if (!swipeLengthUpSpinBox) {
-    qDebug() << "Can't find swipeLengthUpSpinBox";
-  } else {
-    swipeLengthUpSpinBox->setProperty("value", this->swipeLengthUp());
-  }
-  QObject* swipeLengthDownSpinBox =
-    root->findChild<QObject*>("swipeLengthDownSpinBox");
-  if (!swipeLengthDownSpinBox) {
-    qDebug() << "Can't find swipeLengthDownSpinBox";
-  } else {
-    swipeLengthDownSpinBox->setProperty("value", this->swipeLengthDown());
-  }
-  QObject* notificationDisplayTimeSpinBox =
-    root->findChild<QObject*>("notificationDisplayTimeSpinBox");
-  if (!notificationDisplayTimeSpinBox) {
-    qDebug() << "Can't find notificationDisplayTimeSpinBox";
-  } else {
-    notificationDisplayTimeSpinBox->setProperty(
-      "value", this->notificationDisplayTime()
-    );
-  }
-  qDebug() << "Finished updating UI.";
+  batteryLevelChanged(powerApi->batteryLevel());
+  batteryStateChanged(powerApi->batteryState());
+  batteryTemperatureChanged(powerApi->batteryTemperature());
+  chargerStateChanged(powerApi->chargerState());
 }
+
 void
-Controller::saveSettings() {
-  qDebug() << "Saving configuration...";
-  QSet<QString> items = settings;
-  items.detach();
-  QSet<QString> booleanItems = booleanSettings;
-  booleanItems.detach();
-  std::stringstream buffer;
-  auto configFile = getConfigFile();
-  if (configFile == nullptr) {
-    configFile = new QFile(configFileDirectoryPaths.last() + "/oxide.conf");
-  }
-  QTextStream stream(configFile);
-  if (configFile->exists()) {
-    if (!configFile->open(QIODevice::ReadWrite | QIODevice::Text)) {
-      qCritical() << "Unable to edit the config file. "
-                  << configFile->fileName();
-      return;
-    }
-    while (!stream.atEnd()) {
-      QString line = stream.readLine();
-      if (line.startsWith("#")) {
-        buffer << line.toStdString() << std::endl;
-        continue;
-      }
-      QStringList parts = line.split("=");
-      if (parts.length() != 2) {
-        buffer << line.toStdString() << std::endl;
-        continue;
-      }
-      QString lhs = parts.at(0);
-      QString rhs = parts.at(1);
-      auto propertyName = lhs.toStdString();
-      if (booleanItems.contains(lhs)) {
-        if (property(propertyName.c_str()).toBool()) {
-          rhs = "yes";
-        } else {
-          rhs = "no";
-        }
-        items.remove(lhs);
-        booleanItems.remove(lhs);
-      } else if (items.contains(lhs)) {
-        rhs = property(propertyName.c_str()).toString();
-        items.remove(lhs);
-      }
-      auto value = rhs.toStdString();
-      qDebug() << " " << (propertyName + ":").c_str() << value.c_str();
-      buffer << propertyName << "=" << value << std::endl;
-    }
-  } else if (!configFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
-    qCritical() << "Unable to create the config file. "
-                << configFile->fileName();
+Controller::startup() {
+  if (autoStartApplication().isEmpty()) {
+    qDebug() << "No auto start application";
     return;
   }
-  for (QString item : items) {
-    auto propertyName = item.toStdString();
-    auto value = property(item.toStdString().c_str()).toString().toStdString();
-    qDebug() << " " << (propertyName + ":").c_str() << value.c_str();
-    buffer << propertyName << "=" << value << std::endl;
+  auto app = m_appList->findByName(autoStartApplication());
+  if (app == nullptr) {
+    qDebug() << "Unable to find auto start application";
+    return;
   }
-  for (QString item : booleanItems) {
-    auto propertyName = item.toStdString();
-    auto value = property(item.toStdString().c_str()).toBool() ? "yes" : "no";
-    qDebug() << " " << (propertyName + ":").c_str() << value;
-    buffer << propertyName << "=" << value << std::endl;
-  }
-  configFile->resize(0);
-  configFile->seek(0);
-  stream.seek(0);
-  stream << QString::fromStdString(buffer.str());
-  configFile->close();
-  delete configFile;
-  if (!m_automaticSleep) {
-    systemApi->setAutoSleep(0);
-  } else {
-    systemApi->setAutoSleep(m_sleepAfter);
-    auto sleepAfter = systemApi->autoSleep();
-    if (sleepAfter != m_sleepAfter) {
-      setSleepAfter(sleepAfter);
-      setAutomaticSleep(sleepAfter);
-    }
-  }
-  systemApi->setLockOnSuspend(m_lockOnSuspend);
-  if (!m_automaticLock) {
-    systemApi->setAutoLock(0);
-  } else {
-    systemApi->setAutoLock(m_lockAfter);
-    auto lockAfter = systemApi->autoLock();
-    if (lockAfter != m_lockAfter) {
-      setLockAfter(lockAfter);
-      setAutomaticLock(lockAfter);
-    }
-  }
-  for (short i = 1; i <= 4; i++) {
-    systemApi->setSwipeLength(i, getSwipeLength(i));
-  }
-  notificationApi->setDisplayTime(m_notificationDisplayTime);
-  qDebug() << "Done saving configuration.";
+  app->execute();
 }
-QList<QObject*>
-Controller::getApps() {
+
+void
+Controller::setLocale(const QString& locale) {
+  deviceSettings.setLocale(locale);
+  emit localeChanged(locale);
+}
+
+void
+Controller::breadcrumb(QString category, QString message, QString type) {
+#ifdef SENTRY
+  sentry_breadcrumb(
+    category.toStdString().c_str(),
+    message.toStdString().c_str(),
+    type.toStdString().c_str()
+  );
+#else
+  Q_UNUSED(category);
+  Q_UNUSED(message);
+  Q_UNUSED(type);
+#endif
+}
+
+void
+Controller::refreshApps() {
   auto bus = QDBusConnection::systemBus();
   auto running = appsApi->runningApplications();
   auto paused = appsApi->pausedApplications();
@@ -270,80 +237,17 @@ Controller::getApps() {
     }
     running.insert(key, paused[key]);
   }
-  for (auto item : appsApi->applications()) {
-    auto path = item.value<QDBusObjectPath>().path();
-    Application app(OXIDE_SERVICE, path, bus, this);
-    if (app.hidden() || app.transient()) {
-      continue;
-    }
-    auto name = app.name();
-    auto appItem = getApplication(name);
-    if (appItem == nullptr) {
-      qDebug() << "New application:" << name;
-      appItem = new AppItem(this);
-      applications.append(appItem);
-    }
-    auto displayName = app.displayName();
-    if (displayName.isEmpty()) {
-      displayName = name;
-    }
-    appItem->setProperty("path", path);
-    appItem->setProperty("name", name);
-    appItem->setProperty("displayName", displayName);
-    appItem->setProperty("desc", app.description());
-    appItem->setProperty("call", app.bin());
-    appItem->setProperty("running", running.contains(name));
-    auto icon = app.icon();
-    if (!icon.isEmpty() && QFile(icon).exists()) {
-      appItem->setProperty("imgFile", "file:" + icon);
-    } else {
-      appItem->setProperty("imgFile", "");
-    }
-    if (!appItem->ok()) {
-      qDebug() << "Invalid item" << appItem->property("name").toString();
-      applications.removeAll(appItem);
-      appItem->deleteLater();
-    }
-  }
-  // Sort by name
-  std::sort(
-    applications.begin(),
-    applications.end(),
-    [=](const QObject* a, const QObject* b) -> bool {
-      return a->property("displayName").toString() <
-             b->property("displayName").toString();
-    }
-  );
-  return applications;
+  m_appList->update(OXIDE_SERVICE, this, appsApi->applications(), running);
 }
+
 void
-Controller::setAutoStartApplication(QString autoStartApplication) {
-  m_autoStartApplication = autoStartApplication;
-  emit autoStartApplicationChanged(autoStartApplication);
-}
-AppItem*
-Controller::getApplication(QString name) {
-  for (auto app : applications) {
-    if (app->property("name").toString() == name) {
-      return reinterpret_cast<AppItem*>(app);
-    }
-  }
-  return nullptr;
+Controller::scheduleRefresh() {
+  m_refreshTimer->start();
 }
 
 void
 Controller::importDraftApps() {
   QProcess::execute("update-desktop-database", QStringList() << "--verbose");
-}
-void
-Controller::powerOff() {
-  qDebug() << "Powering off...";
-  systemApi->powerOff();
-}
-void
-Controller::reboot() {
-  qDebug() << "Rebooting...";
-  systemApi->reboot();
 }
 void
 Controller::suspend() {
@@ -356,130 +260,144 @@ Controller::lock() {
   qDebug() << "Locking...";
   appsApi->openLockScreen();
 }
-inline void
-updateUI(QObject* ui, const char* name, const QVariant& value) {
+
+void
+Controller::unregisterApplication(QDBusObjectPath path) {
+  Q_UNUSED(path)
+  scheduleRefresh();
+}
+
+void
+Controller::registerApplication(QDBusObjectPath path) {
+  qDebug() << "New application detected" << path.path();
+  scheduleRefresh();
+}
+
+void
+Controller::batteryAlert() {
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
   if (ui) {
-    ui->setProperty(name, value);
+    ui->setProperty("alert", true);
   }
 }
+
 void
-Controller::updateUIElements() {}
-void
-Controller::setAutomaticSleep(bool state) {
-  m_automaticSleep = state;
-  if (state) {
-    qDebug() << "Enabling automatic sleep";
-  } else {
-    qDebug() << "Disabling automatic sleep";
+Controller::batteryLevelChanged(int level) {
+  qDebug() << "Battery level: " << level;
+  if (root == nullptr) {
+    return;
   }
-  emit automaticSleepChanged(state);
-}
-void
-Controller::setLockOnSuspend(bool state) {
-  m_lockOnSuspend = state;
-  if (state) {
-    qDebug() << "Enabling lock on suspend";
-  } else {
-    qDebug() << "Disabling lock on suspend";
-  }
-  emit lockOnSuspendChanged(state);
-}
-void
-Controller::setAutomaticLock(bool state) {
-  m_automaticLock = state;
-  if (state) {
-    qDebug() << "Enabling automatic lock";
-  } else {
-    qDebug() << "Disabling automatic lock";
-  }
-  emit automaticLockChanged(state);
-}
-void
-Controller::setColumns(int columns) {
-  m_columns = columns;
-  if (root != nullptr) {
-    qDebug() << "Columns: " << columns;
-    emit columnsChanged(columns);
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("level", level);
   }
 }
+
 void
-Controller::setSwipeLength(int direction, int length) {
-  switch (direction) {
-    case SwipeDirection::Right:
-      m_swipeLengthRight = length;
-      emit swipeLengthRightChanged(length);
+Controller::batteryStateChanged(int state) {
+  switch (state) {
+    case BatteryCharging:
+      qDebug() << "Battery state: Charging";
       break;
-    case SwipeDirection::Left:
-      m_swipeLengthLeft = length;
-      emit swipeLengthLeftChanged(length);
+    case BatteryNotPresent:
+      qDebug() << "Battery state: Not Present";
       break;
-    case SwipeDirection::Up:
-      m_swipeLengthUp = length;
-      emit swipeLengthUpChanged(length);
+    case BatteryDischarging:
+      qDebug() << "Battery state: Discharging";
       break;
-    case SwipeDirection::Down:
-      m_swipeLengthDown = length;
-      emit swipeLengthDownChanged(length);
-      break;
+    case BatteryUnknown:
     default:
-      qDebug() << "Invalid swipe direction: " << direction;
+      qDebug() << "Battery state: Unknown";
+  }
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    if (state != BatteryNotPresent) {
+      ui->setProperty("present", true);
+    }
+    switch (state) {
+      case BatteryCharging:
+        ui->setProperty("charging", true);
+        break;
+      case BatteryNotPresent:
+        ui->setProperty("present", false);
+        break;
+      case BatteryDischarging:
+        ui->setProperty("charging", false);
+        break;
+      case BatteryUnknown:
+      default:
+        ui->setProperty("charging", false);
+    }
+  }
+}
+
+void
+Controller::batteryTemperatureChanged(int temperature) {
+  qDebug() << "Battery temperature: " << temperature;
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("temperature", temperature);
+  }
+}
+
+void
+Controller::batteryWarning() {
+  qDebug() << "Battery Warning!";
+  if (root == nullptr) {
+    return;
+  }
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    ui->setProperty("warning", true);
+  }
+}
+
+void
+Controller::chargerStateChanged(int state) {
+  switch (state) {
+    case ChargerConnected:
+      qDebug() << "Charger state: Connected";
       break;
-  }
-}
-int
-Controller::getSwipeLength(int direction) {
-  switch (direction) {
-    case SwipeDirection::Right:
-      return swipeLengthRight();
-    case SwipeDirection::Left:
-      return swipeLengthLeft();
-    case SwipeDirection::Up:
-      return swipeLengthUp();
-    case SwipeDirection::Down:
-      return swipeLengthDown();
+    case ChargerNotPresent:
+      qDebug() << "Charger state: Not Present";
+      break;
+    case ChargerNotConnected:
+      qDebug() << "Charger state: Not Connected";
+      break;
+    case ChargerUnknown:
     default:
-      qDebug() << "Invalid swipe direction: " << direction;
-      return -1;
+      qDebug() << "Charger state: Unknown";
   }
-}
-void
-Controller::setShowWifiDb(bool state) {
-  m_showWifiDb = state;
-  if (root != nullptr) {
-    qDebug() << "Show Wifi DB: " << state;
-    emit showWifiDbChanged(state);
+  if (root == nullptr) {
+    return;
   }
-  if (state) {
-    updateUIElements();
+  QObject* ui = root->findChild<QObject*>("batteryLevel");
+  if (ui) {
+    if (state != ChargerNotPresent) {
+      ui->setProperty("present", true);
+    }
+    switch (state) {
+      case ChargerConnected:
+        ui->setProperty("connected", true);
+        break;
+      case ChargerNotConnected:
+      case ChargerNotPresent:
+        ui->setProperty("connected", false);
+        break;
+      case ChargerUnknown:
+      default:
+        ui->setProperty("connected", false);
+    }
   }
-}
-void
-Controller::setShowBatteryPercent(bool state) {
-  m_showBatteryPercent = state;
-  if (root != nullptr) {
-    qDebug() << "Show Battery Percentage: " << state;
-    emit showBatteryPercentChanged(state);
-  }
-}
-void
-Controller::setShowBatteryTemperature(bool state) {
-  m_showBatteryTemperature = state;
-  if (root != nullptr) {
-    qDebug() << "Show Battery Temperature: " << state;
-    emit showBatteryTemperatureChanged(state);
-  }
-}
-void
-Controller::setSleepAfter(int sleepAfter) {
-  m_sleepAfter = sleepAfter;
-  qDebug() << "Sleep After: " << sleepAfter << " minutes";
-  emit sleepAfterChanged(m_sleepAfter);
-}
-void
-Controller::setLockAfter(int lockAfter) {
-  m_lockAfter = lockAfter;
-  qDebug() << "Lock After: " << lockAfter << " minutes";
-  emit lockAfterChanged(m_lockAfter);
 }
 
 #include "moc_controller.cpp"
