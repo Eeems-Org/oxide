@@ -9,6 +9,7 @@ DIST=$(CURDIR)/release
 BUILD=$(CURDIR)/.build
 BUILDNAME?=oxide
 TOOLCHAIN?=5.8.203
+PODMAN?=podman
 
 ifneq ($(filter debug,$(FEATURES)),)
 CONFIG += CONFIG+="debug"
@@ -79,7 +80,7 @@ $(DIST)/%/APKINDEX.tar.gz: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/packag
 		$(BUILD)/package/dist/$*/*.apk
 	CARCH=$* vbuild -C $(BUILD)/package
 	@echo "Creating APKINDEX.tar.gz"
-	podman run \
+	$(PODMAN) run \
 		--rm \
 		--interactive \
 		--volume="$(BUILD)/package/dist/$*:/packages" \
@@ -304,7 +305,7 @@ toolchain-rmppure: _toolchain-rmppure
 
 .PHONY: _toolchain-%
 _toolchain-%:
-	podman build \
+	$(PODMAN) build \
 		-f toolchain/Containerfile \
 		--build-arg VERSION=$(TOOLCHAIN) \
 		--build-arg DEVICE=$* \
