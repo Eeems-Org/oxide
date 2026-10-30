@@ -32,7 +32,7 @@ oxide-display=$pkgver-r$pkgrel
 liboxide=$pkgver-r$pkgrel
 "
 
-_toolchain=5.7.119
+_toolchain=5.8.203
 image() {
     case "$CARCH" in
     aarch64) echo "ghcr.io/eeems-org/oxide-toolchain:$_toolchain-rmpp" ;;
@@ -165,7 +165,7 @@ oxide_display() {
     category="framework"
     depends="
     liboxide=$pkgver-r$pkgrel
-    remarkable-os>=3.27.1.0 remarkable-os<=3.28.0.172
+    remarkable-os>=3.28.0.172
     "
 
     package() {
@@ -487,7 +487,7 @@ lockscreen_hook() {
     pkgdesc="Run scripts after unlock"
     category="framework"
     depends='
-    remarkable-os>=3.27.1.0
+    remarkable-os>=3.28.0.172
     '
     package() {
         cd "$srcdir"/release
