@@ -84,9 +84,7 @@ namespace csl {
         }
       }
 
-      bool isValid() const {
-        return m_lib != nullptr && m_object != nullptr;
-      }
+      bool isValid() const { return m_lib != nullptr && m_object != nullptr; }
 
       void setBrightness(int brightness) {
         if (isValid()) {
@@ -104,9 +102,7 @@ namespace csl {
         }
       }
 
-      bool isEnabled() const {
-        return isValid() && m_isEnabled(m_object);
-      }
+      bool isEnabled() const { return isValid() && m_isEnabled(m_object); }
 
       void setBoostedFrontlight(bool boosted) {
         if (isValid()) {
