@@ -64,7 +64,7 @@ package: package-armv7 package-aarch64
 build-armv7: build-rm1
 
 .PHONY: build-aarch64
-build-aarch64: build-rm1
+build-aarch64: build-rmpp
 
 .PHONY: package-armv7
 package-armv7: $(DIST)/armv7/APKINDEX.tar.gz
