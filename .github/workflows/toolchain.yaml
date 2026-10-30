@@ -37,6 +37,15 @@ jobs:
           version=$(grep '^TOOLCHAIN?=' Makefile | cut -d= -f2)
           echo "version=${version}" >> $GITHUB_OUTPUT
 
+      - name: Upgrade podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+          podman --version
+
+      - name: Install Podman
+        uses: redhat-actions/podman-install@v1
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
