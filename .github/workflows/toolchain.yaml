@@ -63,5 +63,9 @@ jobs:
         run: |
           make toolchain-${{ matrix.device }} \
             TOOLCHAIN=${{ steps.toolchain.outputs.version }} \
-            REVISION=${{ github.sha }} \
-            PUSH=${{ github.repository == 'Eeems-Org/oxide' && github.event_name == 'push' && '1' || '0' }}
+            REVISION=${{ github.sha }}
+
+      - name: Push toolchain container
+        if: ${{ github.repository == 'Eeems-Org/oxide' && github.event_name == 'push' }}
+        run: |
+          podman push ghcr.io/eeems-org/oxide-toolchain:${{ steps.toolchain.outputs.version }}-${{ matrix.device }}

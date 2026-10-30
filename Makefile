@@ -329,7 +329,6 @@ _toolchain:
 		--build-arg VERSION=$(TOOLCHAIN) \
 		--build-arg DEVICE=$(DEVICE) \
 		--build-arg ENVIRONMENT_SETUP=$(ENVIRONMENT_SETUP) \
-		$(if $(PUSH),--push,) \
 		--label "org.opencontainers.image.source=https://github.com/Eeems-Org/oxide" \
 		$(if $(REVISION),--label "org.opencontainers.image.revision=$(REVISION)",) \
 		-t ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-$(DEVICE) \
