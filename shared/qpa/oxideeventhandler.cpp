@@ -4,7 +4,8 @@
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
 #include <private/qhighdpiscaling_p.h>
-#if defined(__arm__) || defined(__aarch64__)
+#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0) &&                                  \
+  (defined(__arm__) || defined(__aarch64__))
 #include <private/qevdevtouchfilter_p.h>
 #endif
 

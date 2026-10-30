@@ -141,58 +141,33 @@ _install-%:
 	EOT
 
 .PHONY: build-rm1
-build-rm1: $(DIST)
-	podman run \
-		--env BUILDNAME=oxide-rm1 \
-		--rm \
-		--volume=$(CURDIR):/src \
-		--workdir=/src \
-		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rm1 \
-		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
+build-rm1: _build-rm1
 
 .PHONY: build-rm2
-build-rm2: $(DIST)
-	podman run \
-		--env BUILDNAME=oxide-rm2 \
-		--rm \
-		--volume=$(CURDIR):/src \
-		--workdir=/src \
-		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rm2 \
-		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
+build-rm2: _build-rm2
 
 .PHONY: build-rmpp
-build-rmpp: $(DIST)
-	podman run \
-		--env BUILDNAME=oxide-rmpp \
-		--rm \
-		--volume=$(CURDIR):/src \
-		--workdir=/src \
-		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rmpp \
-		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
+build-rmpp: _build-rmpp
 
 .PHONY: build-rmppm
-build-rmppm: $(DIST)
-	podman run \
-		--env BUILDNAME=oxide-rmppm \
-		--rm \
-		--volume=$(CURDIR):/src \
-		--workdir=/src \
-		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rmppm \
-		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
+build-rmppm: _build-rmppm
 
 .PHONY: build-rmppure
-build-rmppure: $(DIST)
-	podman run \
-		--env BUILDNAME=oxide-rmppure \
-		--rm \
-		--volume=$(CURDIR):/src \
-		--workdir=/src \
-		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-rmppure \
-		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
+build-rmppure: _build-rmppure
 
 .PHONY: build-amd64
 build-amd64: BUILDNAME=oxide-amd64
 build-amd64: release
+
+.PHONY: _build-%
+_build-%: $(DIST)
+	podman run \
+		--env BUILDNAME=oxide-$* \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-$* \
+		bash -exc 'source $$ENVIRONMENT_SETUP; make FEATURES=$(FEATURES) release'
 
 $(DIST):
 	mkdir -p $(DIST)
@@ -302,34 +277,39 @@ format:
 .PHONY: toolchain
 toolchain: toolchain-rm1 toolchain-rm2 toolchain-rmpp toolchain-rmppm toolchain-rmppure
 
+.PHONY: toolchain-rm1
 toolchain-rm1: DEVICE=rm1
 toolchain-rm1: ENVIRONMENT_SETUP=/opt/codex/rm1/$(TOOLCHAIN)/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi
-toolchain-rm1: _toolchain
+toolchain-rm1: _toolchain-rm1
 
+.PHONY: toolchain-rm2
 toolchain-rm2: DEVICE=rm2
 toolchain-rm2: ENVIRONMENT_SETUP=/opt/codex/rm2/$(TOOLCHAIN)/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi
-toolchain-rm2: _toolchain
+toolchain-rm2: _toolchain-rm2
 
+.PHONY: toolchain-rmpp
 toolchain-rmpp: DEVICE=rmpp
 toolchain-rmpp: ENVIRONMENT_SETUP=/opt/codex/ferrari/$(TOOLCHAIN)/environment-setup-cortexa53-crypto-remarkable-linux
-toolchain-rmpp: _toolchain
+toolchain-rmpp: _toolchain-rmpp
 
+.PHONY: toolchain-rmppm
 toolchain-rmppm: DEVICE=rmppm
 toolchain-rmppm: ENVIRONMENT_SETUP=/opt/codex/chiappa/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux
-toolchain-rmppm: _toolchain
+toolchain-rmppm: _toolchain-rmppm
 
+.PHONY: toolchain-rmppure
 toolchain-rmppure: DEVICE=rmppure
 toolchain-rmppure: ENVIRONMENT_SETUP=/opt/codex/tatsu/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux
-toolchain-rmppure: _toolchain
+toolchain-rmppure: _toolchain-rmppure
 
-.PHONY: _toolchain
-_toolchain:
+.PHONY: _toolchain-%
+_toolchain-%:
 	podman build \
 		-f toolchain/Containerfile \
 		--build-arg VERSION=$(TOOLCHAIN) \
-		--build-arg DEVICE=$(DEVICE) \
+		--build-arg DEVICE=$* \
 		--build-arg ENVIRONMENT_SETUP=$(ENVIRONMENT_SETUP) \
 		--label "org.opencontainers.image.source=https://github.com/Eeems-Org/oxide" \
 		$(if $(REVISION),--label "org.opencontainers.image.revision=$(REVISION)",) \
-		-t ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-$(DEVICE) \
+		-t ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-$* \
 		.
