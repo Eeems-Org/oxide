@@ -2,6 +2,11 @@
 #include "fb.h"
 #include "state.h"
 
+#include <QtGlobal>
+#include <cstdint>
+#include <cstdlib>
+#include <dlfcn.h>
+#include <fcntl.h>
 #include <libblight.h>
 #include <libblight/debug.h>
 #include <libblight/system.h>
@@ -784,7 +789,16 @@ validate_swapbuffers(void* func) {
   }
 #if defined(__arm__)
   // Check arm32 prologue for the swapBuffers(QRegion) variant:
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
+  //   sub sp, sp, #0x4c       (0xE24DD04C) - 3.28.0.172
+  // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x4c
+  if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
+    if (data[1] == 0xE24DD04C || data[1] == 0xE24DD044) {
+#else
+  //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)s
+  //   sub sp, sp, #0x44       (0xE24DD044) - 3.27.3.0
+  // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
   if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
     // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
     if (data[1] == 0xE24DD044) {
@@ -831,870 +845,875 @@ validate_swapbuffers(void* func) {
   }
   _WARN("swapBuffers: PAC prologue not found");
 #endif
-  return false;
-}
-
-/*!
- * \brief Runtime pointers to real QPainter methods (resolved once via dlsym).
- */
-struct QPainterFuncs {
-  void (*constructor)(void*, void*);
-  void (*destructor)(void*);
-  void (*drawImage)(void*, const void*, const void*, const void*, int);
-  bool ok;
-};
-
-static QPainterFuncs qPainterFuncs;
-
-/*!
- * \brief Resolve QPainter function pointers via dlsym
- */
-static void
-resolve_qpainter_funcs() {
-  if (qPainterFuncs.ok) {
-    return;
-  }
-  bool ok = true;
-  qPainterFuncs.constructor =
-    reinterpret_cast<decltype(qPainterFuncs.constructor)>(
-      dlsym(RTLD_DEFAULT, "_ZN8QPainterC1EP12QPaintDevice")
-    );
-  if (qPainterFuncs.constructor == nullptr) {
-    _WARN("%s", "Failed to resolve QPainter::QPainter");
-    ok = false;
-  }
-  qPainterFuncs.destructor =
-    reinterpret_cast<decltype(qPainterFuncs.destructor)>(
-      dlsym(RTLD_DEFAULT, "_ZN8QPainterD1Ev")
-    );
-  if (qPainterFuncs.destructor == nullptr) {
-    _WARN("%s", "Failed to resolve QPainter::~QPainter");
-    ok = false;
-  }
-  qPainterFuncs.drawImage =
-    reinterpret_cast<decltype(qPainterFuncs.drawImage)>(dlsym(
-      RTLD_DEFAULT,
-      "_ZN8QPainter9drawImageERK6QRectFRK6QImageS2_"
-      "6QFlagsIN2Qt19ImageConversionFlagEE"
-    ));
-  if (qPainterFuncs.drawImage == nullptr) {
-    _WARN("%s", "Failed to resolve QPainter::drawImage");
-    ok = false;
-  }
-  qPainterFuncs.ok = ok;
-}
-
-/*!
- * \brief Repaint a region of the screen
- * \param rect Region to repaint
- * \param waveform Waveform to use for repainting
- * \param updateMode Update mode to use for repainting
- */
-void
-repaint(
-  const Qt::QRectLayout* rect,
-  Blight::WaveformMode waveform,
-  Blight::ContentType contentType,
-  Blight::UpdateMode updateMode,
-  bool wait = false
-) {
-  auto width = rect->right - rect->left + 1;
-  auto height = rect->bottom - rect->top + 1;
-  _DEBUG(
-    "repaint: (%d, %d) %dx%d %d %d %d",
-    rect->left,
-    rect->top,
-    width,
-    height,
-    waveform,
-    contentType,
-    updateMode
-  );
-  FB::repaint(
-    rect->left,
-    rect->top,
-    width,
-    height,
-    waveform,
-    contentType,
-    updateMode,
-    0,
-    wait
-  );
-}
-
-/*!
- * \brief Dump the framebuffer, frameBuffer, and previousBuffer to /tmp/*.raw
- */
-void
-dump_buffers() {
-  if (!Client::isDumpFb()) {
-    return;
-  }
-  void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
-  if (!epframebuffer) {
-    _DEBUG("dump_buffers: epframebufferInstance not set yet, skipping");
-    return;
-  }
-  if (FB::buffer->data != nullptr) {
-    int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd <= 0) {
-      _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
-      return;
+      return false;
     }
-    ::write(
-      fd,
-      FB::buffer->data,
-      Client::deviceType == Client::DeviceType::RM2 ? 26359808
-                                                    : FB::buffer->size()
-    );
-    ::close(fd);
-  }
-  auto frameBuffer = static_cast<char*>(epframebuffer) + frameBufferOffset();
-  auto previousBuffer =
-    static_cast<char*>(epframebuffer) + previousBufferOffset();
-  dump_qimage_buffer(frameBuffer, "/tmp/frameBuffer.raw");
-  dump_qimage_buffer(previousBuffer, "/tmp/previousBuffer.raw");
-}
 
-void
-update_buffers(const Qt::QRectLayout& rect) {
-  resolve_qimage_funcs();
-  if (!qImageFuncs.ok) {
-    _WARN("%s", "qpainter_drawImage: QImage not available");
-    return;
-  }
-  resolve_qpainter_funcs();
-  if (!qPainterFuncs.ok) {
-    _WARN("%s", "qpainter_drawImage: QPainter not available");
-    return;
-  }
-  void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
-  if (!epframebuffer) {
-    _DEBUG("update_buffers: epframebufferInstance not set yet, skipping");
-    return;
-  }
-  auto* previousBuffer =
-    static_cast<char*>(epframebuffer) + previousBufferOffset();
-  if (previousBuffer == nullptr) {
-    _DEBUG("update_buffers: previousBuffer not set yet, skipping");
-    return;
-  }
-  auto* renderTarget = *reinterpret_cast<char**>(
-    static_cast<char*>(epframebuffer) + renderTargetOffset()
-  );
-  if (renderTarget == nullptr) {
-    _DEBUG("update_buffers: renderTarget not set yet, skipping");
-    return;
-  }
+    /*!
+     * \brief Runtime pointers to real QPainter methods (resolved once via
+     * dlsym).
+     */
+    struct QPainterFuncs {
+      void (*constructor)(void*, void*);
+      void (*destructor)(void*);
+      void (*drawImage)(void*, const void*, const void*, const void*, int);
+      bool ok;
+    };
+
+    static QPainterFuncs qPainterFuncs;
+
+    /*!
+     * \brief Resolve QPainter function pointers via dlsym
+     */
+    static void resolve_qpainter_funcs() {
+      if (qPainterFuncs.ok) {
+        return;
+      }
+      bool ok = true;
+      qPainterFuncs.constructor =
+        reinterpret_cast<decltype(qPainterFuncs.constructor)>(
+          dlsym(RTLD_DEFAULT, "_ZN8QPainterC1EP12QPaintDevice")
+        );
+      if (qPainterFuncs.constructor == nullptr) {
+        _WARN("%s", "Failed to resolve QPainter::QPainter");
+        ok = false;
+      }
+      qPainterFuncs.destructor =
+        reinterpret_cast<decltype(qPainterFuncs.destructor)>(
+          dlsym(RTLD_DEFAULT, "_ZN8QPainterD1Ev")
+        );
+      if (qPainterFuncs.destructor == nullptr) {
+        _WARN("%s", "Failed to resolve QPainter::~QPainter");
+        ok = false;
+      }
+      qPainterFuncs.drawImage =
+        reinterpret_cast<decltype(qPainterFuncs.drawImage)>(dlsym(
+          RTLD_DEFAULT,
+          "_ZN8QPainter9drawImageERK6QRectFRK6QImageS2_"
+          "6QFlagsIN2Qt19ImageConversionFlagEE"
+        ));
+      if (qPainterFuncs.drawImage == nullptr) {
+        _WARN("%s", "Failed to resolve QPainter::drawImage");
+        ok = false;
+      }
+      qPainterFuncs.ok = ok;
+    }
+
+    /*!
+     * \brief Repaint a region of the screen
+     * \param rect Region to repaint
+     * \param waveform Waveform to use for repainting
+     * \param updateMode Update mode to use for repainting
+     */
+    void repaint(
+      const Qt::QRectLayout* rect,
+      Blight::WaveformMode waveform,
+      Blight::ContentType contentType,
+      Blight::UpdateMode updateMode,
+      bool wait = false
+    ) {
+      auto width = rect->right - rect->left + 1;
+      auto height = rect->bottom - rect->top + 1;
+      _DEBUG(
+        "repaint: (%d, %d) %dx%d %d %d %d",
+        rect->left,
+        rect->top,
+        width,
+        height,
+        waveform,
+        contentType,
+        updateMode
+      );
+      FB::repaint(
+        rect->left,
+        rect->top,
+        width,
+        height,
+        waveform,
+        contentType,
+        updateMode,
+        0,
+        wait
+      );
+    }
+
+    /*!
+     * \brief Dump the framebuffer, frameBuffer, and previousBuffer to
+     * /tmp/*.raw
+     */
+    void dump_buffers() {
+      if (!Client::isDumpFb()) {
+        return;
+      }
+      void* epframebuffer =
+        epframebufferInstance.load(std::memory_order_acquire);
+      if (!epframebuffer) {
+        _DEBUG("dump_buffers: epframebufferInstance not set yet, skipping");
+        return;
+      }
+      if (FB::buffer->data != nullptr) {
+        int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd <= 0) {
+          _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
+          return;
+        }
+        ::write(
+          fd,
+          FB::buffer->data,
+          Client::deviceType == Client::DeviceType::RM2 ? 26359808
+                                                        : FB::buffer->size()
+        );
+        ::close(fd);
+      }
+      auto frameBuffer =
+        static_cast<char*>(epframebuffer) + frameBufferOffset();
+      auto previousBuffer =
+        static_cast<char*>(epframebuffer) + previousBufferOffset();
+      dump_qimage_buffer(frameBuffer, "/tmp/frameBuffer.raw");
+      dump_qimage_buffer(previousBuffer, "/tmp/previousBuffer.raw");
+    }
+
+    void update_buffers(const Qt::QRectLayout& rect) {
+      resolve_qimage_funcs();
+      if (!qImageFuncs.ok) {
+        _WARN("%s", "qpainter_drawImage: QImage not available");
+        return;
+      }
+      resolve_qpainter_funcs();
+      if (!qPainterFuncs.ok) {
+        _WARN("%s", "qpainter_drawImage: QPainter not available");
+        return;
+      }
+      void* epframebuffer =
+        epframebufferInstance.load(std::memory_order_acquire);
+      if (!epframebuffer) {
+        _DEBUG("update_buffers: epframebufferInstance not set yet, skipping");
+        return;
+      }
+      auto* previousBuffer =
+        static_cast<char*>(epframebuffer) + previousBufferOffset();
+      if (previousBuffer == nullptr) {
+        _DEBUG("update_buffers: previousBuffer not set yet, skipping");
+        return;
+      }
+      auto* renderTarget = *reinterpret_cast<char**>(
+        static_cast<char*>(epframebuffer) + renderTargetOffset()
+      );
+      if (renderTarget == nullptr) {
+        _DEBUG("update_buffers: renderTarget not set yet, skipping");
+        return;
+      }
 #if defined(__aarch64__)
-  alignas(16) char qimage[128] = {};
+      alignas(16) char qimage[128] = {};
 #elif defined(__arm__)
   alignas(8) char qimage[128] = {};
 #else
   char qimage[128] = {};
 #endif
-  qImageFuncs.constructor(
-    qimage,
-    reinterpret_cast<char*>(FB::buffer->data),
-    FB::buffer->width,
-    FB::buffer->height,
-    FB::buffer->stride,
-    FB::buffer->format,
-    nullptr,
-    nullptr
-  );
+      qImageFuncs.constructor(
+        qimage,
+        reinterpret_cast<char*>(FB::buffer->data),
+        FB::buffer->width,
+        FB::buffer->height,
+        FB::buffer->stride,
+        FB::buffer->format,
+        nullptr,
+        nullptr
+      );
 #if defined(__aarch64__)
-  alignas(16) char painter[128] = {};
+      alignas(16) char painter[128] = {};
 #elif defined(__arm__)
   alignas(8) char painter[128] = {};
 #else
   char painter[128] = {};
 #endif
-  qPainterFuncs.constructor(painter, qimage);
-  Qt::QRectFLayout rectF{
-    static_cast<double>(rect.left),
-    static_cast<double>(rect.top),
-    static_cast<double>(rect.right - rect.left + 1),
-    static_cast<double>(rect.bottom - rect.top + 1)
-  };
-  qPainterFuncs.drawImage(painter, &rectF, renderTarget, &rectF, 0);
-  qPainterFuncs.destructor(painter);
-  qImageFuncs.destructor(qimage);
-}
-
-/*!
- * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
- *
- * \param this_ptr EPFramebuffer instance
- * \param region QRegion instance defining what is being swapped
- * \param contentMap_screenModeMap information on what waveforms to use
- * \param flags Update flags
- */
-void
-hook_swapBuffers_xochitl_legacy(
-  void* this_ptr,
-  const void* region,
-  const void* contentMap_screenModeMap,
-  int flags
-) {
-  _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
-  if (contentMap_screenModeMap == nullptr) {
-    _DEBUG("swapBuffers: contentMap_screenModeMap is NULL");
-    return;
-  }
-  auto begin_fn = Qt::qregion_begin();
-  auto end_fn = Qt::qregion_end();
-  if (begin_fn == nullptr || end_fn == nullptr) {
-    _DEBUG("swapBuffers: qregion_begin/end is NULL");
-    return;
-  }
-  auto dit = begin_fn(region);
-  auto dend = end_fn(region);
-  if (!dit || !dend) {
-    return;
-  }
-  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
-  auto updateMode = static_cast<Blight::UpdateMode>(flags);
-  for (; dit != dend; dit++) {
-    update_buffers(*dit);
-    auto regions = static_cast<void* const*>(contentMap_screenModeMap);
-    auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
-    for (int modeId = Blight::WaveformMode::Full;
-         modeId >= Blight::WaveformMode::UltraFast;
-         modeId--) {
-      int slot = slot_remap[modeId];
-      auto region = regions[slot];
-      if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
-        continue;
-      }
-      Blight::ContentType contentType = Blight::ContentType::Color;
-      auto waveform = (Blight::WaveformMode)modeId;
-      switch (waveform) {
-        case Blight::WaveformMode::UltraFast:
-        case Blight::WaveformMode::Fast:
-        case Blight::WaveformMode::UI:
-          contentType = Blight::ContentType::Monochrome;
-          break;
-        case Blight::WaveformMode::Animate:
-        case Blight::WaveformMode::Content:
-        case Blight::WaveformMode::Full:
-          contentType = Blight::ContentType::Color;
-          break;
-      }
-      repaint(dit, waveform, contentType, updateMode);
-      break;
+      qPainterFuncs.constructor(painter, qimage);
+      Qt::QRectFLayout rectF{
+        static_cast<double>(rect.left),
+        static_cast<double>(rect.top),
+        static_cast<double>(rect.right - rect.left + 1),
+        static_cast<double>(rect.bottom - rect.top + 1)
+      };
+      qPainterFuncs.drawImage(painter, &rectF, renderTarget, &rectF, 0);
+      qPainterFuncs.destructor(painter);
+      qImageFuncs.destructor(qimage);
     }
-    if (
-      Client::isGhostControlEnabled() &&
-      (flags & Blight::UpdateMode::PenUpdate) != 0
+
+    /*!
+     * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
+     *
+     * \param this_ptr EPFramebuffer instance
+     * \param region QRegion instance defining what is being swapped
+     * \param contentMap_screenModeMap information on what waveforms to use
+     * \param flags Update flags
+     */
+    void hook_swapBuffers_xochitl_legacy(
+      void* this_ptr,
+      const void* region,
+      const void* contentMap_screenModeMap,
+      int flags
     ) {
-      // TODO handle pen updates separately like xochitl does
-      send_ghost_control(
-        (flags & Blight::UpdateMode::AnimationUpdate)
-          ? Blight::GhostControlMode::BlinkLater
-          : Blight::GhostControlMode::BlinkNow
-      );
-    }
-  }
-  dump_buffers();
-}
-
-/*!
- * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
- *
- * on aarch64 this actually hooks EPFramebufferAcep2::backendUpdate(QRegion,
- * ...) which is what swapBuffers calls to handle the screen.
- *
- * \param this_ptr EPFramebuffer instance
- * \param region QRegion instance defining what is being swapped
- * \param contentMap_screenModeMap information on what waveforms to use
- * \param flags Update flags
- */
-void
-hook_swapBuffers_xochitl(
-  void* this_ptr,
-  const void* region,
-  const void* contentMap_screenModeMap,
-  int flags
-) {
-  _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
-  if (contentMap_screenModeMap == nullptr) {
-    _DEBUG("swapBuffers: contentMap_screenModeMap is NULL");
-    return;
-  }
-  auto begin_fn = Qt::qregion_begin();
-  auto end_fn = Qt::qregion_end();
-  if (begin_fn == nullptr || end_fn == nullptr) {
-    _DEBUG("swapBuffers_QRegion: qregion_begin/end is NULL");
-    return;
-  }
-  auto dit = begin_fn(region);
-  auto dend = end_fn(region);
-  if (!dit || !dend) {
-    return;
-  }
-  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
-  auto regions = static_cast<void* const*>(contentMap_screenModeMap);
-  auto updateMode = static_cast<Blight::UpdateMode>(flags);
-  for (; dit != dend; dit++) {
-    update_buffers(*dit);
-    for (int modeId = Blight::WaveformMode::Full;
-         modeId >= Blight::WaveformMode::UltraFast;
-         modeId--) {
-      auto* region = regions[modeId];
-      if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
-        continue;
+      _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
+      if (contentMap_screenModeMap == nullptr) {
+        _DEBUG("swapBuffers: contentMap_screenModeMap is NULL");
+        return;
       }
-      repaint(
-        dit,
-        (Blight::WaveformMode)modeId,
-        Blight::ContentType::Color,
-        updateMode
+      auto begin_fn = Qt::qregion_begin();
+      auto end_fn = Qt::qregion_end();
+      if (begin_fn == nullptr || end_fn == nullptr) {
+        _DEBUG("swapBuffers: qregion_begin/end is NULL");
+        return;
+      }
+      auto dit = begin_fn(region);
+      auto dend = end_fn(region);
+      if (!dit || !dend) {
+        return;
+      }
+      _DEBUG(
+        "swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str()
       );
-      break;
+      auto updateMode = static_cast<Blight::UpdateMode>(flags);
+      for (; dit != dend; dit++) {
+        update_buffers(*dit);
+        auto regions = static_cast<void* const*>(contentMap_screenModeMap);
+        auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
+        for (int modeId = Blight::WaveformMode::Full;
+             modeId >= Blight::WaveformMode::UltraFast;
+             modeId--) {
+          int slot = slot_remap[modeId];
+          auto region = regions[slot];
+          if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
+            continue;
+          }
+          Blight::ContentType contentType = Blight::ContentType::Color;
+          auto waveform = (Blight::WaveformMode)modeId;
+          switch (waveform) {
+            case Blight::WaveformMode::UltraFast:
+            case Blight::WaveformMode::Fast:
+            case Blight::WaveformMode::UI:
+              contentType = Blight::ContentType::Monochrome;
+              break;
+            case Blight::WaveformMode::Animate:
+            case Blight::WaveformMode::Content:
+            case Blight::WaveformMode::Full:
+              contentType = Blight::ContentType::Color;
+              break;
+          }
+          repaint(dit, waveform, contentType, updateMode);
+          break;
+        }
+        if (
+          Client::isGhostControlEnabled() &&
+          (flags & Blight::UpdateMode::PenUpdate) != 0
+        ) {
+          // TODO handle pen updates separately like xochitl does
+          send_ghost_control(
+            (flags & Blight::UpdateMode::AnimationUpdate)
+              ? Blight::GhostControlMode::BlinkLater
+              : Blight::GhostControlMode::BlinkNow
+          );
+        }
+      }
+      dump_buffers();
     }
-    if (
-      Client::isGhostControlEnabled() &&
-      (flags & Blight::UpdateMode::PenUpdate) != 0
+
+    /*!
+     * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
+     *
+     * on aarch64 this actually hooks EPFramebufferAcep2::backendUpdate(QRegion,
+     * ...) which is what swapBuffers calls to handle the screen.
+     *
+     * \param this_ptr EPFramebuffer instance
+     * \param region QRegion instance defining what is being swapped
+     * \param contentMap_screenModeMap information on what waveforms to use
+     * \param flags Update flags
+     */
+    void hook_swapBuffers_xochitl(
+      void* this_ptr,
+      const void* region,
+      const void* contentMap_screenModeMap,
+      int flags
     ) {
-      // TODO handle pen updates separately like xochitl does
-      send_ghost_control(
-        (flags & Blight::UpdateMode::AnimationUpdate)
-          ? Blight::GhostControlMode::BlinkLater
-          : Blight::GhostControlMode::BlinkNow
-      );
-    }
-  }
-  dump_buffers();
-}
-
-void
-hook_swapBuffers_qsgepaper(
-  void* this_ptr,
-  const void* region,
-  const void* modeMap,
-  int flags
-) {
-  _DEBUG("EPFramebuffer::swapBuffers_impl(QRegion, ...)");
-  auto begin_fn = Qt::qregion_begin();
-  auto end_fn = Qt::qregion_end();
-  if (begin_fn == nullptr || end_fn == nullptr) {
-    _DEBUG("swapBuffers: qregion_begin/end is NULL");
-    return;
-  }
-  auto dit = begin_fn(region);
-  auto dend = end_fn(region);
-  if (!dit || !dend || modeMap == nullptr) {
-    return;
-  }
-  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
-  auto updateMode = static_cast<Blight::UpdateMode>(flags);
-  for (; dit != dend; ++dit) {
-    update_buffers(*dit);
-    for (int modeId = Blight::WaveformMode::Full;
-         modeId >= Blight::WaveformMode::UltraFast;
-         modeId--) {
-      auto* region = static_cast<const char*>(modeMap) + modeId * sizeof(void*);
-      if (region == nullptr || !Qt::region_rect_overlaps(dit, region)) {
-        continue;
+      _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
+      if (contentMap_screenModeMap == nullptr) {
+        _DEBUG("swapBuffers: contentMap_screenModeMap is NULL");
+        return;
       }
-      Blight::ContentType contentType = Blight::ContentType::Color;
-      auto waveform = (Blight::WaveformMode)modeId;
-      switch (waveform) {
-        case Blight::WaveformMode::UltraFast:
-        case Blight::WaveformMode::Fast:
-        case Blight::WaveformMode::UI:
-          contentType = Blight::ContentType::Monochrome;
-          break;
-        case Blight::WaveformMode::Animate:
-        case Blight::WaveformMode::Content:
-        case Blight::WaveformMode::Full:
-          contentType = Blight::ContentType::Color;
-          break;
+      auto begin_fn = Qt::qregion_begin();
+      auto end_fn = Qt::qregion_end();
+      if (begin_fn == nullptr || end_fn == nullptr) {
+        _DEBUG("swapBuffers_QRegion: qregion_begin/end is NULL");
+        return;
       }
-      repaint(dit, waveform, contentType, updateMode);
-      break;
-    }
-  }
-  dump_buffers();
-}
-
-void
-hook_swapBuffers_qsgepaper_legacy(
-  void* this_ptr,
-  const void* region,
-  const void* contentMap,
-  const void* modeMap,
-  int flags
-) {
-  hook_swapBuffers_qsgepaper(this_ptr, region, modeMap, flags);
-}
-
-/*!
- * \brief No-op hook for EPFramebuffer::syncAfterUpdate()
- */
-void
-hook_syncAfterUpdate(void* this_ptr) {
-  _ZN19EPFramebufferSwtcon4syncEv(this_ptr);
-}
-
-/*!
- * \brief Hook to run on  EPFramebufferSwtcon::update(QRect, int, PixelMode,
- * int) call
- *
- * All models but the rM1 use this function for triggering repaints with
- * libqsgepaper. Xochitl uses it's own internal method, which requires us to
- * hook swapBuffers instead.
- *
- * \param this_ptr   EPFramebufferSwtcon instance
- * \param rect       Rectangle to update
- * \param waveform   EPScreenMode value (maps through epsm_to_waveform)
- * \param pixelMode  PixelMode
- * \param flags      Update flags
- */
-/*!
- * \brief Hook for EPFramebuffer::ghostControl(GhostControlMode)
- *
- * Called when the ePaper compositor requests ghost compensation actions.
- * Forwards to the original and logs the call.
- */
-void
-_ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
-  void* this_ptr,
-  int mode
-) {
-  if (!Client::isFbEnabled()) {
-    static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
-      RTLD_NEXT, "_ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE"
-    ));
-    if (!func) {
-      _CRIT(
-        "%s", "Failed to resolve real EPFramebuffer::ghostControl via RTLD_NEXT"
+      auto dit = begin_fn(region);
+      auto dend = end_fn(region);
+      if (!dit || !dend) {
+        return;
+      }
+      _DEBUG(
+        "swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str()
       );
-      std::exit(EXIT_FAILURE);
+      auto regions = static_cast<void* const*>(contentMap_screenModeMap);
+      auto updateMode = static_cast<Blight::UpdateMode>(flags);
+      for (; dit != dend; dit++) {
+        update_buffers(*dit);
+        for (int modeId = Blight::WaveformMode::Full;
+             modeId >= Blight::WaveformMode::UltraFast;
+             modeId--) {
+          auto* region = regions[modeId];
+          if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
+            continue;
+          }
+          repaint(
+            dit,
+            (Blight::WaveformMode)modeId,
+            Blight::ContentType::Color,
+            updateMode
+          );
+          break;
+        }
+        if (
+          Client::isGhostControlEnabled() &&
+          (flags & Blight::UpdateMode::PenUpdate) != 0
+        ) {
+          // TODO handle pen updates separately like xochitl does
+          send_ghost_control(
+            (flags & Blight::UpdateMode::AnimationUpdate)
+              ? Blight::GhostControlMode::BlinkLater
+              : Blight::GhostControlMode::BlinkNow
+          );
+        }
+      }
+      dump_buffers();
     }
-    func(this_ptr, mode);
-    return;
-  }
-  void* epframebuffer = nullptr;
-  if (
-    !epframebufferInstance.compare_exchange_strong(
-      epframebuffer, this_ptr, std::memory_order_relaxed
-    ) &&
-    epframebuffer != this_ptr
-  ) {
-    _WARN(
-      "epframebufferInstance does not match this_ptr: %p != %p",
-      epframebuffer,
-      this_ptr
-    );
-  }
-  _DEBUG("EPFramebuffer::ghostControl(mode=%d)", mode);
-  send_ghost_control((Blight::GhostControlMode)mode);
-}
+
+    void hook_swapBuffers_qsgepaper(
+      void* this_ptr, const void* region, const void* modeMap, int flags
+    ) {
+      _DEBUG("EPFramebuffer::swapBuffers_impl(QRegion, ...)");
+      auto begin_fn = Qt::qregion_begin();
+      auto end_fn = Qt::qregion_end();
+      if (begin_fn == nullptr || end_fn == nullptr) {
+        _DEBUG("swapBuffers: qregion_begin/end is NULL");
+        return;
+      }
+      auto dit = begin_fn(region);
+      auto dend = end_fn(region);
+      if (!dit || !dend || modeMap == nullptr) {
+        return;
+      }
+      _DEBUG(
+        "swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str()
+      );
+      auto updateMode = static_cast<Blight::UpdateMode>(flags);
+      for (; dit != dend; ++dit) {
+        update_buffers(*dit);
+        for (int modeId = Blight::WaveformMode::Full;
+             modeId >= Blight::WaveformMode::UltraFast;
+             modeId--) {
+          auto* region =
+            static_cast<const char*>(modeMap) + modeId * sizeof(void*);
+          if (region == nullptr || !Qt::region_rect_overlaps(dit, region)) {
+            continue;
+          }
+          Blight::ContentType contentType = Blight::ContentType::Color;
+          auto waveform = (Blight::WaveformMode)modeId;
+          switch (waveform) {
+            case Blight::WaveformMode::UltraFast:
+            case Blight::WaveformMode::Fast:
+            case Blight::WaveformMode::UI:
+              contentType = Blight::ContentType::Monochrome;
+              break;
+            case Blight::WaveformMode::Animate:
+            case Blight::WaveformMode::Content:
+            case Blight::WaveformMode::Full:
+              contentType = Blight::ContentType::Color;
+              break;
+          }
+          repaint(dit, waveform, contentType, updateMode);
+          break;
+        }
+      }
+      dump_buffers();
+    }
+
+    void hook_swapBuffers_qsgepaper_legacy(
+      void* this_ptr,
+      const void* region,
+      const void* contentMap,
+      const void* modeMap,
+      int flags
+    ) {
+      hook_swapBuffers_qsgepaper(this_ptr, region, modeMap, flags);
+    }
+
+    /*!
+     * \brief No-op hook for EPFramebuffer::syncAfterUpdate()
+     */
+    void hook_syncAfterUpdate(void* this_ptr) {
+      _ZN19EPFramebufferSwtcon4syncEv(this_ptr);
+    }
+
+    /*!
+     * \brief Hook to run on  EPFramebufferSwtcon::update(QRect, int, PixelMode,
+     * int) call
+     *
+     * All models but the rM1 use this function for triggering repaints with
+     * libqsgepaper. Xochitl uses it's own internal method, which requires us to
+     * hook swapBuffers instead.
+     *
+     * \param this_ptr   EPFramebufferSwtcon instance
+     * \param rect       Rectangle to update
+     * \param waveform   EPScreenMode value (maps through epsm_to_waveform)
+     * \param pixelMode  PixelMode
+     * \param flags      Update flags
+     */
+    /*!
+     * \brief Hook for EPFramebuffer::ghostControl(GhostControlMode)
+     *
+     * Called when the ePaper compositor requests ghost compensation actions.
+     * Forwards to the original and logs the call.
+     */
+    void _ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
+      void* this_ptr, int mode
+    ) {
+      if (!Client::isFbEnabled()) {
+        static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
+          RTLD_NEXT, "_ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE"
+        ));
+        if (!func) {
+          _CRIT(
+            "%s",
+            "Failed to resolve real EPFramebuffer::ghostControl via RTLD_NEXT"
+          );
+          std::exit(EXIT_FAILURE);
+        }
+        func(this_ptr, mode);
+        return;
+      }
+      void* epframebuffer = nullptr;
+      if (
+        !epframebufferInstance.compare_exchange_strong(
+          epframebuffer, this_ptr, std::memory_order_relaxed
+        ) &&
+        epframebuffer != this_ptr
+      ) {
+        _WARN(
+          "epframebufferInstance does not match this_ptr: %p != %p",
+          epframebuffer,
+          this_ptr
+        );
+      }
+      _DEBUG("EPFramebuffer::ghostControl(mode=%d)", mode);
+      send_ghost_control((Blight::GhostControlMode)mode);
+    }
 
 #if defined(__aarch64__)
-void
-_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
-  void* this_ptr,
-  int mode
-) {
-  if (!Client::isFbEnabled()) {
-    static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
-      RTLD_NEXT,
-      "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlMo"
-      "de"
-      "E"
-    ));
-    if (!func) {
-      _CRIT(
-        "%s",
-        "Failed to resolve real EPFramebufferAcep2::ghostControl via "
-        "RTLD_NEXT"
-      );
-      std::exit(EXIT_FAILURE);
+    void
+    _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
+      void* this_ptr, int mode
+    ) {
+      if (!Client::isFbEnabled()) {
+        static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
+          RTLD_NEXT,
+          "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControl"
+          "Mo"
+          "de"
+          "E"
+        ));
+        if (!func) {
+          _CRIT(
+            "%s",
+            "Failed to resolve real EPFramebufferAcep2::ghostControl via "
+            "RTLD_NEXT"
+          );
+          std::exit(EXIT_FAILURE);
+        }
+        func(this_ptr, mode);
+        return;
+      }
+      void* epframebuffer = nullptr;
+      if (
+        !epframebufferInstance.compare_exchange_strong(
+          epframebuffer, this_ptr, std::memory_order_relaxed
+        ) &&
+        epframebuffer != this_ptr
+      ) {
+        _WARN(
+          "epframebufferInstance does not match this_ptr: %p != %p",
+          epframebuffer,
+          this_ptr
+        );
+      }
+      _DEBUG("EPFramebufferAcep2::ghostControl(mode=%d)", mode);
+      send_ghost_control((Blight::GhostControlMode)mode);
     }
-    func(this_ptr, mode);
-    return;
-  }
-  void* epframebuffer = nullptr;
-  if (
-    !epframebufferInstance.compare_exchange_strong(
-      epframebuffer, this_ptr, std::memory_order_relaxed
-    ) &&
-    epframebuffer != this_ptr
-  ) {
-    _WARN(
-      "epframebufferInstance does not match this_ptr: %p != %p",
-      epframebuffer,
-      this_ptr
-    );
-  }
-  _DEBUG("EPFramebufferAcep2::ghostControl(mode=%d)", mode);
-  send_ghost_control((Blight::GhostControlMode)mode);
-}
 #endif
 
-void
-_ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
-  void* this_ptr,
-  Qt::QRectLayout rect,
-  int waveform,
-  Blight::ContentType contentType,
-  int flags
-) {
-  if (!Client::isFbEnabled()) {
-    static auto func = reinterpret_cast<
-      void (*)(void*, Qt::QRectLayout, int, Blight::ContentType, int)>(
-      dlsym(RTLD_NEXT, "_ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei")
-    );
-    if (!func) {
-      _CRIT(
-        "%s", "Failed to resolve real EPFramebufferSwtcon::update via RTLD_NEXT"
-      );
-      std::exit(EXIT_FAILURE);
-    }
-    func(this_ptr, rect, waveform, contentType, flags);
-    return;
-  }
-  void* epframebuffer = nullptr;
-  if (
-    !epframebufferInstance.compare_exchange_strong(
-      epframebuffer, this_ptr, std::memory_order_relaxed
-    ) &&
-    epframebuffer != this_ptr
-  ) {
-    _WARN(
-      "epframebufferInstance does not match this_ptr: %p != %p",
-      epframebuffer,
-      this_ptr
-    );
-  }
-  _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
-  update_buffers(rect);
-  repaint(
-    &rect,
-    (Blight::WaveformMode)waveform,
-    contentType,
-    (Blight::UpdateMode)flags
-  );
-  dump_buffers();
-}
-
-void
-_ZN19EPFramebufferSwtcon4syncEv(void* this_ptr) {
-  if (!Client::isFbEnabled()) {
-    static auto func = reinterpret_cast<void (*)(void*)>(
-      dlsym(RTLD_NEXT, "_ZN19EPFramebufferSwtcon4syncEv")
-    );
-    if (!func) {
-      _CRIT(
-        "%s", "Failed to resolve real EPFramebufferSwtcon::sync via RTLD_NEXT"
-      );
-      std::exit(EXIT_FAILURE);
-    }
-    func(this_ptr);
-    return;
-  }
-  void* epframebuffer = nullptr;
-  if (
-    !epframebufferInstance.compare_exchange_strong(
-      epframebuffer, this_ptr, std::memory_order_relaxed
-    ) &&
-    epframebuffer != this_ptr
-  ) {
-    _WARN(
-      "epframebufferInstance does not match this_ptr: %p != %p",
-      epframebuffer,
-      this_ptr
-    );
-  }
-  _DEBUG("EPFramebufferSwtcon::sync()");
-  Blight::waitForNoRepaints();
-}
-
-void*
-_ZN13EPFramebuffer8instanceEv() {
-  static auto func = reinterpret_cast<void* (*)()>(
-    dlsym(RTLD_NEXT, "_ZN13EPFramebuffer8instanceEv")
-  );
-  if (!func) {
-    _CRIT("%s", "Failed to resolve real EPFramebuffer::instance via RTLD_NEXT");
-    std::exit(EXIT_FAILURE);
-  }
-  void* instance = func();
-  if (Client::isFbEnabled()) {
-    void* empty = nullptr;
-    epframebufferInstance.compare_exchange_strong(
-      empty, instance, std::memory_order_relaxed
-    );
-  }
-  return instance;
-}
-
-void
-install_hook_ptr(void** target_ptr, void* hook) {
-  auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
-  auto page = reinterpret_cast<void*>(
-    reinterpret_cast<uintptr_t>(target_ptr) & ~(static_cast<uintptr_t>(ps) - 1)
-  );
-  while (reinterpret_cast<uintptr_t>(page) + ps <
-         reinterpret_cast<uintptr_t>(target_ptr) + sizeof(void*)) {
-    ps += sysconf(_SC_PAGESIZE);
-  }
-  mprotect(page, ps, PROT_READ | PROT_WRITE);
-  *target_ptr = hook;
-}
-
-/*!
- * \brief Hook to run on QObject::QObject(QObject*) call
- */
-static void
-hook_check_candidate() {
-  if (
-    !Client::isFbEnabled() || hook_installed ||
-    Client::deviceType == Client::DeviceType::RM1
-  ) {
-    return;
-  }
-  std::lock_guard<std::mutex> lock(candidatesMutex);
-  for (void* candidate : epframebufferCandidates) {
-    if (candidate == nullptr) {
-      continue;
-    }
-    void* vtable = nullptr;
-    if (!safe_read(candidate, &vtable, sizeof(vtable))) {
-      _DEBUG("Candidate at %p not readable, skipping", candidate);
-      continue;
-    }
-    _DEBUG("EPFramebuffer candidate at %p, vtable=%p", candidate, vtable);
-    if (vtable == nullptr) {
-      _DEBUG("%s", "vtable is null, skipping");
-      continue;
-    }
-    void* func_swapBuffers_qregion = nullptr;
-    if (!safe_read(
-          static_cast<char*>(vtable) + swapBuffersOffset(),
-          &func_swapBuffers_qregion,
-          sizeof(func_swapBuffers_qregion)
-        )) {
-      _DEBUG(
-        "EPFramebuffer candidate vtable offset invalid candidate %p, "
-        "vtable=%p",
-        candidate,
-        vtable
-      );
-      continue;
-    }
-    _DEBUG("swapBuffers candidate function at %p", func_swapBuffers_qregion);
-    if (!validate_swapbuffers(func_swapBuffers_qregion)) {
-      _DEBUG(
-        "validate_swapbuffers(%p) FAILED for QRegion candidate %p, vtable=%p",
-        func_swapBuffers_qregion,
-        candidate,
-        vtable
-      );
-      continue;
-    }
-    _DEBUG(
-      "Found EPFramebuffer at %p, vtable=%p, swapBuffers_QRegion=%p",
-      candidate,
-      vtable,
-      func_swapBuffers_qregion
-    );
-    void* hookfunc;
-    if (compareOSVersion(3, 28, 0, 0) >= 0) {
-      hookfunc = Client::IS_XOCHITL
-                   ? reinterpret_cast<void*>(&hook_swapBuffers_xochitl)
-                   : reinterpret_cast<void*>(&hook_swapBuffers_qsgepaper);
-    } else {
-      hookfunc =
-        Client::IS_XOCHITL
-          ? reinterpret_cast<void*>(&hook_swapBuffers_xochitl_legacy)
-          : reinterpret_cast<void*>(&hook_swapBuffers_qsgepaper_legacy);
-    }
-    install_hook(func_swapBuffers_qregion, hookfunc);
-    _DEBUG(
-      "Hooked swapBuffers(QRegion,...) at %p with offset=0x%x",
-      func_swapBuffers_qregion,
-      swapBuffersOffset()
-    );
-    void** func_syncAfterUpdate = vtable_ptr(vtable, syncAfterUpdateOffset());
-    if (func_syncAfterUpdate != nullptr && *func_syncAfterUpdate != nullptr) {
-      install_hook(
-        *func_syncAfterUpdate, reinterpret_cast<void*>(&hook_syncAfterUpdate)
-      );
-      _DEBUG(
-        "Hooked syncAfterUpdate at %p with offset=0x%x",
-        func_syncAfterUpdate,
-        syncAfterUpdateOffset()
-      );
-    } else {
-      _WARN("syncAfterUpdate vtable entry is null, cannot hook");
-    }
-    void** func_ghostControl = vtable_ptr(vtable, ghostControlOffset());
-    if (func_ghostControl != nullptr && *func_ghostControl != nullptr) {
-      install_hook_ptr(
-        func_ghostControl, reinterpret_cast<void*>(hook_ghostControl)
-      );
-      _DEBUG(
-        "Hooked ghostControl at %p with offset=0x%x",
-        func_ghostControl,
-        ghostControlOffset()
-      );
-    } else {
-      _WARN("ghostControl vtable entry is null, skipping hook");
-    }
-    void** func_metacall = vtable_ptr(vtable, qtMetacallOffset());
-    if (func_metacall != nullptr && *func_metacall != nullptr) {
-      originalQtMetacall = *func_metacall;
-      install_hook_ptr(
-        func_metacall, reinterpret_cast<void*>(hook_qt_metacall)
-      );
-      _DEBUG(
-        "Hooked qt_metacall at %p with offset=0x%x and original=%p",
-        func_metacall,
-        qtMetacallOffset(),
-        originalQtMetacall
-      );
-    } else {
-      _WARN("qt_metacall vtable entry is null, skipping hook");
-    }
-    void* empty = nullptr;
-    epframebufferInstance.compare_exchange_strong(
-      empty, candidate, std::memory_order_relaxed
-    );
-    hook_installed = true;
-    epframebufferCandidates.clear();
-    return;
-  }
-}
-
-/*!
- * \brief QObject::QObject(QObject*) constructor
- * \param this_ptr QObject instance being constructed
- * \param parent parent QObject instance
- */
-void
-_ZN7QObjectC2EPS_(void* this_ptr, void* parent) {
-  static auto func = reinterpret_cast<void (*)(void*, void*)>(
-    dlsym(RTLD_NEXT, "_ZN7QObjectC2EPS_")
-  );
-  if (!func) {
-    _CRIT(
-      "%s",
-      "Failed to resolve real QObject::QObject(QObject*) [C2] via "
-      "RTLD_NEXT"
-    );
-    std::exit(EXIT_FAILURE);
-  }
-  func(this_ptr, parent);
-  hook_check_candidate();
-}
-
-/*!
- * \brief QObject::QObject(QObject*) constructor
- * \param this_ptr QObject instance being constructed
- * \param parent parent QObject instance
- */
-void
-_ZN7QObjectC1EPS_(void* this_ptr, void* parent) {
-  static auto func = reinterpret_cast<void (*)(void*, void*)>(
-    dlsym(RTLD_NEXT, "_ZN7QObjectC1EPS_")
-  );
-  if (!func) {
-    _CRIT(
-      "%s",
-      "Failed to resolve real QObject::QObject(QObject*) [C1] via "
-      "RTLD_NEXT"
-    );
-    std::exit(EXIT_FAILURE);
-  }
-  func(this_ptr, parent);
-  hook_check_candidate();
-}
-
-/*!
- * \brief Alternative QImage::QImage() constructor
- * \param this_ptr QImage instance being constructed
- */
-void
-_ZN6QImageC1Ev(void* this_ptr) {
-  static auto func =
-    reinterpret_cast<void (*)(void*)>(dlsym(RTLD_NEXT, "_ZN6QImageC1Ev"));
-  if (!func) {
-    _CRIT("%s", "Failed to resolve QImage::QImage() via RTLD_NEXT");
-    std::exit(EXIT_FAILURE);
-  }
-  func(this_ptr);
-  if (
-    !Client::isFbEnabled() || hook_installed ||
-    Client::deviceType == Client::DeviceType::RM1
-  ) {
-    return;
-  }
-  _DEBUG("QImage::QImage() default");
-  for (int offset : {previousBufferOffset(), frameBufferOffset()}) {
-    if (offset == 0x00) {
-      continue; // skip unsupported arch placeholder
-    }
-    void* candidate = static_cast<char*>(this_ptr) - offset;
-    void* vtable = nullptr;
-    if (!safe_read(candidate, &vtable, sizeof(vtable))) {
-      continue;
-    }
-    // Quick pre-filter: aligned, non-null, reasonable address
-    if (
-      vtable == nullptr ||
-      reinterpret_cast<uintptr_t>(vtable) & (sizeof(void*) - 1) ||
-      reinterpret_cast<uintptr_t>(vtable) < 0x00010000
+    void _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
+      void* this_ptr,
+      Qt::QRectLayout rect,
+      int waveform,
+      Blight::ContentType contentType,
+      int flags
     ) {
-      continue;
-    }
-    Dl_info info;
-    if (
-      !dladdr(vtable, &info) || info.dli_fname == nullptr || !*info.dli_fname
-    ) {
-      continue;
-    }
-    if (!Client::IS_XOCHITL) {
-      char resolved[4096];
-      if (realpath(info.dli_fname, resolved) == nullptr) {
-        continue;
+      if (!Client::isFbEnabled()) {
+        static auto func = reinterpret_cast<
+          void (*)(void*, Qt::QRectLayout, int, Blight::ContentType, int)>(
+          dlsym(RTLD_NEXT, "_ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei")
+        );
+        if (!func) {
+          _CRIT(
+            "%s",
+            "Failed to resolve real EPFramebufferSwtcon::update via RTLD_NEXT"
+          );
+          std::exit(EXIT_FAILURE);
+        }
+        func(this_ptr, rect, waveform, contentType, flags);
+        return;
       }
-      bool match =
-        strcmp(resolved, "/usr/lib/plugins/scenegraph/libqsgepaper.so") == 0;
-      if (!match) {
-        continue;
+      void* epframebuffer = nullptr;
+      if (
+        !epframebufferInstance.compare_exchange_strong(
+          epframebuffer, this_ptr, std::memory_order_relaxed
+        ) &&
+        epframebuffer != this_ptr
+      ) {
+        _WARN(
+          "epframebufferInstance does not match this_ptr: %p != %p",
+          epframebuffer,
+          this_ptr
+        );
+      }
+      _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
+      update_buffers(rect);
+      repaint(
+        &rect,
+        (Blight::WaveformMode)waveform,
+        contentType,
+        (Blight::UpdateMode)flags
+      );
+      dump_buffers();
+    }
+
+    void _ZN19EPFramebufferSwtcon4syncEv(void* this_ptr) {
+      if (!Client::isFbEnabled()) {
+        static auto func = reinterpret_cast<void (*)(void*)>(
+          dlsym(RTLD_NEXT, "_ZN19EPFramebufferSwtcon4syncEv")
+        );
+        if (!func) {
+          _CRIT(
+            "%s",
+            "Failed to resolve real EPFramebufferSwtcon::sync via RTLD_NEXT"
+          );
+          std::exit(EXIT_FAILURE);
+        }
+        func(this_ptr);
+        return;
+      }
+      void* epframebuffer = nullptr;
+      if (
+        !epframebufferInstance.compare_exchange_strong(
+          epframebuffer, this_ptr, std::memory_order_relaxed
+        ) &&
+        epframebuffer != this_ptr
+      ) {
+        _WARN(
+          "epframebufferInstance does not match this_ptr: %p != %p",
+          epframebuffer,
+          this_ptr
+        );
+      }
+      _DEBUG("EPFramebufferSwtcon::sync()");
+      Blight::waitForNoRepaints();
+    }
+
+    void* _ZN13EPFramebuffer8instanceEv() {
+      static auto func = reinterpret_cast<void* (*)()>(
+        dlsym(RTLD_NEXT, "_ZN13EPFramebuffer8instanceEv")
+      );
+      if (!func) {
+        _CRIT(
+          "%s", "Failed to resolve real EPFramebuffer::instance via RTLD_NEXT"
+        );
+        std::exit(EXIT_FAILURE);
+      }
+      void* instance = func();
+      if (Client::isFbEnabled()) {
+        void* empty = nullptr;
+        epframebufferInstance.compare_exchange_strong(
+          empty, instance, std::memory_order_relaxed
+        );
+      }
+      return instance;
+    }
+
+    void install_hook_ptr(void** target_ptr, void* hook) {
+      auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
+      auto page = reinterpret_cast<void*>(
+        reinterpret_cast<uintptr_t>(target_ptr) &
+        ~(static_cast<uintptr_t>(ps) - 1)
+      );
+      while (reinterpret_cast<uintptr_t>(page) + ps <
+             reinterpret_cast<uintptr_t>(target_ptr) + sizeof(void*)) {
+        ps += sysconf(_SC_PAGESIZE);
+      }
+      mprotect(page, ps, PROT_READ | PROT_WRITE);
+      *target_ptr = hook;
+    }
+
+    /*!
+     * \brief Hook to run on QObject::QObject(QObject*) call
+     */
+    static void hook_check_candidate() {
+      if (
+        !Client::isFbEnabled() || hook_installed ||
+        Client::deviceType == Client::DeviceType::RM1
+      ) {
+        return;
+      }
+      std::lock_guard<std::mutex> lock(candidatesMutex);
+      for (void* candidate : epframebufferCandidates) {
+        if (candidate == nullptr) {
+          continue;
+        }
+        void* vtable = nullptr;
+        if (!safe_read(candidate, &vtable, sizeof(vtable))) {
+          _DEBUG("Candidate at %p not readable, skipping", candidate);
+          continue;
+        }
+        _DEBUG("EPFramebuffer candidate at %p, vtable=%p", candidate, vtable);
+        if (vtable == nullptr) {
+          _DEBUG("%s", "vtable is null, skipping");
+          continue;
+        }
+        void* func_swapBuffers_qregion = nullptr;
+        if (!safe_read(
+              static_cast<char*>(vtable) + swapBuffersOffset(),
+              &func_swapBuffers_qregion,
+              sizeof(func_swapBuffers_qregion)
+            )) {
+          _DEBUG(
+            "EPFramebuffer candidate vtable offset invalid candidate %p, "
+            "vtable=%p",
+            candidate,
+            vtable
+          );
+          continue;
+        }
+        _DEBUG(
+          "swapBuffers candidate function at %p", func_swapBuffers_qregion
+        );
+        if (!validate_swapbuffers(func_swapBuffers_qregion)) {
+          _DEBUG(
+            "validate_swapbuffers(%p) FAILED for QRegion candidate %p, "
+            "vtable=%p",
+            func_swapBuffers_qregion,
+            candidate,
+            vtable
+          );
+          continue;
+        }
+        _DEBUG(
+          "Found EPFramebuffer at %p, vtable=%p, swapBuffers_QRegion=%p",
+          candidate,
+          vtable,
+          func_swapBuffers_qregion
+        );
+        void* hookfunc;
+        if (compareOSVersion(3, 28, 0, 0) >= 0) {
+          hookfunc = Client::IS_XOCHITL
+                       ? reinterpret_cast<void*>(&hook_swapBuffers_xochitl)
+                       : reinterpret_cast<void*>(&hook_swapBuffers_qsgepaper);
+        } else {
+          hookfunc =
+            Client::IS_XOCHITL
+              ? reinterpret_cast<void*>(&hook_swapBuffers_xochitl_legacy)
+              : reinterpret_cast<void*>(&hook_swapBuffers_qsgepaper_legacy);
+        }
+        install_hook(func_swapBuffers_qregion, hookfunc);
+        _DEBUG(
+          "Hooked swapBuffers(QRegion,...) at %p with offset=0x%x",
+          func_swapBuffers_qregion,
+          swapBuffersOffset()
+        );
+        void** func_syncAfterUpdate =
+          vtable_ptr(vtable, syncAfterUpdateOffset());
+        if (
+          func_syncAfterUpdate != nullptr && *func_syncAfterUpdate != nullptr
+        ) {
+          install_hook(
+            *func_syncAfterUpdate,
+            reinterpret_cast<void*>(&hook_syncAfterUpdate)
+          );
+          _DEBUG(
+            "Hooked syncAfterUpdate at %p with offset=0x%x",
+            func_syncAfterUpdate,
+            syncAfterUpdateOffset()
+          );
+        } else {
+          _WARN("syncAfterUpdate vtable entry is null, cannot hook");
+        }
+        void** func_ghostControl = vtable_ptr(vtable, ghostControlOffset());
+        if (func_ghostControl != nullptr && *func_ghostControl != nullptr) {
+          install_hook_ptr(
+            func_ghostControl, reinterpret_cast<void*>(hook_ghostControl)
+          );
+          _DEBUG(
+            "Hooked ghostControl at %p with offset=0x%x",
+            func_ghostControl,
+            ghostControlOffset()
+          );
+        } else {
+          _WARN("ghostControl vtable entry is null, skipping hook");
+        }
+        void** func_metacall = vtable_ptr(vtable, qtMetacallOffset());
+        if (func_metacall != nullptr && *func_metacall != nullptr) {
+          originalQtMetacall = *func_metacall;
+          install_hook_ptr(
+            func_metacall, reinterpret_cast<void*>(hook_qt_metacall)
+          );
+          _DEBUG(
+            "Hooked qt_metacall at %p with offset=0x%x and original=%p",
+            func_metacall,
+            qtMetacallOffset(),
+            originalQtMetacall
+          );
+        } else {
+          _WARN("qt_metacall vtable entry is null, skipping hook");
+        }
+        void* empty = nullptr;
+        epframebufferInstance.compare_exchange_strong(
+          empty, candidate, std::memory_order_relaxed
+        );
+        hook_installed = true;
+        epframebufferCandidates.clear();
+        return;
       }
     }
-    _DEBUG(
-      "Default ctor at %p -> EPFramebuffer candidate at %p "
-      "(vtable=%p in %s)",
-      this_ptr,
-      candidate,
-      vtable,
-      info.dli_fname
-    );
-    std::lock_guard<std::mutex> lock(candidatesMutex);
-    if (
-      std::none_of(
-        epframebufferCandidates.begin(),
-        epframebufferCandidates.end(),
-        [candidate](void* c) { return c == candidate; }
-      )
-    ) {
-      epframebufferCandidates.push_back(candidate);
-    }
-  }
-}
 
-void*
-__PREVIOUS_BUFFER() {
-  void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
-  if (epframebuffer == nullptr) {
-    return nullptr;
-  }
-  return static_cast<char*>(epframebuffer) + previousBufferOffset();
-}
+    /*!
+     * \brief QObject::QObject(QObject*) constructor
+     * \param this_ptr QObject instance being constructed
+     * \param parent parent QObject instance
+     */
+    void _ZN7QObjectC2EPS_(void* this_ptr, void* parent) {
+      static auto func = reinterpret_cast<void (*)(void*, void*)>(
+        dlsym(RTLD_NEXT, "_ZN7QObjectC2EPS_")
+      );
+      if (!func) {
+        _CRIT(
+          "%s",
+          "Failed to resolve real QObject::QObject(QObject*) [C2] via "
+          "RTLD_NEXT"
+        );
+        std::exit(EXIT_FAILURE);
+      }
+      func(this_ptr, parent);
+      hook_check_candidate();
+    }
+
+    /*!
+     * \brief QObject::QObject(QObject*) constructor
+     * \param this_ptr QObject instance being constructed
+     * \param parent parent QObject instance
+     */
+    void _ZN7QObjectC1EPS_(void* this_ptr, void* parent) {
+      static auto func = reinterpret_cast<void (*)(void*, void*)>(
+        dlsym(RTLD_NEXT, "_ZN7QObjectC1EPS_")
+      );
+      if (!func) {
+        _CRIT(
+          "%s",
+          "Failed to resolve real QObject::QObject(QObject*) [C1] via "
+          "RTLD_NEXT"
+        );
+        std::exit(EXIT_FAILURE);
+      }
+      func(this_ptr, parent);
+      hook_check_candidate();
+    }
+
+    /*!
+     * \brief Alternative QImage::QImage() constructor
+     * \param this_ptr QImage instance being constructed
+     */
+    void _ZN6QImageC1Ev(void* this_ptr) {
+      static auto func =
+        reinterpret_cast<void (*)(void*)>(dlsym(RTLD_NEXT, "_ZN6QImageC1Ev"));
+      if (!func) {
+        _CRIT("%s", "Failed to resolve QImage::QImage() via RTLD_NEXT");
+        std::exit(EXIT_FAILURE);
+      }
+      func(this_ptr);
+      if (
+        !Client::isFbEnabled() || hook_installed ||
+        Client::deviceType == Client::DeviceType::RM1
+      ) {
+        return;
+      }
+      _DEBUG("QImage::QImage() default");
+      for (int offset : {previousBufferOffset(), frameBufferOffset()}) {
+        if (offset == 0x00) {
+          continue; // skip unsupported arch placeholder
+        }
+        void* candidate = static_cast<char*>(this_ptr) - offset;
+        void* vtable = nullptr;
+        if (!safe_read(candidate, &vtable, sizeof(vtable))) {
+          continue;
+        }
+        // Quick pre-filter: aligned, non-null, reasonable address
+        if (
+          vtable == nullptr ||
+          reinterpret_cast<uintptr_t>(vtable) & (sizeof(void*) - 1) ||
+          reinterpret_cast<uintptr_t>(vtable) < 0x00010000
+        ) {
+          continue;
+        }
+        Dl_info info;
+        if (
+          !dladdr(vtable, &info) || info.dli_fname == nullptr ||
+          !*info.dli_fname
+        ) {
+          continue;
+        }
+        if (!Client::IS_XOCHITL) {
+          char resolved[4096];
+          if (realpath(info.dli_fname, resolved) == nullptr) {
+            continue;
+          }
+          bool match =
+            strcmp(resolved, "/usr/lib/plugins/scenegraph/libqsgepaper.so") ==
+            0;
+          if (!match) {
+            continue;
+          }
+        }
+        _DEBUG(
+          "Default ctor at %p -> EPFramebuffer candidate at %p "
+          "(vtable=%p in %s)",
+          this_ptr,
+          candidate,
+          vtable,
+          info.dli_fname
+        );
+        std::lock_guard<std::mutex> lock(candidatesMutex);
+        if (
+          std::none_of(
+            epframebufferCandidates.begin(),
+            epframebufferCandidates.end(),
+            [candidate](void* c) { return c == candidate; }
+          )
+        ) {
+          epframebufferCandidates.push_back(candidate);
+        }
+      }
+    }
+
+    void* __PREVIOUS_BUFFER() {
+      void* epframebuffer =
+        epframebufferInstance.load(std::memory_order_acquire);
+      if (epframebuffer == nullptr) {
+        return nullptr;
+      }
+      return static_cast<char*>(epframebuffer) + previousBufferOffset();
+    }
