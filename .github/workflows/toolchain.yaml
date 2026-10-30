@@ -59,7 +59,7 @@ jobs:
           echo "tags=${IMAGE_NAME}:${VERSION}-${DEVICE}" >> $GITHUB_OUTPUT
           cat $GITHUB_OUTPUT
 
-      - name: Build and push
+      - name: Build
         run: |
           make PODMAN=docker toolchain-${{ matrix.device }} \
             TOOLCHAIN=${{ steps.toolchain.outputs.version }} \
