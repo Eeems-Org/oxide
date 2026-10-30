@@ -165,7 +165,7 @@ oxide_display() {
     category="framework"
     depends="
     liboxide=$pkgver-r$pkgrel
-    remarkable-os>=3.27.1.0
+    remarkable-os>=3.27.1.0 remarkable-os<=3.28.0.172
     "
 
     package() {
