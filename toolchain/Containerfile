@@ -1,4 +1,4 @@
-ARG VERSION=5.7.119
+ARG VERSION=5.8.203
 ARG DEVICE=rm1
 FROM eeems/remarkable-toolchain:${VERSION}-${DEVICE}
 

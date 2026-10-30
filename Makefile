@@ -8,7 +8,7 @@ MAKEFLAGS := --jobs=$(shell nproc)
 DIST=$(CURDIR)/release
 BUILD=$(CURDIR)/.build
 BUILDNAME?=oxide
-TOOLCHAIN?=5.7.119
+TOOLCHAIN?=5.8.203
 
 ifneq ($(filter debug,$(FEATURES)),)
 CONFIG += CONFIG+="debug"
