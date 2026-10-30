@@ -163,7 +163,7 @@ build-amd64: release
 
 .PHONY: _build-%
 _build-%: $(DIST)
-	$(PODMAN) run \
+	podman run \
 		--env BUILDNAME=oxide-$* \
 		--rm \
 		--volume=$(CURDIR):/src \
