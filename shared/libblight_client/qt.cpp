@@ -2,6 +2,7 @@
 #include "fb.h"
 #include "state.h"
 
+#include <QtGlobal>
 #include <cstdint>
 #include <cstdlib>
 #include <dlfcn.h>
@@ -559,11 +560,19 @@ validate_swapbuffers(void* func) {
   }
 #if defined(__arm__)
   // Check arm32 prologue for the swapBuffers(QRegion) variant:
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
-  //   sub sp, sp, #0x44       (0xE24DD044)
+  //   sub sp, sp, #0x4c       (0xE24DD04C) - 3.28.0.172
+  // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x4c
+  if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
+    if (data[1] == 0xE24DD04C || data[1] == 0xE24DD044) {
+#else
+  //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)s
+  //   sub sp, sp, #0x44       (0xE24DD044) - 3.27.3.0
   // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
   if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
     if (data[1] == 0xE24DD044) {
+#endif
       return true;
     }
     _WARN(
