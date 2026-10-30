@@ -553,13 +553,12 @@ compareOSVersion(
   }
   char buffer[128];
   std::size_t length = fread(buffer, 1, sizeof(buffer) - 1, pipe);
-  buffer[length] = '\\0';
   int status = pclose(pipe);
   if (status != 0 || length == 0) {
     _CRIT("%s", "/etc/os-release failed to read IMG_VERSION");
     std::exit(EXIT_FAILURE);
   }
-  std::string value = buffer;
+  std::string value(buffer, length);
   int count = sscanf(
     value.c_str(),
     "%d.%d.%d.%d",
@@ -631,37 +630,27 @@ validate_swapbuffers(void* func) {
 #if defined(__arm__)
   // Check arm32 prologue for the swapBuffers(QRegion) variant:
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
-  //   sub sp, sp, #0x44       (0xE24DD044) - 3.27.3.0
-  //   sub sp, sp, #0x4c       (0xE24DD04C) - 3.28.0.172
-  // QT_VERSION is provided by the .pro as a string ("6.8.0" or "6.10.0").
-  if (compareOSVersion(3, 28, 0, 0) >= 0) {
-    // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x4c
-    if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
-      if (data[1] == 0xE24DD04C || data[1] == 0xE24DD044) {
-        return true;
-      }
-    }
-  } else {
+  if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
     // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
-    if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
-      if (data[1] == 0xE24DD044) {
-        return true;
-      }
+    if (data[1] == 0xE24DD044) {
+      return true;
     }
+    // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x4c
+    if (compareOSVersion(3, 28, 0, 0) >= 0 && data[1] == 0xE24DD04C) {
+      return true;
+    }
+    _WARN(
+      "swapBuffers: STMDB at pos 0 but second not sub sp,#0x44, "
+      "got 0x%08x",
+      data[1]
+    );
+    return false;
   }
   _WARN(
-    "swapBuffers: STMDB at pos 0 but second not sub sp,#0x44, "
-    "got 0x%08x",
-    data[1]
+    "swapBuffers: first instruction 0x%08x doesn't match any known "
+    "swapBuffers pattern",
+    data[0]
   );
-  return false;
-}
-_WARN(
-  "swapBuffers: first instruction 0x%08x doesn't match any known "
-  "swapBuffers pattern",
-  data[0]
-);
-return false;
 #elif defined(__aarch64__)
   // Check for common aarch64 function prologue.
   // Most non-leaf functions start with:
@@ -686,8 +675,8 @@ return false;
     }
   }
   _WARN("swapBuffers: PAC prologue not found");
-  return false;
 #endif
+  return false;
 }
 
 /*!
