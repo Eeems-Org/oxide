@@ -166,6 +166,7 @@ oxide_display() {
     depends="
     liboxide=$pkgver-r$pkgrel
     remarkable-os>=3.28.0.172
+    remarkable-os<3.29
     "
 
     package() {
@@ -487,7 +488,7 @@ lockscreen_hook() {
     pkgdesc="Run scripts after unlock"
     category="framework"
     depends='
-    remarkable-os>=3.28.0.172
+    remarkable-os>=3.27.1.0
     '
     package() {
         cd "$srcdir"/release
