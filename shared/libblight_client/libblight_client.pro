@@ -8,6 +8,10 @@ CONFIG += hide_symbols
 
 QT =
 
+isEmpty(QT_VERSION) { QT_VERSION = $$system(qmake -query QT_VERSION) }
+isEmpty(QT_VERSION) { QT_VERSION = 0.0.0 }
+DEFINES += QT_VERSION=\'\"$$QT_VERSION\"\'
+
 HEADERS += \
     drm.h \
     fb.h \

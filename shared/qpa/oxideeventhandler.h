@@ -19,7 +19,8 @@
 #include <thread>
 #include <vector>
 
-#if defined(__arm__) || defined(__aarch64__)
+#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0) &&                                  \
+  (defined(__arm__) || defined(__aarch64__))
 namespace KeyboardMap = QEvdevKeyboardMap;
 #else
 namespace KeyboardMap = QKeyboardMap;

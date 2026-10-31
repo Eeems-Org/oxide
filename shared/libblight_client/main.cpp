@@ -757,12 +757,13 @@ void __attribute__((constructor)) static init(void) {
   Libc::sigaction(SIGBUS, &intercept_sigaction, NULL);
 #endif
 #endif
-  if (Client::init() && FB::init() && Input::init()) {
-    Client::FAILED_INIT = false;
-    Client::INITIALIZED = true;
-    FB::connection->focused();
-    _DEBUG("blight_client initialized")
+  if (!Client::init() || !FB::init() || !Input::init()) {
+    return;
   }
+  Client::FAILED_INIT = false;
+  Client::INITIALIZED = true;
+  FB::connection->focused();
+  _DEBUG("blight_client initialized");
 }
 
 __attribute__((visibility("default"))) int
