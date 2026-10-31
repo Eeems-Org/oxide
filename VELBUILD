@@ -179,13 +179,15 @@ oxide_display() {
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/blight
         # Client
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
-            home/root/.vellum/lib/libblight_client.so*
+        mkdir -p "$subpkgdir"/home/root/.vellum/lib
+        cp -a home/root/.vellum/lib/libblight_client.so* \
+            "$subpkgdir"/home/root/.vellum/lib/
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/blight-client
         # QPA
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib/plugins/platforms \
-            home/root/.vellum/lib/plugins/platforms/liboxide.so*
+        mkdir -p "$subpkgdir"/home/root/.vellum/lib/plugins/platforms
+        cp -a home/root/.vellum/lib/plugins/platforms/liboxide.so* \
+            "$subpkgdir"/home/root/.vellum/lib/plugins/platforms/
         install -Dm644 "$srcdir/LICENSE.md" \
             "$subpkgdir/home/root/.vellum/licenses/oxide-display/LICENSE"
         echo "https://github.com/Eeems/oxide" > \
@@ -395,12 +397,11 @@ liboxide() {
 
     package() {
         cd "$srcdir"/release
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
-            home/root/.vellum/lib/liboxide.so*
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
-            home/root/.vellum/lib/libblight.so*
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
-            home/root/.vellum/lib/libblight_protocol.so*
+        mkdir -p "$subpkgdir"/home/root/.vellum/lib
+        cp -a home/root/.vellum/lib/liboxide.so* \
+            home/root/.vellum/lib/libblight.so* \
+            home/root/.vellum/lib/libblight_protocol.so* \
+            "$subpkgdir"/home/root/.vellum/lib/
         if [ -f home/root/.vellum/lib/libsentry.so ]; then
             install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
                 home/root/.vellum/lib/libsentry.so
@@ -492,8 +493,9 @@ lockscreen_hook() {
     '
     package() {
         cd "$srcdir"/release
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/usr/lib \
-            usr/lib/liblockscreen_hook.so*
+        mkdir -p "$subpkgdir"/home/root/.vellum/usr/lib
+        cp -a usr/lib/liblockscreen_hook.so* \
+            "$subpkgdir"/home/root/.vellum/usr/lib/
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \
             etc/systemd/system/xochitl.service.d/lockscreen_hook.conf
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \

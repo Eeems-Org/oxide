@@ -29,6 +29,7 @@
 #include <sys/poll.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
 #include <systemd/sd-journal.h>
 #include <unistd.h>
@@ -174,11 +175,43 @@ namespace {
     }
     return res;
   }
+
+  static void safe_stderr_write(const char* message) {
+    syscall(SYS_write, 2, message, std::strlen(message));
+  }
+
+  void __attribute__((constructor)) static init(void) {
+    if (!Libc::init()) {
+      return;
+    }
+#ifdef DEBUG
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
+    struct sigaction intercept_sigaction{};
+    intercept_sigaction.sa_flags = SA_SIGINFO;
+    intercept_sigaction.sa_sigaction = __signal_handler;
+    Libc::sigaction(SIGSEGV, &intercept_sigaction, NULL);
+    intercept_sigaction.sa_sigaction = __signal_handler;
+    Libc::sigaction(SIGABRT, &intercept_sigaction, NULL);
+    intercept_sigaction.sa_sigaction = __signal_handler;
+    Libc::sigaction(SIGBUS, &intercept_sigaction, NULL);
+#endif
+#endif
+    if (!Client::init() || !FB::init() || !Input::init()) {
+      return;
+    }
+    Client::FAILED_INIT = false;
+    Client::INITIALIZED = true;
+    FB::connection->focused();
+    _DEBUG("blight_client initialized");
+  }
 }
 
 extern "C" {
 __attribute__((visibility("default"))) int
 msgget(key_t key, int msgflg) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   if (!Client::INITIALIZED || !Client::isFbEnabled()) {
     return Libc::msgget(key, msgflg);
   }
@@ -195,6 +228,9 @@ msgget(key_t key, int msgflg) {
 
 __attribute__((visibility("default"))) int
 msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   if (!Client::INITIALIZED || !Client::isFbEnabled() || msqid != FB::msgq) {
     return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
   }
@@ -249,38 +285,64 @@ msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
   return 0;
 }
 
+#define _open(func)                                                            \
+  va_list args;                                                                \
+  va_start(args, flags);                                                       \
+  int mode = (flags & O_CREAT) ? va_arg(args, int) : 0;                        \
+  va_end(args);                                                                \
+  fd = Libc::func(pathname, flags, mode);
+
 __attribute__((visibility("default"))) int
-open64(const char* pathname, int flags, ...) {
+open(const char* pathname, int flags, ...) {
+  int fd;
   if (!Client::INITIALIZED) {
-    va_list args;
-    va_start(args, flags);
-    int fd = Libc::open64(pathname, flags, args);
-    va_end(args);
+    Libc::init();
+    _open(open);
     return fd;
   }
-  _DEBUG("open64 %s %d", pathname, flags);
-  int fd = __open(pathname, flags);
+  _DEBUG("open %s %d", pathname, flags);
+  fd = __open(pathname, flags);
   if (fd == -2) {
-    va_list args;
-    va_start(args, flags);
-    fd = Libc::open64(pathname, flags, args);
-    va_end(args);
+    _open(open);
   }
   _DEBUG("opened %s with fd %d", pathname, fd);
   return fd;
 }
 
 __attribute__((visibility("default"))) int
-openat(int dirfd, const char* pathname, int flags, ...) {
+open64(const char* pathname, int flags, ...) {
+  int fd;
   if (!Client::INITIALIZED) {
-    va_list args;
-    va_start(args, flags);
-    int fd = Libc::openat(dirfd, pathname, flags, args);
-    va_end(args);
+    Libc::init();
+    _open(open64);
+    return fd;
+  }
+  _DEBUG("open64 %s %d", pathname, flags);
+  fd = __open(pathname, flags);
+  if (fd == -2) {
+    _open(open64);
+  }
+  _DEBUG("opened %s with fd %d", pathname, fd);
+  return fd;
+}
+
+#define _open(func)                                                            \
+  va_list args;                                                                \
+  va_start(args, flags);                                                       \
+  int mode = (flags & O_CREAT) ? va_arg(args, int) : 0;                        \
+  va_end(args);                                                                \
+  fd = Libc::func(dirfd, pathname, flags, mode);
+
+__attribute__((visibility("default"))) int
+openat(int dirfd, const char* pathname, int flags, ...) {
+  int fd;
+  if (!Client::INITIALIZED) {
+    Libc::init();
+    _open(openat);
     return fd;
   }
   _DEBUG("openat %s %d", pathname, flags);
-  int fd = __open(pathname, flags);
+  fd = __open(pathname, flags);
   if (fd == -2) {
     DIR* save = opendir(".");
     fchdir(dirfd);
@@ -294,10 +356,7 @@ openat(int dirfd, const char* pathname, int flags, ...) {
     fd = __open(fullpath.c_str(), flags);
   }
   if (fd == -2) {
-    va_list args;
-    va_start(args, flags);
-    fd = Libc::openat(dirfd, pathname, flags, args);
-    va_end(args);
+    _open(openat);
   }
   _DEBUG("opened %s with fd %d", pathname, fd);
   return fd;
@@ -305,15 +364,14 @@ openat(int dirfd, const char* pathname, int flags, ...) {
 
 __attribute__((visibility("default"))) int
 openat64(int dirfd, const char* pathname, int flags, ...) {
+  int fd;
   if (!Client::INITIALIZED) {
-    va_list args;
-    va_start(args, flags);
-    int fd = Libc::openat(dirfd, pathname, flags, args);
-    va_end(args);
+    Libc::init();
+    _open(openat64);
     return fd;
   }
   _DEBUG("openat64 %s %d", pathname, flags);
-  int fd = __open(pathname, flags);
+  fd = __open(pathname, flags);
   if (fd == -2) {
     DIR* save = opendir(".");
     fchdir(dirfd);
@@ -327,36 +385,13 @@ openat64(int dirfd, const char* pathname, int flags, ...) {
     fd = __open(fullpath.c_str(), flags);
   }
   if (fd == -2) {
-    va_list args;
-    va_start(args, flags);
-    fd = Libc::openat64(dirfd, pathname, flags, args);
-    va_end(args);
+    _open(openat64);
   }
   _DEBUG("opened %s with fd %d", pathname, fd);
   return fd;
 }
 
-__attribute__((visibility("default"))) int
-open(const char* pathname, int flags, ...) {
-  if (!Client::INITIALIZED) {
-    va_list args;
-    va_start(args, flags);
-    int fd = Libc::open(pathname, flags, args);
-    ;
-    va_end(args);
-    return fd;
-  }
-  _DEBUG("open %s %d", pathname, flags);
-  int fd = __open(pathname, flags);
-  if (fd == -2) {
-    va_list args;
-    va_start(args, flags);
-    fd = Libc::open(pathname, flags, args);
-    va_end(args);
-  }
-  _DEBUG("opened %s with fd %d", pathname, fd);
-  return fd;
-}
+#undef _open
 
 __attribute__((visibility("default"))) int
 close(int fd) {
@@ -396,12 +431,17 @@ close(int fd) {
       }
       return res;
     }
+  } else {
+    Libc::init();
   }
   return Libc::close(fd);
 }
 
 __attribute__((visibility("default"))) int
 fcntl(int fd, int cmd, ...) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   va_list args;
   va_start(args, cmd);
   void* ptr = va_arg(args, void*);
@@ -416,8 +456,30 @@ fcntl(int fd, int cmd, ...) {
   return res;
 }
 
+__attribute__((visibility("default"))) int
+fcntl64(int fd, int cmd, ...) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
+  va_list args;
+  va_start(args, cmd);
+  void* ptr = va_arg(args, void*);
+  _DEBUG("fcntl %d %d %p", fd, cmd, ptr);
+  int res;
+  if (Client::INITIALIZED && Client::isInputEnabled() && Input::isInputFd(fd)) {
+    res = Input::fcntl(fd, cmd, ptr);
+  } else {
+    res = Libc::fcntl64(fd, cmd, ptr);
+  }
+  va_end(args);
+  return res;
+}
+
 __attribute__((visibility("default"))) ssize_t
 read(int fd, void* buf, size_t count) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   if (Client::INITIALIZED && Client::isInputEnabled() && Input::isInputFd(fd)) {
     return Input::read(fd, buf, count);
   }
@@ -426,6 +488,9 @@ read(int fd, void* buf, size_t count) {
 
 __attribute__((visibility("default"))) int
 ioctl(int fd, unsigned long request, ...) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   va_list args;
   va_start(args, request);
   char* ptr = va_arg(args, char*);
@@ -461,6 +526,9 @@ __asm__(".globl  ioctl\n"
 
 __attribute__((visibility("default"))) int
 setenv(const char* name, const char* value, int overwrite) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   if (
     Client::forceQt() &&
     (strcmp(name, "QMLSCENE_DEVICE") == 0 ||
@@ -491,6 +559,9 @@ setenv(const char* name, const char* value, int overwrite) {
 
 __attribute__((visibility("default"))) int
 unsetenv(const char* name) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   if (
     strcmp(name, "OXIDE_PRELOAD_DEBUG") == 0 ||
     (Client::forceQt() &&
@@ -514,6 +585,7 @@ unsetenv(const char* name) {
 __attribute__((visibility("default"))) int
 flock(int fd, int op) {
   if (!Client::INITIALIZED) {
+    Libc::init();
     return Libc::flock(fd, op);
   }
   _DEBUG("flock %d %d", fd, op);
@@ -532,6 +604,9 @@ flock(int fd, int op) {
 
 __attribute__((visibility("default"))) int
 poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   struct pollfd* backup = nullptr;
   if (Client::INITIALIZED && Client::isInputEnabled()) {
     backup = Input::translatePollfds(fds, nfds);
@@ -554,6 +629,9 @@ ppoll(
   const struct timespec* tmo,
   const sigset_t* sigmask
 ) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   struct pollfd* backup = nullptr;
   if (Client::INITIALIZED && Client::isInputEnabled()) {
     backup = Input::translatePollfds(fds, nfds);
@@ -576,6 +654,9 @@ __ppoll64(
   const struct timespec* tmo,
   const sigset_t* sigmask
 ) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   struct pollfd* backup = nullptr;
   if (Client::INITIALIZED && Client::isInputEnabled()) {
     backup = Input::translatePollfds(fds, nfds);
@@ -598,6 +679,9 @@ select(
   fd_set* exceptfds,
   struct timeval* timeout
 ) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   int backup;
   if (Client::INITIALIZED && Client::isInputEnabled()) {
     backup = Input::translateSelectFds(nfds, readfds, writefds, exceptfds);
@@ -618,6 +702,9 @@ pselect(
   const struct timespec* ntimeout,
   const sigset_t* sigmask
 ) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   int backup;
   if (Client::INITIALIZED && Client::isInputEnabled()) {
     backup = Input::translateSelectFds(nfds, readfds, writefds, exceptfds);
@@ -632,6 +719,9 @@ pselect(
 
 __attribute__((visibility("default"))) int
 epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   if (Client::INITIALIZED && Client::isInputEnabled() && Input::isInputFd(fd)) {
     return Input::epollCtl(epfd, op, fd, ev);
   }
@@ -640,6 +730,9 @@ epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
 
 __attribute__((visibility("default"))) int
 epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   int res = Libc::epoll_wait(epfd, events, maxevents, timeout);
   if (res <= 0) {
     return res;
@@ -652,6 +745,9 @@ epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
 
 __attribute__((visibility("default"))) int
 system(const char* command) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   if (strcmp(command, "systemctl start suspend-then-hibernate.target") == 0) {
     return Libc::system("systemctl suspend-then-hibernate");
   }
@@ -671,6 +767,9 @@ system(const char* command) {
 #if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
 __attribute__((visibility("default"))) sighandler_t
 signal(int signum, sighandler_t handler) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   struct sigaction* originalAction;
   switch (signum) {
     case SIGSEGV:
@@ -707,6 +806,9 @@ sigaction(
   const struct sigaction* newAction,
   struct sigaction* oldAction
 ) {
+  if (!Client::INITIALIZED) {
+    Libc::init();
+  }
   switch (signum) {
     case SIGSEGV:
     case SIGABRT:
@@ -744,28 +846,6 @@ sigaction(
 #endif
 #endif
 
-void __attribute__((constructor)) static init(void) {
-#ifdef DEBUG
-#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
-  struct sigaction intercept_sigaction{};
-  intercept_sigaction.sa_flags = SA_SIGINFO;
-  intercept_sigaction.sa_sigaction = __signal_handler;
-  Libc::sigaction(SIGSEGV, &intercept_sigaction, NULL);
-  intercept_sigaction.sa_sigaction = __signal_handler;
-  Libc::sigaction(SIGABRT, &intercept_sigaction, NULL);
-  intercept_sigaction.sa_sigaction = __signal_handler;
-  Libc::sigaction(SIGBUS, &intercept_sigaction, NULL);
-#endif
-#endif
-  if (!Client::init() || !FB::init() || !Input::init()) {
-    return;
-  }
-  Client::FAILED_INIT = false;
-  Client::INITIALIZED = true;
-  FB::connection->focused();
-  _DEBUG("blight_client initialized");
-}
-
 __attribute__((visibility("default"))) int
 __libc_start_main(
   int (*_main)(int, char**, char**),
@@ -777,6 +857,7 @@ __libc_start_main(
   void* stack_end
 ) {
   if (Client::FAILED_INIT) {
+    safe_stderr_write("blight_client failed init\n");
     return EXIT_FAILURE;
   }
   auto func_main =
