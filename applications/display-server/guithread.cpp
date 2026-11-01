@@ -24,14 +24,11 @@ GUIThread::run() {
   clearFrameBuffer();
   QTimer::singleShot(0, this, [this] {
     Q_ASSERT(QThread::currentThread() == (QThread*)this);
-    QMutexLocker locker(&m_repaintMutex);
-    Q_UNUSED(locker);
     RepaintRequest event;
     while (!isInterruptionRequested()) {
       if (!m_repaintEvents.try_dequeue(event)) {
         emit settled();
-        // Wait for up to 500ms before trying again
-        m_repaintWait.wait(&m_repaintMutex, 500);
+        m_repaintWait.acquire(1);
         if (!m_repaintEvents.try_dequeue(event)) {
           // Woken by something needing to cleanup
           // connections/surfaces
@@ -232,7 +229,7 @@ GUIThread::enqueue(
 void
 GUIThread::notify() {
   if (!dbusInterface->inExclusiveMode()) {
-    m_repaintWait.notify_one();
+    m_repaintWait.release(1);
   }
 }
 
@@ -426,7 +423,7 @@ GUIThread::visibleSurfaces() {
         }
         // Connection running/unified/hasRunningConnection check done in
         // dbusInterface->visibleSurfaces already
-        if (!surface->has("system") && !connection->isRunning() < 0) {
+        if (!surface->has("system") && !connection->isRunning()) {
           O_WARNING(surface->id() << "With no running process");
           return true;
         }
