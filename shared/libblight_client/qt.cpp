@@ -2,6 +2,10 @@
 #include "fb.h"
 #include "state.h"
 
+#include <libblight.h>
+#include <libblight/debug.h>
+#include <libblight/system.h>
+
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -157,6 +161,70 @@ safe_read(void* addr, void* buffer, size_t size) {
   struct iovec local = {.iov_base = buffer, .iov_len = size};
   struct iovec remote = {.iov_base = addr, .iov_len = size};
   return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) == size;
+}
+
+static std::string
+format_pointer(const void* pointer) {
+  char buffer[32];
+  std::snprintf(buffer, sizeof(buffer), "%p", pointer);
+  return buffer;
+}
+
+std::string
+repr_qrect(const Qt::QRectLayout* rect) {
+  std::ostringstream stream;
+  stream << "QRect<";
+  if (rect == nullptr) {
+    stream << "nullptr>()";
+    return stream.str();
+  }
+  stream << format_pointer(rect) << ">(" << rect->left << ", " << rect->top
+         << ", " << rect->right << ", " << rect->bottom << ")";
+  return stream.str();
+}
+
+std::string
+repr_qregion(const void* region) {
+  std::ostringstream stream;
+  stream << "QRegion<";
+  if (region == nullptr) {
+    stream << "nullptr>()";
+    return stream.str();
+  }
+  stream << format_pointer(region) << ">(";
+  auto begin = Qt::qregion_begin();
+  auto end = Qt::qregion_end();
+  if (begin == nullptr || end == nullptr) {
+    stream << "invalid)";
+    return stream.str();
+  }
+  const Qt::QRectLayout* it = begin(region);
+  const Qt::QRectLayout* endIt = end(region);
+  if (it == nullptr || endIt == nullptr) {
+    stream << "invalid)";
+    return stream.str();
+  }
+  if (it == endIt) {
+    stream << ")";
+    return stream.str();
+  }
+  const Qt::QRectLayout* rect = it;
+  int32_t left = rect->left;
+  int32_t top = rect->top;
+  int32_t right = rect->right;
+  int32_t bottom = rect->bottom;
+  size_t count = 0;
+  stream << repr_qrect(rect) << ", rects=[";
+  for (rect = it; rect != endIt; ++rect) {
+    left = std::min(left, rect->left);
+    top = std::min(top, rect->top);
+    right = std::max(right, rect->right);
+    bottom = std::max(bottom, rect->bottom);
+    ++count;
+    stream << repr_qrect(rect) << ",";
+  }
+  stream << "])";
+  return stream.str();
 }
 
 // Runtime pointers to real QImage methods (resolved once via dlsym).
@@ -1113,70 +1181,6 @@ hook_swapBuffers_xochitl_legacy(
   dump_buffers();
 }
 
-static std::string
-format_pointer(const void* pointer) {
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%p", pointer);
-  return buffer;
-}
-
-std::string
-repr_qrect(const Qt::QRectLayout* rect) {
-  std::ostringstream stream;
-  stream << "QRect<";
-  if (rect == nullptr) {
-    stream << "nullptr>()";
-    return stream.str();
-  }
-  stream << format_pointer(rect) << ">(" << rect->left << ", " << rect->top
-         << ", " << rect->right << ", " << rect->bottom << ")";
-  return stream.str();
-}
-
-std::string
-repr_qregion(const void* region) {
-  std::ostringstream stream;
-  stream << "QRegion<";
-  if (region == nullptr) {
-    stream << "nullptr>()";
-    return stream.str();
-  }
-  stream << format_pointer(region) << ">(";
-  auto begin = Qt::qregion_begin();
-  auto end = Qt::qregion_end();
-  if (begin == nullptr || end == nullptr) {
-    stream << "invalid)";
-    return stream.str();
-  }
-  const Qt::QRectLayout* it = begin(region);
-  const Qt::QRectLayout* endIt = end(region);
-  if (it == nullptr || endIt == nullptr) {
-    stream << "invalid)";
-    return stream.str();
-  }
-  if (it == endIt) {
-    stream << ")";
-    return stream.str();
-  }
-  const Qt::QRectLayout* rect = it;
-  int32_t left = rect->left;
-  int32_t top = rect->top;
-  int32_t right = rect->right;
-  int32_t bottom = rect->bottom;
-  size_t count = 0;
-  stream << repr_qrect(rect) << ", rects=[";
-  for (rect = it; rect != endIt; ++rect) {
-    left = std::min(left, rect->left);
-    top = std::min(top, rect->top);
-    right = std::max(right, rect->right);
-    bottom = std::max(bottom, rect->bottom);
-    ++count;
-    stream << repr_qrect(rect) << ",";
-  }
-  stream << "])";
-  return stream.str();
-}
-
 /*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
  *
@@ -1185,14 +1189,14 @@ repr_qregion(const void* region) {
  *
  * \param this_ptr EPFramebuffer instance
  * \param region QRegion instance defining what is being swapped
- * \param modeMap information on what waveforms to use
+ * \param contentMap_screenModeMap information on what waveforms to use
  * \param flags Update flags
  */
 void
 hook_swapBuffers_xochitl(
   void* this_ptr,
   const void* region,
-  const void* modeMap,
+  const void* contentMap_screenModeMap,
   int flags
 ) {
   _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
