@@ -2,26 +2,26 @@
 #include "fb.h"
 #include "state.h"
 
+#include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <filesystem>
+#include <fstream>
 #include <libblight.h>
 #include <libblight/debug.h>
 #include <libblight/system.h>
+#include <mutex>
+#include <sstream>
+#include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
 #include <unistd.h>
-
-#include <algorithm>
-#include <atomic>
-#include <cstring>
-#include <fstream>
-#include <mutex>
-#include <sstream>
-#include <string>
 #include <vector>
 
 namespace Qt {
@@ -967,6 +967,70 @@ hook_swapBuffers_QRegion_legacy(
   dump_buffers();
 }
 
+static std::string
+format_pointer(const void* pointer) {
+  char buffer[32];
+  std::snprintf(buffer, sizeof(buffer), "%p", pointer);
+  return buffer;
+}
+
+std::string
+repr_qrect(const Qt::QRectLayout* rect) {
+  std::ostringstream stream;
+  stream << "QRect<";
+  if (rect == nullptr) {
+    stream << "nullptr>()";
+    return stream.str();
+  }
+  stream << format_pointer(rect) << ">(" << rect->left << ", " << rect->top
+         << ", " << rect->right << ", " << rect->bottom << ")";
+  return stream.str();
+}
+
+std::string
+repr_qregion(const void* region) {
+  std::ostringstream stream;
+  stream << "QRegion<";
+  if (region == nullptr) {
+    stream << "nullptr>()";
+    return stream.str();
+  }
+  stream << format_pointer(region) << ">(";
+  auto begin = Qt::qregion_begin();
+  auto end = Qt::qregion_end();
+  if (begin == nullptr || end == nullptr) {
+    stream << "invalid)";
+    return stream.str();
+  }
+  const Qt::QRectLayout* it = begin(region);
+  const Qt::QRectLayout* endIt = end(region);
+  if (it == nullptr || endIt == nullptr) {
+    stream << "invalid)";
+    return stream.str();
+  }
+  if (it == endIt) {
+    stream << ")";
+    return stream.str();
+  }
+  const Qt::QRectLayout* rect = it;
+  int32_t left = rect->left;
+  int32_t top = rect->top;
+  int32_t right = rect->right;
+  int32_t bottom = rect->bottom;
+  size_t count = 0;
+  stream << repr_qrect(rect) << ", rects=[";
+  for (rect = it; rect != endIt; ++rect) {
+    left = std::min(left, rect->left);
+    top = std::min(top, rect->top);
+    right = std::max(right, rect->right);
+    bottom = std::max(bottom, rect->bottom);
+    ++count;
+    stream << repr_qrect(rect) << ",";
+  }
+  stream << "])";
+  return stream.str();
+}
+
 /*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
  *
@@ -975,21 +1039,21 @@ hook_swapBuffers_QRegion_legacy(
  *
  * \param this_ptr EPFramebuffer instance
  * \param region QRegion instance defining what is being swapped
- * \param contentMap_screenModeMap information on what waveforms to use
+ * \param modeMap information on what waveforms to use
  * \param flags Update flags
  */
 void
 hook_swapBuffers_QRegion(
   void* this_ptr,
   const void* region,
-  const void* contentMap_screenModeMap,
+  const void* modeMap,
   int flags
 ) {
   _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
   auto begin_fn = Qt::qregion_begin();
   auto end_fn = Qt::qregion_end();
   if (begin_fn == nullptr || end_fn == nullptr) {
-    _DEBUG("swapBuffers: qregion_begin/end is NULL");
+    _DEBUG("swapBuffers_QRegion: qregion_begin/end is NULL");
     return;
   }
   auto dit = begin_fn(region);
@@ -997,55 +1061,25 @@ hook_swapBuffers_QRegion(
   if (!dit || !dend) {
     return;
   }
+  _DEBUG("swapBuffers_QRegion: region: %s", repr_qregion(region).c_str());
+  auto regions = static_cast<void* const*>(modeMap);
   auto updateMode = static_cast<Blight::UpdateMode>(flags);
-  static const int modeRegionOffsets[] = {
-    0x00, // base clip/filter
-    0x08, // cutout/exclusion
-    0x10, // secondary clip
-    0x20, // low-temp/clipping
-    0x28, // UI/content region
-    0x30  // overlay region
-  };
   for (; dit != dend; dit++) {
-    // if (contentMap_screenModeMap == nullptr) {
-    update_buffers(*dit);
-    repaint(
-      dit, Blight::WaveformMode::UI, Blight::ContentType::Color, updateMode
-    );
-    //   continue;
-    // }
-    // for (int i = 0; i <= 5; i++) {
-    //   auto modeRegion = static_cast<const char*>(contentMap_screenModeMap) +
-    //                     modeRegionOffsets[i];
-    //   if (
-    //     begin_fn(modeRegion) == nullptr ||
-    //     !Qt::region_rect_overlaps(dit, modeRegion)
-    //   ) {
-    //     continue;
-    //   }
-    //   auto modeBegin = begin_fn(modeRegion);
-    //   auto modeEnd = end_fn(modeRegion);
-    //   if (!modeBegin || !modeEnd) {
-    //     continue;
-    //   }
-    //   for (auto mit = modeBegin; mit != modeEnd; ++mit) {
-    //     int left = std::max(dit->left, mit->left);
-    //     int right = std::min(dit->right, mit->right);
-    //     int top = std::max(dit->top, mit->top);
-    //     int bottom = std::min(dit->bottom, mit->bottom);
-    //     if (left > right || top > bottom) {
-    //       continue;
-    //     }
-    //     Qt::QRectLayout clipped{left, top, right, bottom};
-    //     update_buffers(clipped);
-    //     repaint(
-    //       &clipped,
-    //       Blight::WaveformMode::UI,
-    //       Blight::ContentType::Color,
-    //       updateMode
-    //     );
-    //   }
-    // }
+    for (int modeId = Blight::WaveformMode::UltraFast;
+         modeId <= Blight::WaveformMode::Full;
+         modeId++) {
+      auto* region = &regions[modeId];
+      if (region == nullptr || !Qt::region_rect_overlaps(dit, region)) {
+        continue;
+      }
+      update_buffers(*dit);
+      repaint(
+        dit,
+        (Blight::WaveformMode)modeId,
+        Blight::ContentType::Color,
+        updateMode
+      );
+    }
   }
   dump_buffers();
 }
@@ -1069,6 +1103,7 @@ hook_swapBuffers_impl(
   if (!dit || !dend || modeMap == nullptr) {
     return;
   }
+  _DEBUG("swapBuffers_QRegion: region: %s", repr_qregion(region).c_str());
   auto updateMode = static_cast<Blight::UpdateMode>(flags);
   for (; dit != dend; ++dit) {
     for (int modeId = Blight::WaveformMode::UltraFast;
@@ -1407,7 +1442,7 @@ hook_check_candidate() {
       } else {
         install_hook(
           func_swapBuffers_qregion,
-          reinterpret_cast<void*>(&hook_swapBuffers_QRegion_legacy)
+          reinterpret_cast<void*>(&hook_swapBuffers_impl_legacy)
         );
       }
     }
