@@ -421,7 +421,7 @@ GUIThread::visibleSurfaces() {
         }
         // Connection running/unified/hasRunningConnection check done in
         // dbusInterface->visibleSurfaces already
-        if (!surface->has("system") && getpgid(connection->pgid()) < 0) {
+        if (!surface->has("system") && !connection->isRunning() < 0) {
           O_WARNING(surface->id() << "With no running process");
           return true;
         }
