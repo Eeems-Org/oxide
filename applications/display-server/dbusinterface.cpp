@@ -22,6 +22,7 @@
 #include <QQmlComponent>
 #include <cstring>
 #include <mutex>
+#include <unordered_set>
 
 #include "connection.h"
 #include "evdevhandler.h"
@@ -958,11 +959,13 @@ DbusInterface::removeSurface(QString identifier) {
 
 QList<std::shared_ptr<Surface>>
 DbusInterface::surfaces() {
-  QList<std::shared_ptr<Surface>> surfaces;
   QReadLocker _locker(&connectionsLock);
+  std::unordered_set<Surface*> seen;
+  seen.reserve(connections.size());
+  QList<std::shared_ptr<Surface>> surfaces;
   for (auto& connection : std::as_const(connections)) {
     for (auto& surface : connection->getSurfaces()) {
-      if (!surfaces.contains(surface)) {
+      if (seen.insert(surface.get()).second) {
         surfaces.append(surface);
       }
     }
@@ -972,7 +975,7 @@ DbusInterface::surfaces() {
 
 QList<std::shared_ptr<Surface>>
 DbusInterface::sortedSurfaces() {
-  auto sorted = surfaces().toVector();
+  auto sorted = surfaces();
   std::sort(
     sorted.begin(),
     sorted.end(),
@@ -998,14 +1001,17 @@ DbusInterface::sortedSurfaces() {
 QList<std::shared_ptr<Surface>>
 DbusInterface::visibleSurfaces() {
   QList<std::shared_ptr<Surface>> surfaces;
+  std::unordered_set<Surface*> seen;
+  seen.reserve(10);
   for (auto& surface : sortedSurfaces()) {
     auto connection = surface->connection();
     if (connection == nullptr || !surface->visible()) {
       continue;
     }
     if (
-      connection->isRunning() ||
-      (connection->has("unified") && hasRunningConnection(connection->pgid()))
+      (connection->isRunning() || (connection->has("unified") &&
+                                   hasRunningConnection(connection->pgid()))) &&
+      seen.insert(surface.get()).second
     ) {
       surfaces.append(surface);
     }
