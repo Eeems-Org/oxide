@@ -176,17 +176,92 @@ resolve_qimage_funcs() {
 }
 
 /*!
+ * \brief Check whether QT_VERSION indicates Qt 6.9 or newer.
+ */
+static int
+compareOSVersion(
+  int targetMajor,
+  int targetMinor,
+  int targetPatch,
+  int targetBuild
+) {
+  int actualMajor = 0;
+  int actualMinor = 0;
+  int actualPatch = 0;
+  int actualBuild = 0;
+  FILE* pipe = popen(
+    "sh -c 'set -a; . /etc/os-release >/dev/null 2>&1; "
+    "printf %s \"$IMG_VERSION\"'",
+    "r"
+  );
+  if (pipe == nullptr) {
+    _CRIT("%s", "/etc/os-release IMG_VERSION missing");
+    std::exit(EXIT_FAILURE);
+  }
+  char buffer[128];
+  std::size_t length = fread(buffer, 1, sizeof(buffer) - 1, pipe);
+  int status = pclose(pipe);
+  if (status != 0 || length == 0) {
+    _CRIT("%s", "/etc/os-release failed to read IMG_VERSION");
+    std::exit(EXIT_FAILURE);
+  }
+  std::string value(buffer, length);
+  int count = sscanf(
+    value.c_str(),
+    "%d.%d.%d.%d",
+    &actualMajor,
+    &actualMinor,
+    &actualPatch,
+    &actualBuild
+  );
+  if (count < 1) {
+    actualMajor = 0;
+  }
+  if (count < 2) {
+    actualMinor = 0;
+  }
+  if (count < 3) {
+    actualPatch = 0;
+  }
+  if (count < 4) {
+    actualBuild = 0;
+  }
+  long long actualVersion =
+    ((long long)actualMajor * 1000LL * 1000LL * 1000LL) +
+    (actualMinor * 1000LL * 1000LL) + (actualPatch * 1000LL) + actualBuild;
+  long long targetVersion =
+    ((long long)targetMajor * 1000LL * 1000LL * 1000LL) +
+    (targetMinor * 1000LL * 1000LL) + (targetPatch * 1000LL) + targetBuild;
+  if (actualVersion > targetVersion)
+    return 1;
+  if (actualVersion < targetVersion)
+    return -1;
+  return 0;
+}
+
+/*!
  * \brief Get the frameBuffer offset (used for EPFramebuffer detection)
  */
 int
 frameBufferOffset() {
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_FRAMEBUFFER_OFFSET");
+  if (offsetenv) {
+    return std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return Client::IS_XOCHITL ? 0x50 : 0x60;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      return Client::IS_XOCHITL ? 0x58 : 0x50;
+    }
+    return Client::IS_XOCHITL ? 0x50 : 0x60;
 #elif defined(__aarch64__)
-  return 0xa8;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      return Client::IS_XOCHITL ? 0xb8 : 0x88;
+    }
+    return 0xa8;
 #else
-  return 0x00;
+    return 0x00;
 #endif
+  }
 }
 
 /*!
@@ -194,13 +269,24 @@ frameBufferOffset() {
  */
 int
 previousBufferOffset() {
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_PREVIOUSBUFFER_OFFSET");
+  if (offsetenv) {
+    return std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return Client::IS_XOCHITL ? 0x60 : 0x70;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      return Client::IS_XOCHITL ? 0x68 : 0x60;
+    }
+    return Client::IS_XOCHITL ? 0x60 : 0x70;
 #elif defined(__aarch64__)
-  return Client::IS_XOCHITL ? 0x88 : 0xc8;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      return Client::IS_XOCHITL ? 0x98 : 0xa8;
+    }
+    return Client::IS_XOCHITL ? 0x88 : 0xc8;
 #else
-  return 0x00;
+    return 0x00;
 #endif
+  }
 }
 
 /*!
@@ -208,13 +294,24 @@ previousBufferOffset() {
  */
 int
 renderTargetOffset() {
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_RENDERTARGET_OFFSET");
+  if (offsetenv) {
+    return std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return Client::IS_XOCHITL ? 0x5c : 0x6c;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      return Client::IS_XOCHITL ? 0x64 : 0x5c;
+    }
+    return Client::IS_XOCHITL ? 0x5c : 0x6c;
 #elif defined(__aarch64__)
-  return Client::IS_XOCHITL ? 0xa0 : 0xc0;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      return Client::IS_XOCHITL ? 0xb0 : 0xa0;
+    }
+    return Client::IS_XOCHITL ? 0xa0 : 0xc0;
 #else
-  return 0x00;
+    return 0x00;
 #endif
+  }
 }
 
 /*!
@@ -526,73 +623,6 @@ install_hook(void* target, void* hook) {
 }
 
 /*!
- * \brief Check whether QT_VERSION indicates Qt 6.9 or newer.
- */
-static int
-compareOSVersion(
-  int targetMajor,
-  int targetMinor,
-  int targetPatch,
-  int targetBuild
-) {
-  int actualMajor = 0;
-  int actualMinor = 0;
-  int actualPatch = 0;
-  int actualBuild = 0;
-
-  // /etc/os-release may use shell variables, so source it instead of
-  // parsing a copied line directly.
-  FILE* pipe = popen(
-    "sh -c 'set -a; . /etc/os-release >/dev/null 2>&1; "
-    "printf %s \"$IMG_VERSION\"'",
-    "r"
-  );
-  if (pipe == nullptr) {
-    _CRIT("%s", "/etc/os-release IMG_VERSION missing");
-    std::exit(EXIT_FAILURE);
-  }
-  char buffer[128];
-  std::size_t length = fread(buffer, 1, sizeof(buffer) - 1, pipe);
-  int status = pclose(pipe);
-  if (status != 0 || length == 0) {
-    _CRIT("%s", "/etc/os-release failed to read IMG_VERSION");
-    std::exit(EXIT_FAILURE);
-  }
-  std::string value(buffer, length);
-  int count = sscanf(
-    value.c_str(),
-    "%d.%d.%d.%d",
-    &actualMajor,
-    &actualMinor,
-    &actualPatch,
-    &actualBuild
-  );
-  if (count < 1) {
-    actualMajor = 0;
-  }
-  if (count < 2) {
-    actualMinor = 0;
-  }
-  if (count < 3) {
-    actualPatch = 0;
-  }
-  if (count < 4) {
-    actualBuild = 0;
-  }
-  long long actualVersion =
-    ((long long)actualMajor * 1000LL * 1000LL * 1000LL) +
-    (actualMinor * 1000LL * 1000LL) + (actualPatch * 1000LL) + actualBuild;
-  long long targetVersion =
-    ((long long)targetMajor * 1000LL * 1000LL * 1000LL) +
-    (targetMinor * 1000LL * 1000LL) + (targetPatch * 1000LL) + targetBuild;
-  if (actualVersion > targetVersion)
-    return 1;
-  if (actualVersion < targetVersion)
-    return -1;
-  return 0;
-}
-
-/*!
  * \brief Ensure that a pointer references a EPFramebuffer::swapBuffers(...)
  * method
  */
@@ -880,7 +910,7 @@ update_buffers(const Qt::QRectLayout& rect) {
  * \param flags Update flags
  */
 void
-hook_swapBuffers_QRegion(
+hook_swapBuffers_QRegion_legacy(
   void* this_ptr,
   const void* region,
   const void* contentMap_screenModeMap,
@@ -933,11 +963,74 @@ hook_swapBuffers_QRegion(
   dump_buffers();
 }
 
+/*!
+ * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
+ *
+ * on aarch64 this actually hooks EPFramebuffer::backendUpdate(QRegion, ...)
+ * which is what swapBuffers calls to handle the screen.
+ *
+ * \param this_ptr EPFramebuffer instance
+ * \param region QRegion instance defining what is being swapped
+ * \param contentMap_screenModeMap information on what waveforms to use
+ * \param flags Update flags
+ */
+void
+hook_swapBuffers_QRegion(
+  void* this_ptr,
+  const void* region,
+  const void* contentMap_screenModeMap,
+  int flags
+) {
+  _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
+  auto begin_fn = Qt::qregion_begin();
+  auto end_fn = Qt::qregion_end();
+  if (begin_fn == nullptr || end_fn == nullptr) {
+    _DEBUG("swapBuffers: qregion_begin/end is NULL");
+    return;
+  }
+  auto dit = begin_fn(region);
+  auto dend = end_fn(region);
+  if (!dit || !dend) {
+    return;
+  }
+  auto updateMode = (Blight::UpdateMode)flags;
+  static const int modeRegionOffsets[] = {0x00, 0x08, 0x10, 0x20, 0x28, 0x30};
+  for (; dit != dend; dit++) {
+    if (contentMap_screenModeMap) {
+      for (int modeId = Blight::WaveformMode::UltraFast;
+           modeId <= Blight::WaveformMode::Full;
+           modeId++) {
+        auto modeRegion = static_cast<const char*>(contentMap_screenModeMap) +
+                          modeRegionOffsets[modeId];
+        if (!Qt::region_rect_overlaps(dit, modeRegion)) {
+          continue;
+        }
+        Blight::ContentType contentType = Blight::ContentType::Color;
+        auto waveform = (Blight::WaveformMode)modeId;
+        switch (waveform) {
+          case Blight::WaveformMode::UltraFast:
+          case Blight::WaveformMode::Fast:
+          case Blight::WaveformMode::UI:
+            contentType = Blight::ContentType::Monochrome;
+            break;
+          case Blight::WaveformMode::Animate:
+          case Blight::WaveformMode::Content:
+          case Blight::WaveformMode::Full:
+            contentType = Blight::ContentType::Color;
+            break;
+        }
+        update_buffers(*dit);
+        repaint(dit, waveform, contentType, updateMode);
+      }
+    }
+  }
+  dump_buffers();
+}
+
 void
 hook_swapBuffers_impl(
   void* this_ptr,
   const void* region,
-  const void* contentMap,
   const void* modeMap,
   int flags
 ) {
@@ -981,6 +1074,17 @@ hook_swapBuffers_impl(
     }
   }
   dump_buffers();
+}
+
+void
+hook_swapBuffers_impl_legacy(
+  void* this_ptr,
+  const void* region,
+  const void* contentMap,
+  const void* modeMap,
+  int flags
+) {
+  hook_swapBuffers_impl(this_ptr, region, modeMap, flags);
 }
 
 /*!
@@ -1257,16 +1361,30 @@ hook_check_candidate() {
       vtable,
       func_swapBuffers_qregion
     );
-    if (Client::IS_XOCHITL) {
-      install_hook(
-        func_swapBuffers_qregion,
-        reinterpret_cast<void*>(&hook_swapBuffers_QRegion)
-      );
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      if (Client::IS_XOCHITL) {
+        install_hook(
+          func_swapBuffers_qregion,
+          reinterpret_cast<void*>(&hook_swapBuffers_QRegion)
+        );
+      } else {
+        install_hook(
+          func_swapBuffers_qregion,
+          reinterpret_cast<void*>(&hook_swapBuffers_impl)
+        );
+      }
     } else {
-      install_hook(
-        func_swapBuffers_qregion,
-        reinterpret_cast<void*>(&hook_swapBuffers_impl)
-      );
+      if (Client::IS_XOCHITL) {
+        install_hook(
+          func_swapBuffers_qregion,
+          reinterpret_cast<void*>(&hook_swapBuffers_QRegion_legacy)
+        );
+      } else {
+        install_hook(
+          func_swapBuffers_qregion,
+          reinterpret_cast<void*>(&hook_swapBuffers_QRegion_legacy)
+        );
+      }
     }
     _DEBUG(
       "Hooked swapBuffers(QRegion,...) at %p with offset=0x%x",
