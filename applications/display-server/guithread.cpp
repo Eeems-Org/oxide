@@ -322,7 +322,8 @@ GUIThread::redraw(RepaintRequest& event) {
   // Get visible region on the screen to repaint
   O_DEBUG("Repainting" << region.boundingRect());
   QImage* frameBuffer = getFrameBuffer();
-  auto visibleSurfaces = this->visibleSurfaces();
+  QList<std::shared_ptr<Surface>> visibleSurfaces;
+  bool surfacesCached = false;
   // "QPainter::begin: A paint device can only be painted by one painter at a
   // time." Ignore this warning, Nothing is displayed if the painter is not
   // active when calling sendUpdate currently
@@ -337,6 +338,10 @@ GUIThread::redraw(RepaintRequest& event) {
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     if (hasAlpha) {
       painter.fillRect(rect, Qt::white);
+      if (!surfacesCached) {
+        visibleSurfaces = this->visibleSurfaces();
+        surfacesCached = true;
+      }
       for (auto& surface : visibleSurfaces) {
         if (surface != nullptr) {
           repaintSurface(&painter, &rect, surface);
