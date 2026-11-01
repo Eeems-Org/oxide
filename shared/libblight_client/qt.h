@@ -24,17 +24,6 @@ namespace Qt {
 
 extern "C" {
 __attribute__((visibility("default"))) void
-hook_swapBuffers_QRegion(
-  void* this_ptr,
-  const void* region,
-  const void* contentMap_screenModeMap,
-  int flags
-);
-
-__attribute__((visibility("default"))) void
-hook_syncAfterUpdate(void* this_ptr);
-
-__attribute__((visibility("default"))) void
 _ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
   void* this_ptr,
   int mode
