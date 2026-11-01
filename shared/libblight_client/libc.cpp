@@ -118,7 +118,11 @@ namespace Libc {
     hook_ensure(read, read);
     hook_ensure(poll, poll);
     hook_ensure(ppoll, ppoll);
+#ifdef __aarch64__
+    hook(__ppoll64, __ppoll64);
+#else
     hook_ensure(__ppoll64, __ppoll64);
+#endif
     hook_ensure(select, select);
     hook_ensure(pselect, pselect);
     hook_ensure(epollCtl, epoll_ctl);
