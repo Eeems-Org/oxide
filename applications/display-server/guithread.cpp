@@ -411,11 +411,19 @@ GUIThread::swap(
 
 QList<std::shared_ptr<Surface>>
 GUIThread::visibleSurfaces() {
-  auto visibleSurfaces = dbusInterface->visibleSurfaces();
-  visibleSurfaces.erase(
+  using clock = std::chrono::steady_clock;
+  constexpr auto ttl = std::chrono::milliseconds(1);
+  thread_local QList<std::shared_ptr<Surface>> cache;
+  thread_local clock::time_point expiry = clock::time_point::min();
+  const auto now = clock::now();
+  if (now < expiry) {
+    return cache;
+  }
+  auto list = dbusInterface->visibleSurfaces();
+  list.erase(
     std::remove_if(
-      visibleSurfaces.begin(),
-      visibleSurfaces.end(),
+      list.begin(),
+      list.end(),
       [](std::shared_ptr<Surface> surface) {
         auto connection = surface->connection();
         if (connection == nullptr) {
@@ -423,7 +431,7 @@ GUIThread::visibleSurfaces() {
         }
         // Connection running/unified/hasRunningConnection check done in
         // dbusInterface->visibleSurfaces already
-        if (!surface->has("system") && !connection->isRunning()) {
+        if (!surface->has("system") && getpgid(connection->pgid()) < 0) {
           O_WARNING(surface->id() << "With no running process");
           return true;
         }
@@ -435,9 +443,11 @@ GUIThread::visibleSurfaces() {
         return false;
       }
     ),
-    visibleSurfaces.end()
+    list.end()
   );
-  return visibleSurfaces;
+  cache = std::move(list);
+  expiry = now + ttl;
+  return cache;
 }
 QImage*
 GUIThread::getFrameBuffer() {
