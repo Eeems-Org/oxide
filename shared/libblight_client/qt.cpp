@@ -26,13 +26,13 @@
 
 namespace Qt {
   qregion_begin_t qregion_begin() {
-    static auto fn = reinterpret_cast<qregion_begin_t>(
+    static qregion_begin_t fn = reinterpret_cast<qregion_begin_t>(
       dlsym(RTLD_DEFAULT, "_ZNK7QRegion5beginEv")
     );
     return fn;
   }
   qregion_end_t qregion_end() {
-    static auto fn = reinterpret_cast<qregion_end_t>(
+    static qregion_end_t fn = reinterpret_cast<qregion_end_t>(
       dlsym(RTLD_DEFAULT, "_ZNK7QRegion3endEv")
     );
     return fn;
@@ -45,9 +45,13 @@ namespace Qt {
       std::_Exit(EXIT_FAILURE);
     }
     auto rit = begin(region);
+    if (rit == nullptr) {
+      _DEBUG("region_rect_overlaps: qregion_begin is nullptr");
+      return false;
+    }
     auto rend = end(region);
-    if (rit == nullptr || rend == nullptr) {
-      _DEBUG("region_rect_overlaps: qregion_begin/end is nullptr");
+    if (rend == nullptr) {
+      _DEBUG("region_rect_overlaps: qregion_end is nullptr");
       return false;
     }
     for (; rit != rend; rit++) {
@@ -993,36 +997,55 @@ hook_swapBuffers_QRegion(
   if (!dit || !dend) {
     return;
   }
-  auto updateMode = (Blight::UpdateMode)flags;
-  static const int modeRegionOffsets[] = {0x00, 0x08, 0x10, 0x20, 0x28, 0x30};
+  auto updateMode = static_cast<Blight::UpdateMode>(flags);
+  static const int modeRegionOffsets[] = {
+    0x00, // base clip/filter
+    0x08, // cutout/exclusion
+    0x10, // secondary clip
+    0x20, // low-temp/clipping
+    0x28, // UI/content region
+    0x30  // overlay region
+  };
   for (; dit != dend; dit++) {
-    if (contentMap_screenModeMap) {
-      for (int modeId = Blight::WaveformMode::UltraFast;
-           modeId <= Blight::WaveformMode::Full;
-           modeId++) {
-        auto modeRegion = static_cast<const char*>(contentMap_screenModeMap) +
-                          modeRegionOffsets[modeId];
-        if (!Qt::region_rect_overlaps(dit, modeRegion)) {
-          continue;
-        }
-        Blight::ContentType contentType = Blight::ContentType::Color;
-        auto waveform = (Blight::WaveformMode)modeId;
-        switch (waveform) {
-          case Blight::WaveformMode::UltraFast:
-          case Blight::WaveformMode::Fast:
-          case Blight::WaveformMode::UI:
-            contentType = Blight::ContentType::Monochrome;
-            break;
-          case Blight::WaveformMode::Animate:
-          case Blight::WaveformMode::Content:
-          case Blight::WaveformMode::Full:
-            contentType = Blight::ContentType::Color;
-            break;
-        }
-        update_buffers(*dit);
-        repaint(dit, waveform, contentType, updateMode);
-      }
-    }
+    // if (contentMap_screenModeMap == nullptr) {
+    update_buffers(*dit);
+    repaint(
+      dit, Blight::WaveformMode::UI, Blight::ContentType::Color, updateMode
+    );
+    //   continue;
+    // }
+    // for (int i = 0; i <= 5; i++) {
+    //   auto modeRegion = static_cast<const char*>(contentMap_screenModeMap) +
+    //                     modeRegionOffsets[i];
+    //   if (
+    //     begin_fn(modeRegion) == nullptr ||
+    //     !Qt::region_rect_overlaps(dit, modeRegion)
+    //   ) {
+    //     continue;
+    //   }
+    //   auto modeBegin = begin_fn(modeRegion);
+    //   auto modeEnd = end_fn(modeRegion);
+    //   if (!modeBegin || !modeEnd) {
+    //     continue;
+    //   }
+    //   for (auto mit = modeBegin; mit != modeEnd; ++mit) {
+    //     int left = std::max(dit->left, mit->left);
+    //     int right = std::min(dit->right, mit->right);
+    //     int top = std::max(dit->top, mit->top);
+    //     int bottom = std::min(dit->bottom, mit->bottom);
+    //     if (left > right || top > bottom) {
+    //       continue;
+    //     }
+    //     Qt::QRectLayout clipped{left, top, right, bottom};
+    //     update_buffers(clipped);
+    //     repaint(
+    //       &clipped,
+    //       Blight::WaveformMode::UI,
+    //       Blight::ContentType::Color,
+    //       updateMode
+    //     );
+    //   }
+    // }
   }
   dump_buffers();
 }
@@ -1161,13 +1184,15 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
   if (!Client::isFbEnabled()) {
     static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
       RTLD_NEXT,
-      "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlMode"
+      "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlMo"
+      "de"
       "E"
     ));
     if (!func) {
       _CRIT(
         "%s",
-        "Failed to resolve real EPFramebufferAcep2::ghostControl via RTLD_NEXT"
+        "Failed to resolve real EPFramebufferAcep2::ghostControl via "
+        "RTLD_NEXT"
       );
       std::exit(EXIT_FAILURE);
     }
