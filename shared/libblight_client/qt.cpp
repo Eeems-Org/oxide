@@ -11,7 +11,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <filesystem>
@@ -161,70 +160,6 @@ safe_read(void* addr, void* buffer, size_t size) {
   struct iovec local = {.iov_base = buffer, .iov_len = size};
   struct iovec remote = {.iov_base = addr, .iov_len = size};
   return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) == size;
-}
-
-static std::string
-format_pointer(const void* pointer) {
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%p", pointer);
-  return buffer;
-}
-
-std::string
-repr_qrect(const Qt::QRectLayout* rect) {
-  std::ostringstream stream;
-  stream << "QRect<";
-  if (rect == nullptr) {
-    stream << "nullptr>()";
-    return stream.str();
-  }
-  stream << format_pointer(rect) << ">(" << rect->left << ", " << rect->top
-         << ", " << rect->right << ", " << rect->bottom << ")";
-  return stream.str();
-}
-
-std::string
-repr_qregion(const void* region) {
-  std::ostringstream stream;
-  stream << "QRegion<";
-  if (region == nullptr) {
-    stream << "nullptr>()";
-    return stream.str();
-  }
-  stream << format_pointer(region) << ">(";
-  auto begin = Qt::qregion_begin();
-  auto end = Qt::qregion_end();
-  if (begin == nullptr || end == nullptr) {
-    stream << "invalid)";
-    return stream.str();
-  }
-  const Qt::QRectLayout* it = begin(region);
-  const Qt::QRectLayout* endIt = end(region);
-  if (it == nullptr || endIt == nullptr) {
-    stream << "invalid)";
-    return stream.str();
-  }
-  if (it == endIt) {
-    stream << ")";
-    return stream.str();
-  }
-  const Qt::QRectLayout* rect = it;
-  int32_t left = rect->left;
-  int32_t top = rect->top;
-  int32_t right = rect->right;
-  int32_t bottom = rect->bottom;
-  size_t count = 0;
-  stream << repr_qrect(rect) << ", rects=[";
-  for (rect = it; rect != endIt; ++rect) {
-    left = std::min(left, rect->left);
-    top = std::min(top, rect->top);
-    right = std::max(right, rect->right);
-    bottom = std::max(bottom, rect->bottom);
-    ++count;
-    stream << repr_qrect(rect) << ",";
-  }
-  stream << "])";
-  return stream.str();
 }
 
 // Runtime pointers to real QImage methods (resolved once via dlsym).
