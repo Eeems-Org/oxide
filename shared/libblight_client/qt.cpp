@@ -11,7 +11,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <filesystem>
@@ -24,6 +23,13 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <vector>
+
+static std::string
+format_pointer(const void* pointer) {
+  char buffer[32];
+  std::snprintf(buffer, sizeof(buffer), "%p", pointer);
+  return buffer;
+}
 
 namespace Qt {
   qregion_begin_t qregion_begin() {
@@ -65,6 +71,58 @@ namespace Qt {
     }
     return false;
   }
+  std::string repr_qrect(const Qt::QRectLayout* rect) {
+    std::ostringstream stream;
+    stream << "QRect<";
+    if (rect == nullptr) {
+      stream << "nullptr>()";
+      return stream.str();
+    }
+    stream << format_pointer(rect) << ">(" << rect->left << ", " << rect->top
+           << ", " << rect->right << ", " << rect->bottom << ")";
+    return stream.str();
+  }
+
+  std::string repr_qregion(const void* region) {
+    std::ostringstream stream;
+    stream << "QRegion<";
+    if (region == nullptr) {
+      stream << "nullptr>()";
+      return stream.str();
+    }
+    stream << format_pointer(region) << ">(";
+    auto begin = Qt::qregion_begin();
+    auto end = Qt::qregion_end();
+    if (begin == nullptr || end == nullptr) {
+      stream << "invalid)";
+      return stream.str();
+    }
+    const Qt::QRectLayout* it = begin(region);
+    const Qt::QRectLayout* endIt = end(region);
+    if (it == nullptr || endIt == nullptr) {
+      stream << "invalid)";
+      return stream.str();
+    }
+    if (it == endIt) {
+      stream << ")";
+      return stream.str();
+    }
+    const Qt::QRectLayout* rect = it;
+    int32_t left = rect->left;
+    int32_t top = rect->top;
+    int32_t right = rect->right;
+    int32_t bottom = rect->bottom;
+    stream << repr_qrect(rect) << ", rects=[";
+    for (rect = it; rect != endIt; ++rect) {
+      left = std::min(left, rect->left);
+      top = std::min(top, rect->top);
+      right = std::max(right, rect->right);
+      bottom = std::max(bottom, rect->bottom);
+      stream << repr_qrect(rect) << ",";
+    }
+    stream << "])";
+    return stream.str();
+  }
 }
 
 bool
@@ -72,70 +130,6 @@ safe_read(void* addr, void* buffer, size_t size) {
   struct iovec local = {.iov_base = buffer, .iov_len = size};
   struct iovec remote = {.iov_base = addr, .iov_len = size};
   return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) == size;
-}
-
-static std::string
-format_pointer(const void* pointer) {
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%p", pointer);
-  return buffer;
-}
-
-std::string
-repr_qrect(const Qt::QRectLayout* rect) {
-  std::ostringstream stream;
-  stream << "QRect<";
-  if (rect == nullptr) {
-    stream << "nullptr>()";
-    return stream.str();
-  }
-  stream << format_pointer(rect) << ">(" << rect->left << ", " << rect->top
-         << ", " << rect->right << ", " << rect->bottom << ")";
-  return stream.str();
-}
-
-std::string
-repr_qregion(const void* region) {
-  std::ostringstream stream;
-  stream << "QRegion<";
-  if (region == nullptr) {
-    stream << "nullptr>()";
-    return stream.str();
-  }
-  stream << format_pointer(region) << ">(";
-  auto begin = Qt::qregion_begin();
-  auto end = Qt::qregion_end();
-  if (begin == nullptr || end == nullptr) {
-    stream << "invalid)";
-    return stream.str();
-  }
-  const Qt::QRectLayout* it = begin(region);
-  const Qt::QRectLayout* endIt = end(region);
-  if (it == nullptr || endIt == nullptr) {
-    stream << "invalid)";
-    return stream.str();
-  }
-  if (it == endIt) {
-    stream << ")";
-    return stream.str();
-  }
-  const Qt::QRectLayout* rect = it;
-  int32_t left = rect->left;
-  int32_t top = rect->top;
-  int32_t right = rect->right;
-  int32_t bottom = rect->bottom;
-  size_t count = 0;
-  stream << repr_qrect(rect) << ", rects=[";
-  for (rect = it; rect != endIt; ++rect) {
-    left = std::min(left, rect->left);
-    top = std::min(top, rect->top);
-    right = std::max(right, rect->right);
-    bottom = std::max(bottom, rect->bottom);
-    ++count;
-    stream << repr_qrect(rect) << ",";
-  }
-  stream << "])";
-  return stream.str();
 }
 
 // Runtime pointers to real QImage methods (resolved once via dlsym).
@@ -970,9 +964,6 @@ update_buffers(const Qt::QRectLayout& rect) {
 /*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
  *
- * on aarch64 this actually hooks EPFramebuffer::backendUpdate(QRegion, ...)
- * which is what swapBuffers calls to handle the screen.
- *
  * \param this_ptr EPFramebuffer instance
  * \param region QRegion instance defining what is being swapped
  * \param contentMap_screenModeMap information on what waveforms to use
@@ -986,6 +977,10 @@ hook_swapBuffers_xochitl_legacy(
   int flags
 ) {
   _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
+  if (contentMap_screenModeMap == nullptr) {
+    _DEBUG("swapBuffers: contentMap_screenModeMap is NULL");
+    return;
+  }
   auto begin_fn = Qt::qregion_begin();
   auto end_fn = Qt::qregion_end();
   if (begin_fn == nullptr || end_fn == nullptr) {
@@ -997,37 +992,45 @@ hook_swapBuffers_xochitl_legacy(
   if (!dit || !dend) {
     return;
   }
+  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
   auto updateMode = (Blight::UpdateMode)flags;
   for (; dit != dend; dit++) {
-    if (contentMap_screenModeMap) {
-      update_buffers(*dit);
-      auto regions = static_cast<void* const*>(contentMap_screenModeMap);
-      auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
-      for (int modeId = Blight::WaveformMode::Full;
-           modeId >= Blight::WaveformMode::UltraFast;
-           modeId--) {
-        int slot = slot_remap[modeId];
-        auto region = regions[slot];
-        if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
-          continue;
-        }
-        Blight::ContentType contentType = Blight::ContentType::Color;
-        auto waveform = (Blight::WaveformMode)modeId;
-        switch (waveform) {
-          case Blight::WaveformMode::UltraFast:
-          case Blight::WaveformMode::Fast:
-          case Blight::WaveformMode::UI:
-            contentType = Blight::ContentType::Monochrome;
-            break;
-          case Blight::WaveformMode::Animate:
-          case Blight::WaveformMode::Content:
-          case Blight::WaveformMode::Full:
-            contentType = Blight::ContentType::Color;
-            break;
-        }
-        repaint(dit, waveform, contentType, updateMode);
-        break;
+    update_buffers(*dit);
+    auto regions = static_cast<void* const*>(contentMap_screenModeMap);
+    auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
+    for (int modeId = Blight::WaveformMode::Full;
+         modeId >= Blight::WaveformMode::UltraFast;
+         modeId--) {
+      int slot = slot_remap[modeId];
+      auto region = regions[slot];
+      if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
+        continue;
       }
+      Blight::ContentType contentType = Blight::ContentType::Color;
+      auto waveform = (Blight::WaveformMode)modeId;
+      switch (waveform) {
+        case Blight::WaveformMode::UltraFast:
+        case Blight::WaveformMode::Fast:
+        case Blight::WaveformMode::UI:
+          contentType = Blight::ContentType::Monochrome;
+          break;
+        case Blight::WaveformMode::Animate:
+        case Blight::WaveformMode::Content:
+        case Blight::WaveformMode::Full:
+          contentType = Blight::ContentType::Color;
+          break;
+      }
+      repaint(dit, waveform, contentType, updateMode);
+      break;
+    }
+    if ((flags & Blight::UpdateMode::PenUpdate) != 0) {
+      // TODO handle pen updates separately like xochitl does
+      hook_ghostControl(
+        this_ptr,
+        (flags & Blight::UpdateMode::AnimationUpdate)
+          ? Blight::GhostControlMode::BlinkLater
+          : Blight::GhostControlMode::BlinkNow
+      );
     }
   }
   dump_buffers();
@@ -1036,8 +1039,8 @@ hook_swapBuffers_xochitl_legacy(
 /*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
  *
- * on aarch64 this actually hooks EPFramebuffer::backendUpdate(QRegion, ...)
- * which is what swapBuffers calls to handle the screen.
+ * on aarch64 this actually hooks EPFramebufferAcep2::backendUpdate(QRegion,
+ * ...) which is what swapBuffers calls to handle the screen.
  *
  * \param this_ptr EPFramebuffer instance
  * \param region QRegion instance defining what is being swapped
@@ -1052,6 +1055,10 @@ hook_swapBuffers_xochitl(
   int flags
 ) {
   _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
+  if (contentMap_screenModeMap == nullptr) {
+    _DEBUG("swapBuffers: contentMap_screenModeMap is NULL");
+    return;
+  }
   auto begin_fn = Qt::qregion_begin();
   auto end_fn = Qt::qregion_end();
   if (begin_fn == nullptr || end_fn == nullptr) {
@@ -1063,7 +1070,7 @@ hook_swapBuffers_xochitl(
   if (!dit || !dend) {
     return;
   }
-  _DEBUG("swapBuffers_QRegion: region: %s", repr_qregion(region).c_str());
+  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
   auto regions = static_cast<void* const*>(contentMap_screenModeMap);
   auto updateMode = static_cast<Blight::UpdateMode>(flags);
   for (; dit != dend; dit++) {
@@ -1071,8 +1078,8 @@ hook_swapBuffers_xochitl(
     for (int modeId = Blight::WaveformMode::Full;
          modeId >= Blight::WaveformMode::UltraFast;
          modeId--) {
-      auto* region = &regions[modeId];
-      if (region == nullptr || !Qt::region_rect_overlaps(dit, region)) {
+      auto* region = regions[modeId];
+      if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
         continue;
       }
       repaint(
@@ -1082,6 +1089,15 @@ hook_swapBuffers_xochitl(
         updateMode
       );
       break;
+    }
+    if ((flags & Blight::UpdateMode::PenUpdate) != 0) {
+      // TODO handle pen updates separately like xochitl does
+      hook_ghostControl(
+        this_ptr,
+        (flags & Blight::UpdateMode::AnimationUpdate)
+          ? Blight::GhostControlMode::BlinkLater
+          : Blight::GhostControlMode::BlinkNow
+      );
     }
   }
   dump_buffers();
@@ -1106,7 +1122,7 @@ hook_swapBuffers_qsgepaper(
   if (!dit || !dend || modeMap == nullptr) {
     return;
   }
-  _DEBUG("swapBuffers_QRegion: region: %s", repr_qregion(region).c_str());
+  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
   auto updateMode = static_cast<Blight::UpdateMode>(flags);
   for (; dit != dend; ++dit) {
     update_buffers(*dit);

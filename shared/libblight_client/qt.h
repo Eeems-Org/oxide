@@ -1,6 +1,8 @@
 #pragma once
-#include <cstdint>
 #include <libblight/types.h>
+
+#include <cstdint>
+#include <cstring>
 
 namespace Qt {
   typedef struct {
@@ -20,6 +22,8 @@ namespace Qt {
   qregion_begin_t qregion_begin();
   qregion_end_t qregion_end();
   bool region_rect_overlaps(const QRectLayout* rect, const void* region);
+  std::string repr_qrect(const Qt::QRectLayout* rect);
+  std::string repr_qregion(const void* region);
 }
 
 extern "C" {
