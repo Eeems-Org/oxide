@@ -1000,11 +1000,12 @@ hook_swapBuffers_xochitl_legacy(
   auto updateMode = (Blight::UpdateMode)flags;
   for (; dit != dend; dit++) {
     if (contentMap_screenModeMap) {
+      update_buffers(*dit);
       auto regions = static_cast<void* const*>(contentMap_screenModeMap);
       auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
-      for (int modeId = Blight::WaveformMode::UltraFast;
-           modeId <= Blight::WaveformMode::Full;
-           modeId++) {
+      for (int modeId = Blight::WaveformMode::Full;
+           modeId >= Blight::WaveformMode::UltraFast;
+           modeId--) {
         int slot = slot_remap[modeId];
         auto region = regions[slot];
         if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
@@ -1024,8 +1025,8 @@ hook_swapBuffers_xochitl_legacy(
             contentType = Blight::ContentType::Color;
             break;
         }
-        update_buffers(*dit);
         repaint(dit, waveform, contentType, updateMode);
+        break;
       }
     }
   }
@@ -1066,20 +1067,21 @@ hook_swapBuffers_xochitl(
   auto regions = static_cast<void* const*>(contentMap_screenModeMap);
   auto updateMode = static_cast<Blight::UpdateMode>(flags);
   for (; dit != dend; dit++) {
-    for (int modeId = Blight::WaveformMode::UltraFast;
-         modeId <= Blight::WaveformMode::Full;
-         modeId++) {
+    update_buffers(*dit);
+    for (int modeId = Blight::WaveformMode::Full;
+         modeId >= Blight::WaveformMode::UltraFast;
+         modeId--) {
       auto* region = &regions[modeId];
       if (region == nullptr || !Qt::region_rect_overlaps(dit, region)) {
         continue;
       }
-      update_buffers(*dit);
       repaint(
         dit,
         (Blight::WaveformMode)modeId,
         Blight::ContentType::Color,
         updateMode
       );
+      break;
     }
   }
   dump_buffers();
@@ -1107,9 +1109,10 @@ hook_swapBuffers_qsgepaper(
   _DEBUG("swapBuffers_QRegion: region: %s", repr_qregion(region).c_str());
   auto updateMode = static_cast<Blight::UpdateMode>(flags);
   for (; dit != dend; ++dit) {
-    for (int modeId = Blight::WaveformMode::UltraFast;
-         modeId <= Blight::WaveformMode::Full;
-         modeId++) {
+    update_buffers(*dit);
+    for (int modeId = Blight::WaveformMode::Full;
+         modeId >= Blight::WaveformMode::UltraFast;
+         modeId--) {
       auto* region = static_cast<const char*>(modeMap) + modeId * sizeof(void*);
       if (region == nullptr || !Qt::region_rect_overlaps(dit, region)) {
         continue;
@@ -1128,8 +1131,8 @@ hook_swapBuffers_qsgepaper(
           contentType = Blight::ContentType::Color;
           break;
       }
-      update_buffers(*dit);
       repaint(dit, waveform, contentType, updateMode);
+      break;
     }
   }
   dump_buffers();
