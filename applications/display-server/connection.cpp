@@ -623,7 +623,15 @@ Connection::readSocket() {
         }
         dbusInterface->removeSurface(surface->id());
 #ifdef EPAPER
-        guiThread->notify();
+        guiThread->enqueue(
+          nullptr,
+          surface->geometry(),
+          Blight::WaveformMode::UI,
+          Blight::ContentType::Color,
+          Blight::UpdateMode::PartialUpdate,
+          message->header.ackid,
+          true
+        );
 #endif
         break;
       }

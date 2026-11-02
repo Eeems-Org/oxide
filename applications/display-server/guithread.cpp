@@ -411,19 +411,11 @@ GUIThread::swap(
 
 QList<std::shared_ptr<Surface>>
 GUIThread::visibleSurfaces() {
-  using clock = std::chrono::steady_clock;
-  constexpr auto ttl = std::chrono::milliseconds(1);
-  thread_local QList<std::shared_ptr<Surface>> cache;
-  thread_local clock::time_point expiry = clock::time_point::min();
-  const auto now = clock::now();
-  if (now < expiry) {
-    return cache;
-  }
-  auto list = dbusInterface->visibleSurfaces();
-  list.erase(
+  auto visibleSurfaces = dbusInterface->visibleSurfaces();
+  visibleSurfaces.erase(
     std::remove_if(
-      list.begin(),
-      list.end(),
+      visibleSurfaces.begin(),
+      visibleSurfaces.end(),
       [](std::shared_ptr<Surface> surface) {
         auto connection = surface->connection();
         if (connection == nullptr) {
@@ -443,11 +435,9 @@ GUIThread::visibleSurfaces() {
         return false;
       }
     ),
-    list.end()
+    visibleSurfaces.end()
   );
-  cache = std::move(list);
-  expiry = now + ttl;
-  return cache;
+  return visibleSurfaces;
 }
 QImage*
 GUIThread::getFrameBuffer() {
