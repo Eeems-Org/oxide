@@ -312,24 +312,31 @@ compareOSVersion(
  */
 int
 frameBufferOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_FRAMEBUFFER_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
+    offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
     if (compareOSVersion(3, 28, 0, 0) >= 0) {
-      return Client::IS_XOCHITL ? 0x58 : 0x50;
+      offset = Client::IS_XOCHITL ? 0x58 : 0x50;
+    } else {
+      offset = Client::IS_XOCHITL ? 0x50 : 0x60;
     }
-    return Client::IS_XOCHITL ? 0x50 : 0x60;
 #elif defined(__aarch64__)
     if (compareOSVersion(3, 28, 0, 0) >= 0) {
-      return Client::IS_XOCHITL ? 0xb8 : 0x88;
+      offset = Client::IS_XOCHITL ? 0xb8 : 0x88;
+    } else {
+      offset = 0xa8;
     }
-    return 0xa8;
 #else
-    return 0x00;
+    offset = 0x00;
 #endif
   }
+  return offset;
 }
 
 /*!
@@ -337,24 +344,31 @@ frameBufferOffset() {
  */
 int
 previousBufferOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_PREVIOUSBUFFER_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
+    offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
     if (compareOSVersion(3, 28, 0, 0) >= 0) {
-      return Client::IS_XOCHITL ? 0x68 : 0x60;
+      offset = Client::IS_XOCHITL ? 0x68 : 0x60;
+    } else {
+      offset = Client::IS_XOCHITL ? 0x60 : 0x70;
     }
-    return Client::IS_XOCHITL ? 0x60 : 0x70;
 #elif defined(__aarch64__)
     if (compareOSVersion(3, 28, 0, 0) >= 0) {
-      return Client::IS_XOCHITL ? 0x98 : 0xa8;
+      offset = Client::IS_XOCHITL ? 0x98 : 0xa8;
+    } else {
+      offset = Client::IS_XOCHITL ? 0x88 : 0xc8;
     }
-    return Client::IS_XOCHITL ? 0x88 : 0xc8;
 #else
-    return 0x00;
+    offset = 0x00;
 #endif
   }
+  return offset;
 }
 
 /*!
@@ -362,24 +376,31 @@ previousBufferOffset() {
  */
 int
 renderTargetOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_RENDERTARGET_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
+    offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
     if (compareOSVersion(3, 28, 0, 0) >= 0) {
-      return Client::IS_XOCHITL ? 0x64 : 0x5c;
+      offset = Client::IS_XOCHITL ? 0x64 : 0x5c;
+    } else {
+      offset = Client::IS_XOCHITL ? 0x5c : 0x6c;
     }
-    return Client::IS_XOCHITL ? 0x5c : 0x6c;
 #elif defined(__aarch64__)
     if (compareOSVersion(3, 28, 0, 0) >= 0) {
-      return Client::IS_XOCHITL ? 0xb0 : 0xa0;
+      offset = Client::IS_XOCHITL ? 0xb0 : 0xa0;
+    } else {
+      offset = Client::IS_XOCHITL ? 0xa0 : 0xc0;
     }
-    return Client::IS_XOCHITL ? 0xa0 : 0xc0;
 #else
-    return 0x00;
+    offset = 0x00;
 #endif
   }
+  return offset;
 }
 
 /*!
@@ -387,19 +408,24 @@ renderTargetOffset() {
  */
 int
 swapBuffersOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_SWAPBUFFERS_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
+    offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    return 0x5c; // vtable entry 23
+    offset = 0x5c; // vtable entry 23
 #elif defined(__aarch64__)
-    return 0xb8; // vtable entry 23
+    offset = 0xb8; // vtable entry 23
 #else
     _CRIT("Unsupported architecture");
     std::exit(EXIT_FAILURE);
 #endif
   }
+  return offset;
 }
 
 /*!
@@ -407,19 +433,24 @@ swapBuffersOffset() {
  */
 int
 syncAfterUpdateOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_SYNCAFTERUPDATE_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
+    offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    return 0x60; // vtable entry 24
+    offset = 0x60; // vtable entry 24
 #elif defined(__aarch64__)
-    return 0xc0; // vtable entry 24
+    offset = 0xc0; // vtable entry 24
 #else
     _CRIT("Unsupported architecture");
     std::exit(EXIT_FAILURE);
 #endif
   }
+  return offset;
 }
 
 /*!
@@ -427,18 +458,24 @@ syncAfterUpdateOffset() {
  */
 int
 qtMetacallOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_METACALLL_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
-  }
+    offset = std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return 0x08; // vtable entry 2
+    offset = 0x08; // vtable entry 2
 #elif defined(__aarch64__)
-  return 0x10; // vtable entry 2
+    offset = 0x10; // vtable entry 2
 #else
-  _CRIT("Unsupported architecture");
-  std::exit(EXIT_FAILURE);
+    _CRIT("Unsupported architecture");
+    std::exit(EXIT_FAILURE);
 #endif
+  }
+  return offset;
 }
 
 /*!
@@ -446,18 +483,24 @@ qtMetacallOffset() {
  */
 int
 ghostControlOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_GHOSTCONTROL_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
-  }
+    offset = std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return 0x58; // vtable entry 22
+    offset = 0x58; // vtable entry 22
 #elif defined(__aarch64__)
-  return 0xb0; // vtable entry
+    offset = 0xb0; // vtable entry
 #else
-  _CRIT("Unsupported architecture");
-  std::exit(EXIT_FAILURE);
+    _CRIT("Unsupported architecture");
+    std::exit(EXIT_FAILURE);
 #endif
+  }
+  return offset;
 }
 
 void
