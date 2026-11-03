@@ -1070,7 +1070,7 @@ DbusInterface::sortZ() {
   if (m_focused == nullptr) {
     std::reverse(surfaces.begin(), surfaces.end());
     for (auto& surface : surfaces) {
-      if (surface == nullptr) {
+      if (surface == nullptr || !surface->visible()) {
         continue;
       }
       auto connection = surface->connection();
