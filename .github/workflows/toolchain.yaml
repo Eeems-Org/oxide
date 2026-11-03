@@ -37,15 +37,6 @@ jobs:
           version=$(grep '^TOOLCHAIN?=' Makefile | cut -d= -f2)
           echo "version=${version}" >> $GITHUB_OUTPUT
 
-      - name: Upgrade podman
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y podman
-          podman --version
-
-      - name: Install Podman
-        uses: redhat-actions/podman-install@v1
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -77,4 +68,4 @@ jobs:
       - name: Push toolchain container
         if: ${{ github.repository == 'Eeems-Org/oxide' && github.event_name == 'push' }}
         run: |
-          podman push ghcr.io/eeems-org/oxide-toolchain:${{ steps.toolchain.outputs.version }}-${{ matrix.device }}
+          docker push ghcr.io/eeems-org/oxide-toolchain:${{ steps.toolchain.outputs.version }}-${{ matrix.device }}
