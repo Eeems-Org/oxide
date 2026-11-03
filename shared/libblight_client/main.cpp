@@ -288,7 +288,9 @@ msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
 #define _open(func)                                                            \
   va_list args;                                                                \
   va_start(args, flags);                                                       \
-  int mode = (flags & O_CREAT) ? va_arg(args, int) : 0;                        \
+  int mode = ((flags & O_CREAT) || ((flags & O_TMPFILE) == O_TMPFILE))         \
+               ? va_arg(args, int)                                             \
+               : 0;                                                            \
   va_end(args);                                                                \
   fd = Libc::func(pathname, flags, mode);
 
@@ -326,10 +328,13 @@ open64(const char* pathname, int flags, ...) {
   return fd;
 }
 
+#undef _open
 #define _open(func)                                                            \
   va_list args;                                                                \
   va_start(args, flags);                                                       \
-  int mode = (flags & O_CREAT) ? va_arg(args, int) : 0;                        \
+  int mode = ((flags & O_CREAT) || ((flags & O_TMPFILE) == O_TMPFILE))         \
+               ? va_arg(args, int)                                             \
+               : 0;                                                            \
   va_end(args);                                                                \
   fd = Libc::func(dirfd, pathname, flags, mode);
 
