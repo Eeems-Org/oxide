@@ -166,10 +166,15 @@ namespace Blight {
    */
   LIBBLIGHT_EXPORT bool waitForNoRepaints();
   /*!
-   * \brief Do ghost control
+   * \brief Show, hide or clear ghosted content on the display
+
+    * \param mode  The ghost-control action to perform.
+
+
    * \return If the call succeeded or not
    * \retval false call failed
    */
+  [[deprecated("Use Blight::Connection::ghostControl instead")]]
   LIBBLIGHT_EXPORT bool ghostControl(GhostControlMode mode);
 } // namespace Blight
 /*! @} */

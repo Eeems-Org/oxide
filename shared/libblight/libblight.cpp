@@ -548,16 +548,19 @@ namespace Blight {
       return false;
     }
     _DEBUG("[Blight::ghostControl(%d)]", mode);
-    auto reply = dbus->call_method(
-      BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "ghostControl", "i", mode
-    );
-    if (reply->isError()) {
-      _WARN(
-        "[Blight::ghostControl(%d)::call_method(...)] Error: %s",
-        mode,
-        reply->error_message().c_str()
-      );
-      errno = reply->return_value;
+    auto conn = connection();
+    if (conn == nullptr) {
+      errno = EAGAIN;
+      return false;
+    }
+    auto ack = conn->ghostControl(mode);
+    if (!ack.has_value()) {
+      _WARN("[Blight::ghostControl(%d)] Failed to send", mode);
+      return false;
+    }
+    if (!ack.value()->wait()) {
+      _WARN("[Blight::ghostControl(%d)] Timed out", mode);
+      errno = ETIMEDOUT;
       return false;
     }
     return true;

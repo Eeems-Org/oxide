@@ -31,6 +31,22 @@ format_pointer(const void* pointer) {
   return buffer;
 }
 
+static void
+send_ghost_control(Blight::GhostControlMode mode) {
+  if (!Client::isGhostControlEnabled()) {
+    return;
+  }
+  auto connection = Blight::connection();
+  if (connection == nullptr) {
+    _CRIT("Blight connection missing");
+    std::_Exit(EXIT_FAILURE);
+  }
+  auto maybe = connection->ghostControl(mode);
+  if (maybe.has_value()) {
+    maybe.value()->wait();
+  }
+}
+
 namespace Qt {
   qregion_begin_t qregion_begin() {
     static qregion_begin_t fn = reinterpret_cast<qregion_begin_t>(
@@ -506,9 +522,7 @@ ghostControlOffset() {
 void
 hook_ghostControl(void* this_ptr, int mode) {
   _DEBUG("EPFramebuffer::ghostControl(%d)", mode);
-  if (Client::isGhostControlEnabled()) {
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
+  send_ghost_control((Blight::GhostControlMode)mode);
 }
 
 bool
@@ -675,13 +689,13 @@ hook_qt_metacall(void* this_ptr, int type, int index, void** argv) {
       if (index == scheduleGhostRemovalIndex) {
         int mode = *reinterpret_cast<int*>(argv[1]);
         _DEBUG("EPFramebuffer::scheduleGhostRemoval()");
-        Blight::ghostControl(Blight::GhostControlMode::BlinkLater);
+        send_ghost_control(Blight::GhostControlMode::BlinkLater);
         return -1;
       }
       if (index == clearGhostingIndex) {
         int mode = *reinterpret_cast<int*>(argv[1]);
         _DEBUG("EPFramebuffer::clearGhosting()");
-        Blight::ghostControl(Blight::GhostControlMode::BlinkNow);
+        send_ghost_control(Blight::GhostControlMode::BlinkNow);
         return -1;
       }
     }
@@ -1078,8 +1092,7 @@ hook_swapBuffers_xochitl_legacy(
       (flags & Blight::UpdateMode::PenUpdate) != 0
     ) {
       // TODO handle pen updates separately like xochitl does
-      Blight::ghostControl(
-        this_ptr,
+      send_ghost_control(
         (flags & Blight::UpdateMode::AnimationUpdate)
           ? Blight::GhostControlMode::BlinkLater
           : Blight::GhostControlMode::BlinkNow
@@ -1148,8 +1161,7 @@ hook_swapBuffers_xochitl(
       (flags & Blight::UpdateMode::PenUpdate) != 0
     ) {
       // TODO handle pen updates separately like xochitl does
-      Blight::ghostControl(
-        this_ptr,
+      send_ghost_control(
         (flags & Blight::UpdateMode::AnimationUpdate)
           ? Blight::GhostControlMode::BlinkLater
           : Blight::GhostControlMode::BlinkNow
@@ -1281,9 +1293,7 @@ _ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
     );
   }
   _DEBUG("EPFramebuffer::ghostControl(mode=%d)", mode);
-  if (Client::isGhostControlEnabled()) {
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
+  send_ghost_control((Blight::GhostControlMode)mode);
 }
 
 #if defined(__aarch64__)
@@ -1324,9 +1334,7 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
     );
   }
   _DEBUG("EPFramebufferAcep2::ghostControl(mode=%d)", mode);
-  if (Client::isGhostControlEnabled()) {
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
+  send_ghost_control((Blight::GhostControlMode)mode);
 }
 #endif
 

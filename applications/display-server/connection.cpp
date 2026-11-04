@@ -740,6 +740,17 @@ Connection::readSocket() {
         do_ack = false;
         break;
       }
+      case Blight::MessageType::GhostControl: {
+        C_DEBUG("GhostControl requested");
+#ifdef EPAPER
+        EPFramebuffer::instance()->ghostControl(
+          static_cast<EPFramebuffer::GhostControlMode>(
+            Blight::scalar_cast<Blight::GhostControlMode>(message).value()
+          )
+        );
+#endif
+        break;
+      }
       case Blight::MessageType::Ping: {
 #ifdef ACK_DEBUG
         O_DEBUG("Pong" << message->header.ackid);

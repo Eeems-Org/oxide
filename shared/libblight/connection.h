@@ -292,6 +292,12 @@ namespace Blight {
      * recieves input events
      */
     void focused();
+    /*!
+     * \brief Show, hide or clear ghosted content on the display
+     * \param mode  The ghost-control action to perform.
+     * \return ack_ptr_t if there was no error
+     */
+    maybe_ackid_ptr_t ghostControl(GhostControlMode mode);
 
   private:
     int m_fd;
