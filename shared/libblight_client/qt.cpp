@@ -687,13 +687,11 @@ hook_qt_metacall(void* this_ptr, int type, int index, void** argv) {
     }
     if (Client::isGhostControlEnabled()) {
       if (index == scheduleGhostRemovalIndex) {
-        int mode = *reinterpret_cast<int*>(argv[1]);
         _DEBUG("EPFramebuffer::scheduleGhostRemoval()");
         send_ghost_control(Blight::GhostControlMode::BlinkLater);
         return -1;
       }
       if (index == clearGhostingIndex) {
-        int mode = *reinterpret_cast<int*>(argv[1]);
         _DEBUG("EPFramebuffer::clearGhosting()");
         send_ghost_control(Blight::GhostControlMode::BlinkNow);
         return -1;
