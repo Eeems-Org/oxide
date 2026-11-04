@@ -671,17 +671,19 @@ hook_qt_metacall(void* this_ptr, int type, int index, void** argv) {
       );
       printMetaMethodsAndExit(metaObject);
     }
-    if (index == scheduleGhostRemovalIndex) {
-      int mode = *reinterpret_cast<int*>(argv[1]);
-      _DEBUG("EPFramebuffer::scheduleGhostRemoval()");
-      // Blight::ghostControl(Blight::GhostControlMode::BlinkLater);
-      return -1;
-    }
-    if (index == clearGhostingIndex) {
-      int mode = *reinterpret_cast<int*>(argv[1]);
-      _DEBUG("EPFramebuffer::clearGhosting()");
-      // Blight::ghostControl(Blight::GhostControlMode::BlinkNow);
-      return -1;
+    if (Client::isGhostControlEnabled()) {
+      if (index == scheduleGhostRemovalIndex) {
+        int mode = *reinterpret_cast<int*>(argv[1]);
+        _DEBUG("EPFramebuffer::scheduleGhostRemoval()");
+        Blight::ghostControl(Blight::GhostControlMode::BlinkLater);
+        return -1;
+      }
+      if (index == clearGhostingIndex) {
+        int mode = *reinterpret_cast<int*>(argv[1]);
+        _DEBUG("EPFramebuffer::clearGhosting()");
+        Blight::ghostControl(Blight::GhostControlMode::BlinkNow);
+        return -1;
+      }
     }
   }
   return func(this_ptr, type, index, argv);
@@ -1041,7 +1043,7 @@ hook_swapBuffers_xochitl_legacy(
     return;
   }
   _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
-  auto updateMode = (Blight::UpdateMode)flags;
+  auto updateMode = static_cast<Blight::UpdateMode>(flags);
   for (; dit != dend; dit++) {
     update_buffers(*dit);
     auto regions = static_cast<void* const*>(contentMap_screenModeMap);
@@ -1071,9 +1073,12 @@ hook_swapBuffers_xochitl_legacy(
       repaint(dit, waveform, contentType, updateMode);
       break;
     }
-    if ((flags & Blight::UpdateMode::PenUpdate) != 0) {
+    if (
+      Client::isGhostControlEnabled() &&
+      (flags & Blight::UpdateMode::PenUpdate) != 0
+    ) {
       // TODO handle pen updates separately like xochitl does
-      hook_ghostControl(
+      Blight::ghostControl(
         this_ptr,
         (flags & Blight::UpdateMode::AnimationUpdate)
           ? Blight::GhostControlMode::BlinkLater
@@ -1138,9 +1143,12 @@ hook_swapBuffers_xochitl(
       );
       break;
     }
-    if ((flags & Blight::UpdateMode::PenUpdate) != 0) {
+    if (
+      Client::isGhostControlEnabled() &&
+      (flags & Blight::UpdateMode::PenUpdate) != 0
+    ) {
       // TODO handle pen updates separately like xochitl does
-      hook_ghostControl(
+      Blight::ghostControl(
         this_ptr,
         (flags & Blight::UpdateMode::AnimationUpdate)
           ? Blight::GhostControlMode::BlinkLater
