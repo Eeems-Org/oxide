@@ -219,6 +219,8 @@ Blight::move_t::from_message(const message_t* message) {
   return move;
 }
 
+
+
 Blight::surface_info_t
 Blight::surface_info_t::from_data(data_t data) {
   surface_info_t header;
