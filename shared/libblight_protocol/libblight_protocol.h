@@ -740,7 +740,8 @@ blight_lower(int fd, blight_surface_id_t identifier);
 LIBBLIGHT_PROTOCOL_EXPORT int
 blight_focus(int fd);
 /*!
- * \brief blight_ghost_control Show, hide or clear ghosted content on the display
+ * \brief blight_ghost_control Show, hide or clear ghosted content on the
+ * display
  * \param fd File descriptor for connection socket
  * \param mode Ghost control mode
  * \return 0 on success, negative number on error

@@ -497,7 +497,9 @@ namespace Blight {
   }
 
   maybe_ackid_ptr_t Connection::ghostControl(GhostControlMode mode) {
-    return send(MessageType::GhostControl, (data_t)&mode, sizeof(GhostControlMode));
+    return send(
+      MessageType::GhostControl, (data_t)&mode, sizeof(GhostControlMode)
+    );
   }
 
   static std::atomic<bool> running = false;
