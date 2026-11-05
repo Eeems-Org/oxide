@@ -128,6 +128,7 @@ private:
   void update();
   State getCurrentState();
   QString getPath(QString type, QString id);
+  bool waitForSupplicant();
 };
 
 #endif // WIFIAPI_H
