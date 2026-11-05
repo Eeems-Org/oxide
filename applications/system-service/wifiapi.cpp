@@ -1,4 +1,5 @@
 #include "wifiapi.h"
+#include <QProcess>
 
 WifiAPI*
 WifiAPI::singleton(WifiAPI* self) {
@@ -888,6 +889,24 @@ WifiAPI::interfaces() {
   return result;
 }
 
+bool
+WifiAPI::waitForSupplicant() {
+  int attempts = 4;
+  while (!serviceNames.contains(WPA_SUPPLICANT_SERVICE)) {
+    if (--attempts == 0) {
+      return false;
+    }
+    struct timespec args{
+      .tv_sec = 0,
+      .tv_nsec = 500000000,
+    },
+      res;
+    nanosleep(&args, &res);
+    serviceNames = bus.interface()->registeredServiceNames();
+  }
+  return true;
+}
+
 void
 WifiAPI::validateSupplicant() {
   QDBusConnection bus = QDBusConnection::systemBus();
@@ -895,140 +914,138 @@ WifiAPI::validateSupplicant() {
   if (!serviceNames.contains(WPA_SUPPLICANT_SERVICE)) {
     if (system("/bin/systemctl --quiet is-active wpa_supplicant")) {
       O_INFO("Starting wpa_supplicant...");
-      if (system("/bin/systemctl --quiet start wpa_supplicant")) {
-        qCritical() << "Failed to start wpa_supplicant";
-        throw QException();
-      }
+      system("/bin/systemctl --quiet start wpa_supplicant");
     }
     O_INFO("Waiting for wpa_supplicant dbus service...");
-    while (!serviceNames.contains(WPA_SUPPLICANT_SERVICE)) {
-      struct timespec args{
-        .tv_sec = 1,
-        .tv_nsec = 0,
-      },
-        res;
-      nanosleep(&args, &res);
-      serviceNames = bus.interface()->registeredServiceNames();
+    if (waitForSupplicant()) {
+      return;
     }
+    if (system("/bin/systemctl --quiet is-active wpa_supplicant")) {
+      O_INFO("Starting wpa_supplicant manually...");
+      QProcess::startDetached(
+        "/usr/sbin/wpa_supplicant", QStringList() << "-u"
+      );
+    }
+    if (waitForSupplicant()) {
+      return;
+    }
+    qCritical() << "Failed to start wpa_supplicant";
+    throw QException();
   }
-}
 
-void
-WifiAPI::loadNetworks() {
-  O_INFO("Loading networks from settings...");
-  QList<QMap<QString, QVariant>> registeredNetworks =
-    xochitlSettings.wifinetworks().values();
-  O_INFO("Registering networks...");
-  for (auto registration : registeredNetworks) {
-    bool found = false;
-    auto ssid = registration["ssid"].toString();
-    auto protocol = registration["protocol"].toString();
-    for (auto network : networks) {
-      if (network->ssid() == ssid && network->protocol() == protocol) {
-        O_INFO("  Found network" << network->ssid());
-        found = true;
-        if (network->password() != registration["password"].toString()) {
+  void WifiAPI::loadNetworks() {
+    O_INFO("Loading networks from settings...");
+    QList<QMap<QString, QVariant>> registeredNetworks =
+      xochitlSettings.wifinetworks().values();
+    O_INFO("Registering networks...");
+    for (auto registration : registeredNetworks) {
+      bool found = false;
+      auto ssid = registration["ssid"].toString();
+      auto protocol = registration["protocol"].toString();
+      for (auto network : networks) {
+        if (network->ssid() == ssid && network->protocol() == protocol) {
+          O_INFO("  Found network" << network->ssid());
+          found = true;
+          if (network->password() != registration["password"].toString()) {
+            network->setPassword(registration["password"].toString());
+          }
+          if (!network->enabled()) {
+            network->setEnabled(true);
+          }
+          break;
+        }
+      }
+      if (!found) {
+        QVariantMap args;
+        auto network =
+          new Network(getPath("network", ssid), ssid, QVariantMap(), this);
+        network->setProtocol(protocol);
+        if (registration.contains("password")) {
           network->setPassword(registration["password"].toString());
         }
-        if (!network->enabled()) {
-          network->setEnabled(true);
+        network->registerNetwork();
+        network->setEnabled(true);
+        if (m_enabled) {
+          network->registerPath();
         }
+        networks.append(network);
+        emit networkAdded(QDBusObjectPath(network->path()));
+        O_INFO("  Registered network" << ssid);
+      }
+    }
+    O_INFO("Loaded networks.");
+  }
+
+  void WifiAPI::update() {
+    auto state = getCurrentState();
+    bool enabled = xochitlSettings.wifion();
+    if (enabled && state == Off) {
+      enable();
+      state = getCurrentState();
+    } else if (!enabled && state != Off) {
+      disable();
+      state = getCurrentState();
+    }
+    auto path = network().path();
+    if (
+      (state == Online || state == Offline) && m_currentNetwork.path() != path
+    ) {
+      O_INFO("Connected to" << path);
+      m_currentNetwork.setPath(path);
+      emit networkConnected(m_currentNetwork);
+    } else if (
+      (state == Disconnected || state == Off) && m_currentNetwork.path() != "/"
+    ) {
+      O_INFO("Disconnected from" << m_currentNetwork.path());
+      m_currentNetwork.setPath("/");
+      emit disconnected();
+    }
+    if (m_state != state) {
+      setState(state);
+    }
+    auto clink = link();
+    if (m_link != clink) {
+      m_link = clink;
+      emit linkChanged(clink);
+    }
+    auto crssi = rssi();
+    if (m_rssi != crssi) {
+      m_rssi = crssi;
+      emit rssiChanged(crssi);
+    }
+  }
+
+  WifiAPI::State WifiAPI::getCurrentState() {
+    State state = Off;
+    for (auto wlan : wlans) {
+      if (!wlan->isUp()) {
+        continue;
+      }
+      if (state == Off) {
+        state = Disconnected;
+      }
+      if (wlan->operstate() == "up") {
+        state = Offline;
+      }
+      if (wlan->isConnected()) {
+        state = Online;
         break;
       }
     }
-    if (!found) {
-      QVariantMap args;
-      auto network =
-        new Network(getPath("network", ssid), ssid, QVariantMap(), this);
-      network->setProtocol(protocol);
-      if (registration.contains("password")) {
-        network->setPassword(registration["password"].toString());
-      }
-      network->registerNetwork();
-      network->setEnabled(true);
-      if (m_enabled) {
-        network->registerPath();
-      }
-      networks.append(network);
-      emit networkAdded(QDBusObjectPath(network->path()));
-      O_INFO("  Registered network" << ssid);
-    }
+    return state;
   }
-  O_INFO("Loaded networks.");
-}
 
-void
-WifiAPI::update() {
-  auto state = getCurrentState();
-  bool enabled = xochitlSettings.wifion();
-  if (enabled && state == Off) {
-    enable();
-    state = getCurrentState();
-  } else if (!enabled && state != Off) {
-    disable();
-    state = getCurrentState();
-  }
-  auto path = network().path();
-  if (
-    (state == Online || state == Offline) && m_currentNetwork.path() != path
-  ) {
-    O_INFO("Connected to" << path);
-    m_currentNetwork.setPath(path);
-    emit networkConnected(m_currentNetwork);
-  } else if (
-    (state == Disconnected || state == Off) && m_currentNetwork.path() != "/"
-  ) {
-    O_INFO("Disconnected from" << m_currentNetwork.path());
-    m_currentNetwork.setPath("/");
-    emit disconnected();
-  }
-  if (m_state != state) {
-    setState(state);
-  }
-  auto clink = link();
-  if (m_link != clink) {
-    m_link = clink;
-    emit linkChanged(clink);
-  }
-  auto crssi = rssi();
-  if (m_rssi != crssi) {
-    m_rssi = crssi;
-    emit rssiChanged(crssi);
-  }
-}
-
-WifiAPI::State
-WifiAPI::getCurrentState() {
-  State state = Off;
-  for (auto wlan : wlans) {
-    if (!wlan->isUp()) {
-      continue;
+  QString WifiAPI::getPath(QString type, QString id) {
+    static const QUuid NS = QUuid::fromString(
+      QLatin1String("{78c28d66-f558-11ea-adc1-0242ac120002}")
+    );
+    if (type == "network") {
+      id = QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
+    } else if (type == "bss") {
+      id = id.toUtf8().toHex();
     }
-    if (state == Off) {
-      state = Disconnected;
+    if (id.isEmpty()) {
+      id = QUuid::createUuid().toString(QUuid::Id128);
     }
-    if (wlan->operstate() == "up") {
-      state = Offline;
-    }
-    if (wlan->isConnected()) {
-      state = Online;
-      break;
-    }
+    return QString(OXIDE_SERVICE_PATH "/") + type + "/" + id;
   }
-  return state;
-}
-
-QString
-WifiAPI::getPath(QString type, QString id) {
-  static const QUuid NS =
-    QUuid::fromString(QLatin1String("{78c28d66-f558-11ea-adc1-0242ac120002}"));
-  if (type == "network") {
-    id = QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
-  } else if (type == "bss") {
-    id = id.toUtf8().toHex();
-  }
-  if (id.isEmpty()) {
-    id = QUuid::createUuid().toString(QUuid::Id128);
-  }
-  return QString(OXIDE_SERVICE_PATH "/") + type + "/" + id;
-}
