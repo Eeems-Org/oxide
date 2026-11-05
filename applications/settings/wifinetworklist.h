@@ -92,6 +92,10 @@ public:
     if (network != nullptr && network->path() == path.path()) {
       delete network;
       network = nullptr;
+      m_protocol = "";
+      emit fakeStringSignal(m_protocol);
+      emit knownChanged(known());
+      emit availableChanged(available());
       return;
     }
     QMutableListIterator<BSS*> i(bsss);
