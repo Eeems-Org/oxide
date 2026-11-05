@@ -395,7 +395,9 @@ SystemAPI::SystemAPI(QObject* parent)
                 sharedSettings.setValue(
                   "enabled", settings.value("enabled", true)
                 );
-                sharedSettings.setValue("length", settings.value("length", 170));
+                sharedSettings.setValue(
+                  "length", settings.value("length", 170)
+                );
               }
               sharedSettings.endArray();
             }
