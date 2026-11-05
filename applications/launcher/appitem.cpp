@@ -6,8 +6,8 @@
 #include <unistd.h>
 
 #include <QDebug>
-#include <QUuid>
 #include <QUrl>
+#include <QUuid>
 #include <fstream>
 #include <iostream>
 
@@ -99,8 +99,9 @@ AppItem::update(
   setProperty("running", running);
   setProperty(
     "imgFile",
-    (!imgFile.isEmpty() && QFile(imgFile).exists()) ? QUrl::fromLocalFile(imgFile).toString(QUrl::FullyEncoded)
-                                                    : "qrc:/img/icon.png"
+    (!imgFile.isEmpty() && QFile(imgFile).exists())
+      ? QUrl::fromLocalFile(imgFile).toString(QUrl::FullyEncoded)
+      : "qrc:/img/icon.png"
   );
 }
 
