@@ -3,6 +3,7 @@
 #include <liboxide/dbus.h>
 
 #include <QObject>
+#include <QUrl>
 
 using namespace codes::eeems::oxide1;
 
@@ -65,7 +66,7 @@ private slots:
   void onIconChanged(QString path) {
     setProperty(
       "imgFile",
-      (!path.isEmpty() && QFile(path).exists()) ? "file:" + path
+      (!path.isEmpty() && QFile(path).exists()) ? QUrl::fromLocalFile(path).toString(QUrl::FullyEncoded)
                                                 : "qrc:/img/icon.png"
     );
   }
