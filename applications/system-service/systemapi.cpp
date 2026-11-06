@@ -884,8 +884,13 @@ SystemAPI::reboot() {
 }
 void
 SystemAPI::activity() {
-  if (!activityTimer.isActive()) {
-    activityTimer.start(1000);
+  if (activityTimer.isActive()) {
+    return;
+  }
+  activityTimer.start(1000);
+  if (suspendTimer.isActive()) {
+    suspendTimer.stop();
+    O_DEBUG("Suspend timer stopped due to activity");
   }
 }
 
