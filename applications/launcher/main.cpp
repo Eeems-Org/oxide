@@ -1,23 +1,13 @@
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
 #include <liboxide/oxideqml.h>
-#include <signal.h>
-#include <unistd.h>
 
 #include <QGuiApplication>
-#include <QMap>
 #include <QObject>
-#include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QQuickItem>
-#include <QStringList>
-#include <QtDBus>
-#include <QtPlugin>
 #include <QtQuick>
 #include <cstdlib>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
 
 #include "controller.h"
 
@@ -25,12 +15,6 @@ using namespace std;
 using namespace Oxide;
 using namespace Oxide::QML;
 using namespace Oxide::Sentry;
-
-function<void(int)> shutdown_handler;
-void
-signalHandler2(int signal) {
-  shutdown_handler(signal);
-}
 
 int
 main(int argc, char* argv[]) {
@@ -48,9 +32,6 @@ main(int argc, char* argv[]) {
   qmlRegisterAnonymousType<AppItem>("codes.eeems.oxide", 2);
   qmlRegisterAnonymousType<Controller>("codes.eeems.oxide", 2);
   registerQML(&engine);
-  context->setContextProperty(
-    "apps", QVariant::fromValue(controller->getApps())
-  );
   context->setContextProperty("controller", controller);
   QTimer::singleShot(0, [&app, &engine, controller] {
     QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
@@ -59,49 +40,20 @@ main(int argc, char* argv[]) {
       qApp->exit(EXIT_FAILURE);
       return;
     }
-    controller->root = root;
+    controller->setRoot(root);
     root->installEventFilter(new EventFilter(&app));
-    QObject* stateController = root->findChild<QObject*>("stateController");
-    if (!stateController) {
-      qDebug() << "Can't find stateController";
-      qApp->exit(EXIT_FAILURE);
-      return;
-    }
-    controller->stateController = stateController;
-    QObject* clock = root->findChild<QObject*>("clock");
-    if (!clock) {
-      qDebug() << "Can't find clock";
-      qApp->exit(EXIT_FAILURE);
-      return;
-    }
-    // Update UI
-    clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
-    controller->updateUIElements();
-    // Setup clock
-    QTimer* clockTimer = new QTimer(root);
-    auto currentTime = QTime::currentTime();
-    QTime nextTime = currentTime.addSecs(60 - currentTime.second());
-    clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
-    QObject::connect(
-      clockTimer, &QTimer::timeout, [clock, clockTimer, controller]() {
-        QString text = "";
-        if (controller->showDate()) {
-          text = QDate::currentDate().toString(Qt::TextDate) + " ";
-        }
-        clock->setProperty(
-          "text", text + QTime::currentTime().toString("h:mm a")
-        );
-        if (clockTimer->interval() != 60 * 1000) {
-          clockTimer->setInterval(60 * 1000); // 1 minute
-        }
-      }
-    );
-    clockTimer->start();
   });
-  shutdown_handler = [&controller](int signum) {
-    Q_UNUSED(signum)
-    QTimer::singleShot(300, [=]() { emit controller->reload(); });
-  };
-  signal(SIGCONT, signalHandler2);
+  signalHandler->removeNotifier(SIGTERM);
+  signalHandler->removeNotifier(SIGINT);
+  signalHandler->removeNotifier(SIGUSR1);
+  signalHandler->removeNotifier(SIGUSR2);
+  signalHandler->removeNotifier(SIGPIPE);
+  signalHandler->removeNotifier(SIGSEGV);
+  signalHandler->removeNotifier(SIGBUS);
+  QObject::connect(signalHandler, &SignalHandler::sigCont, [controller]() {
+    QTimer::singleShot(300, controller, [controller]() {
+      controller->refreshApps();
+    });
+  });
   return app.exec();
 }

@@ -39,6 +39,10 @@ struct sentry_scope_s {
     sentry_transaction_t *transaction_object;
     sentry_span_t *span;
     bool trace_managed;
+
+    // Whether this scope is single-use. A capture function frees a one-shot
+    // scope after applying it.
+    bool one_shot;
 };
 
 /**
@@ -73,16 +77,16 @@ void sentry__scope_unlock(void);
 void sentry__scope_cleanup(void);
 
 /**
+ * Frees the scope if it is a one-shot local scope.
+ */
+void sentry__scope_free_one_shot(sentry_scope_t *scope);
+
+/**
  * This will notify any backend of scope changes.
  * This function must be called while holding the scope lock, and it will be
  * unlocked internally.
  */
 void sentry__scope_flush_unlock(void);
-
-/**
- * Deallocates a (local) scope.
- */
-void sentry__scope_free(sentry_scope_t *scope);
 
 /**
  * This will merge the requested data which is in the given `scope` to the given
@@ -98,21 +102,6 @@ void sentry__scope_set_fingerprint_va(
     sentry_scope_t *scope, const char *fingerprint, va_list va);
 void sentry__scope_set_fingerprint_nva(sentry_scope_t *scope,
     const char *fingerprint, size_t fingerprint_len, va_list va);
-
-/**
- * Internal scope-based attribute functions.
- * For now, these are only used by the non-scope API functions that operate
- * on the global scope.
- * Once we have attributes for events or scope-based logs/metrics/spans APIs
- * these can become part of the public API too.
- */
-void sentry__scope_set_attribute(
-    sentry_scope_t *scope, const char *key, sentry_value_t attribute);
-void sentry__scope_set_attribute_n(sentry_scope_t *scope, const char *key,
-    size_t key_len, sentry_value_t attribute);
-void sentry__scope_remove_attribute(sentry_scope_t *scope, const char *key);
-void sentry__scope_remove_attribute_n(
-    sentry_scope_t *scope, const char *key, size_t key_len);
 
 /**
  * These are convenience macros to automatically lock/unlock the global scope
@@ -144,9 +133,11 @@ void sentry__scope_update_dsc(
 void sentry__scope_freeze_dsc(sentry_scope_t *scope, sentry_value_t incoming);
 
 /**
- * Adds scoped attributes to the telemetry attributes object.
+ * Merges the given scope data into a telemetry item (a log or metric): its
+ * attributes, trace, user, etc. Existing values are kept, so this can be called
+ * for each scope in a precedence chain, most specific first (first write wins).
  */
-void sentry__scope_apply_attributes(const sentry_scope_t *scope,
+void sentry__scope_apply_to_telemetry(const sentry_scope_t *scope,
     sentry_value_t telemetry, sentry_value_t attributes);
 
 #endif

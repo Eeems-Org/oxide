@@ -9,36 +9,8 @@
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
 
-enum State { Normal, PowerSaving };
-enum BatteryState {
-  BatteryUnknown,
-  BatteryCharging,
-  BatteryDischarging,
-  BatteryNotPresent
-};
-enum ChargerState {
-  ChargerUnknown,
-  ChargerConnected,
-  ChargerNotConnected,
-  ChargerNotPresent
-};
-enum WifiState {
-  WifiUnknown,
-  WifiOff,
-  WifiDisconnected,
-  WifiOffline,
-  WifiOnline
-};
-
 class Controller : public QObject {
   Q_OBJECT
-  Q_PROPERTY(
-    bool powerOffInhibited READ powerOffInhibited NOTIFY
-      powerOffInhibitedChanged
-  )
-  Q_PROPERTY(
-    bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged
-  )
   Q_PROPERTY(
     bool firstLaunch READ firstLaunch WRITE setFirstLaunch NOTIFY
       firstLaunchChanged
@@ -59,7 +31,6 @@ public:
   Controller(QObject* parent)
     : QObject(parent)
     , confirmPin() {
-    clockTimer = new QTimer(this);
     auto bus = QDBusConnection::systemBus();
     qDebug() << "Waiting for tarnish to start up...";
     while (!bus.interface()->registeredServiceNames().value().contains(
@@ -83,72 +54,8 @@ public:
     systemApi = new System(OXIDE_SERVICE, path.path(), bus, this);
 
     connect(
-      systemApi,
-      &System::sleepInhibitedChanged,
-      this,
-      &Controller::sleepInhibitedChanged
-    );
-    connect(
-      systemApi,
-      &System::powerOffInhibitedChanged,
-      this,
-      &Controller::powerOffInhibitedChanged
-    );
-    connect(
       systemApi, &System::deviceSuspending, this, &Controller::deviceSuspending
     );
-
-    qDebug() << "Requesting power API...";
-    path = api->requestAPI("power");
-    if (path.path() == "/") {
-      qDebug() << "Unable to get power API";
-      throw "";
-    }
-    powerApi = new Power(OXIDE_SERVICE, path.path(), bus, this);
-
-    connect(
-      powerApi,
-      &Power::batteryLevelChanged,
-      this,
-      &Controller::batteryLevelChanged
-    );
-    connect(
-      powerApi,
-      &Power::batteryStateChanged,
-      this,
-      &Controller::batteryStateChanged
-    );
-    connect(
-      powerApi,
-      &Power::chargerStateChanged,
-      this,
-      &Controller::chargerStateChanged
-    );
-    connect(
-      powerApi, &Power::stateChanged, this, &Controller::powerStateChanged
-    );
-    connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
-    connect(
-      powerApi, &Power::batteryWarning, this, &Controller::batteryWarning
-    );
-    connect(
-      powerApi, &Power::chargerWarning, this, &Controller::chargerWarning
-    );
-
-    qDebug() << "Requesting wifi API...";
-    path = api->requestAPI("wifi");
-    if (path.path() == "/") {
-      qDebug() << "Unable to get wifi API";
-      throw "";
-    }
-    wifiApi = new Wifi(OXIDE_SERVICE, path.path(), bus, this);
-
-    connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
-    connect(
-      wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected
-    );
-    connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-    connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
 
     qDebug() << "Requesting apps API...";
     path = api->requestAPI("apps");
@@ -207,11 +114,6 @@ public:
       &Controller::crashReportChanged
     );
   }
-  ~Controller() {
-    if (clockTimer->isActive()) {
-      clockTimer->stop();
-    }
-  }
   bool firstLaunch() { return sharedSettings.firstLaunch(); }
   void setFirstLaunch(bool firstLaunch) {
     sharedSettings.set_firstLaunch(firstLaunch);
@@ -228,34 +130,11 @@ public:
   }
 
   Q_INVOKABLE void startup() {
-    if (
-      !getBatteryUI() || !getWifiUI() || !getClockUI() ||
-      !getStateControllerUI()
-    ) {
+    if (!getStateControllerUI()) {
       QTimer::singleShot(100, this, &Controller::startup);
       return;
     }
     qDebug() << "Running controller startup";
-    batteryLevelChanged(powerApi->batteryLevel());
-    batteryStateChanged(powerApi->batteryState());
-    chargerStateChanged(powerApi->chargerState());
-    powerStateChanged(powerApi->state());
-    wifiStateChanged(wifiApi->state());
-    wifiRssiChanged(wifiApi->rssi());
-
-    clockUI->setProperty("text", QTime::currentTime().toString("h:mm a"));
-
-    auto currentTime = QTime::currentTime();
-    QTime nextTime = currentTime.addSecs(60 - currentTime.second());
-    clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
-    QObject::connect(
-      clockTimer,
-      &QTimer::timeout,
-      this,
-      &Controller::updateClock,
-      Qt::UniqueConnection
-    );
-    clockTimer->start();
 
     if (firstLaunch()) {
       qDebug() << "First launch";
@@ -305,21 +184,6 @@ public:
   void previousApplication() {
     if (!appsApi->previousApplication()) {
       launchStartupApp();
-    }
-  }
-  Q_INVOKABLE void suspend() {
-    if (!sleepInhibited()) {
-      systemApi->suspend().waitForFinished();
-    }
-  }
-  Q_INVOKABLE void powerOff() {
-    if (!powerOffInhibited()) {
-      systemApi->powerOff().waitForFinished();
-    }
-  }
-  Q_INVOKABLE void reboot() {
-    if (!powerOffInhibited()) {
-      systemApi->reboot().waitForFinished();
     }
   }
   Q_INVOKABLE bool submitPin(QString pin) {
@@ -401,8 +265,6 @@ public:
 #endif
   }
 
-  bool sleepInhibited() { return systemApi->sleepInhibited(); }
-  bool powerOffInhibited() { return systemApi->powerOffInhibited(); }
   QString state() {
     if (!getStateControllerUI()) {
       return "loading";
@@ -427,14 +289,9 @@ public:
     sharedSettings.sync();
   }
 
-  void setRoot(QObject* root) {
-    this->root = root;
-    clockTimer->setParent(root);
-  }
+  void setRoot(QObject* root) { this->root = root; }
 
 signals:
-  void sleepInhibitedChanged(bool);
-  void powerOffInhibitedChanged(bool);
   void firstLaunchChanged(bool);
   void telemetryChanged(bool);
   void applicationUsageChanged(bool);
@@ -453,118 +310,6 @@ private slots:
     } else {
       setState("loading");
     }
-  }
-  void updateClock() {
-    if (!getClockUI()) {
-      return;
-    }
-    clockUI->setProperty("text", QTime::currentTime().toString("h:mm a"));
-    if (clockTimer->interval() != 60 * 1000) {
-      clockTimer->setInterval(60 * 1000); // 1 minute
-    }
-  }
-  void disconnected() { wifiStateChanged(wifiApi->state()); }
-  void networkConnected() { wifiStateChanged(wifiApi->state()); }
-  void wifiStateChanged(int state) {
-    if (!getWifiUI()) {
-      return;
-    }
-    switch (state) {
-      case WifiOff:
-        wifiUI->setProperty("state", "down");
-        break;
-      case WifiDisconnected:
-        wifiUI->setProperty("state", "up");
-        wifiUI->setProperty("connected", false);
-        break;
-      case WifiOffline:
-        wifiUI->setProperty("state", "up");
-        wifiUI->setProperty("connected", true);
-        break;
-      case WifiOnline:
-        wifiUI->setProperty("state", "up");
-        wifiUI->setProperty("connected", true);
-        wifiUI->setProperty("rssi", wifiApi->rssi());
-        break;
-      case WifiUnknown:
-      default:
-        wifiUI->setProperty("state", "unknown");
-    }
-  }
-  void wifiRssiChanged(int rssi) {
-    if (!getWifiUI()) {
-      return;
-    }
-    if (wifiApi->state() != WifiOnline) {
-      rssi = -100;
-    }
-    wifiUI->setProperty("rssi", rssi);
-  }
-
-  void batteryLevelChanged(int level) {
-    if (!getBatteryUI()) {
-      return;
-    }
-    batteryUI->setProperty("level", level);
-  }
-  void batteryStateChanged(int state) {
-    if (!getBatteryUI()) {
-      return;
-    }
-    if (state != BatteryNotPresent) {
-      batteryUI->setProperty("present", true);
-    }
-    switch (state) {
-      case ChargerConnected:
-        batteryUI->setProperty("connected", true);
-        break;
-      case ChargerNotConnected:
-      case ChargerNotPresent:
-        batteryUI->setProperty("connected", false);
-        break;
-      case ChargerUnknown:
-      default:
-        batteryUI->setProperty("connected", false);
-    }
-  }
-  void chargerStateChanged(int state) {
-    if (!getBatteryUI()) {
-      return;
-    }
-    if (state != BatteryNotPresent) {
-      batteryUI->setProperty("present", true);
-    }
-    switch (state) {
-      case ChargerConnected:
-        batteryUI->setProperty("connected", true);
-        break;
-      case ChargerNotConnected:
-      case ChargerNotPresent:
-        batteryUI->setProperty("connected", false);
-        break;
-      case ChargerUnknown:
-      default:
-        batteryUI->setProperty("connected", false);
-    }
-  }
-  void powerStateChanged(int state) {
-    Q_UNUSED(state);
-    // TODO handle requested battery state
-  }
-  void batteryAlert() {
-    if (!getBatteryUI()) {
-      return;
-    }
-    batteryUI->setProperty("alert", true);
-  }
-  void batteryWarning() {
-    if (!getBatteryUI()) {
-      return;
-    }
-    batteryUI->setProperty("warning", true);
-  }
-  void chargerWarning() {
-    // TODO handle charger
   }
   void onLogin() {
     if (!sharedSettings.has_onLogin()) {
@@ -601,39 +346,12 @@ private:
   QString confirmPin;
   General* api;
   System* systemApi;
-  codes::eeems::oxide1::Power* powerApi;
-  Wifi* wifiApi;
   Apps* appsApi;
-  QTimer* clockTimer = nullptr;
   QObject* root = nullptr;
-  QObject* batteryUI = nullptr;
-  QObject* wifiUI = nullptr;
-  QObject* clockUI = nullptr;
   QObject* stateControllerUI = nullptr;
   QObject* pinEntryUI = nullptr;
 
   int tarnishPid() { return api->tarnishPid(); }
-  QObject* getBatteryUI() {
-    if (root == nullptr) {
-      return nullptr;
-    }
-    batteryUI = root->findChild<QObject*>("batteryLevel");
-    return batteryUI;
-  }
-  QObject* getWifiUI() {
-    if (root == nullptr) {
-      return nullptr;
-    }
-    wifiUI = root->findChild<QObject*>("wifiState");
-    return wifiUI;
-  }
-  QObject* getClockUI() {
-    if (root == nullptr) {
-      return nullptr;
-    }
-    clockUI = root->findChild<QObject*>("clock");
-    return clockUI;
-  }
   QObject* getStateControllerUI() {
     if (root == nullptr) {
       return nullptr;
