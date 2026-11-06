@@ -32,6 +32,45 @@ namespace DRM {
       case DRM_IOCTL_MODE_SETCRTC:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_SETCRTC");
         return 0;
+      case DRM_IOCTL_GET_UNIQUE:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_GET_UNIQUE");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_GET_CLIENT:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_GET_CLIENT");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_GET_CAP:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_GET_CAP");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_SET_CLIENT_CAP:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_SET_CLIENT_CAP");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_IRQ_BUSID:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_IRQ_BUSID");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_MODE_GETRESOURCES:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_MODE_GETRESOURCES");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_MODE_GETENCODER:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_MODE_GETENCODER");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_MODE_GETCONNECTOR:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_MODE_GETCONNECTOR");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_MODE_GETPROPERTY:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_MODE_GETPROPERTY");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_MODE_ADDFB:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_MODE_ADDFB");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_MODE_GETPLANERESOURCES:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_MODE_GETPLANERESOURCES");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_MODE_GETPLANE:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_MODE_GETPLANE");
+        return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_MODE_OBJ_GETPROPERTIES:
+        _DEBUG("ioctl /dev/dri/card0 DRM_IOCTL_MODE_OBJ_GETPROPERTIES");
+        return Libc::ioctl(card0, request, ptr);
       default:
         _WARN(
           "UNHANDLED DRM IOCTL %lu %c %lu %lu %lu",

@@ -1,160 +1,148 @@
 #include "libc.h"
+#include <cstring>
 #include <dlfcn.h>
+#include <sys/syscall.h>
 
 namespace Libc {
-  ssize_t (*write)(int, const void*, size_t) =
-    (ssize_t (*)(int, const void*, size_t))dlsym(RTLD_NEXT, "write");
 
-  ssize_t (*writev)(int, const iovec*, int) =
-    (ssize_t (*)(int, const iovec*, int))dlsym(RTLD_NEXT, "writev");
+#define register_function(name, arguments, return_type)                        \
+  return_type(*name) arguments =                                               \
+    (return_type(*) arguments)dlsym(RTLD_NEXT, #name);
 
-  ssize_t (*writev64)(int, const iovec*, int) =
-    (ssize_t (*)(int, const iovec*, int))dlsym(RTLD_NEXT, "writev64");
-
-  ssize_t (*pwrite)(int, const void*, size_t, off_t) =
-    (ssize_t (*)(int, const void*, size_t, off_t))dlsym(RTLD_NEXT, "pwrite");
-
-  ssize_t (*pwrite64)(int, const void*, size_t, off64_t) =
-    (ssize_t (*)(int, const void*, size_t, off64_t))dlsym(
-      RTLD_NEXT,
-      "pwrite64"
-    );
-
-  ssize_t (*pwritev)(int, const iovec*, int, off_t) =
-    (ssize_t (*)(int, const iovec*, int, off_t))dlsym(RTLD_NEXT, "pwritev");
-
-  ssize_t (*pwritev64)(int, const iovec*, int, off64_t) =
-    (ssize_t (*)(int, const iovec*, int, off64_t))dlsym(RTLD_NEXT, "pwritev64");
-
-  int (*open)(const char*, int, ...) =
-    (int (*)(const char*, int, ...))dlsym(RTLD_NEXT, "open");
-
-  int (*open64)(const char*, int, ...) =
-    (int (*)(const char*, int, ...))dlsym(RTLD_NEXT, "open64");
-
-  int (*openat)(int, const char*, int, ...) =
-    (int (*)(int, const char*, int, ...))dlsym(RTLD_NEXT, "openat");
-
-  int (*openat64)(int, const char*, int, ...) =
-    (int (*)(int, const char*, int, ...))dlsym(RTLD_NEXT, "openat64");
-
-  int (*ioctl)(int, unsigned long, ...) =
-    (int (*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
-
-  int (*close)(int) = (int (*)(int))dlsym(RTLD_NEXT, "close");
-
-  int (*fcntl)(int, int, ...) =
-    (int (*)(int, int, ...))dlsym(RTLD_NEXT, "fcntl");
-
-  int (*msgget)(key_t, int) = (int (*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
-
-  int (*msgsnd)(int, const void*, size_t, int) =
-    (int (*)(int, const void*, size_t, int))dlsym(RTLD_NEXT, "msgsnd");
-
-  int (*flock)(int, int) = (int (*)(int, int))dlsym(RTLD_NEXT, "flock");
-
-  bool (*setenv)(const char*, const char*, int) =
-    (bool (*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
-
-  bool (*unsetenv)(const char*) =
-    (bool (*)(const char*))dlsym(RTLD_NEXT, "unsetenv");
-
-  int (*read)(int, void*, size_t) =
-    (int (*)(int, void*, size_t))dlsym(RTLD_NEXT, "read");
-
-  int (*poll)(struct pollfd*, nfds_t, int) =
-    (int (*)(struct pollfd*, nfds_t, int))dlsym(RTLD_NEXT, "poll");
-
-  int (*ppoll)(
-    struct pollfd*,
-    nfds_t,
-    const struct timespec*,
-    const sigset_t*
-  ) =
-    (int (*)(
-      struct pollfd*,
-      nfds_t,
-      const struct timespec*,
-      const sigset_t*
-    ))dlsym(RTLD_NEXT, "ppoll");
-
-  int (*__ppoll64)(
-    struct pollfd*,
-    nfds_t,
-    const struct timespec*,
-    const sigset_t*
-  ) =
-    (int (*)(
-      struct pollfd*,
-      nfds_t,
-      const struct timespec*,
-      const sigset_t*
-    ))dlsym(RTLD_NEXT, "__ppoll64");
-
-  int (*select)(int, fd_set*, fd_set*, fd_set*, struct timeval*) =
-    (int (*)(int, fd_set*, fd_set*, fd_set*, struct timeval*))dlsym(
-      RTLD_NEXT,
-      "select"
-    );
-
-  int (*pselect)(
-    int,
-    fd_set*,
-    fd_set*,
-    fd_set*,
-    const struct timespec*,
-    const sigset_t*
-  ) =
-    (int (*)(
-      int,
-      fd_set*,
-      fd_set*,
-      fd_set*,
-      const struct timespec*,
-      const sigset_t*
-    ))dlsym(RTLD_NEXT, "pselect");
-
+  register_function(write, (int, const void*, size_t), ssize_t);
+  register_function(writev, (int, const iovec*, int), ssize_t);
+  register_function(pwrite, (int, const void*, size_t, off_t), ssize_t);
+  register_function(pwrite64, (int, const void*, size_t, off64_t), ssize_t);
+  register_function(pwritev, (int, const iovec*, int, off_t), ssize_t);
+  register_function(pwritev64, (int, const iovec*, int, off64_t), ssize_t);
+  register_function(open, (const char*, int, ...), int);
+  register_function(open64, (const char*, int, ...), int);
+  register_function(openat, (int, const char*, int, ...), int);
+  register_function(openat64, (int, const char*, int, ...), int);
+  register_function(ioctl, (int, unsigned long, ...), int);
+  register_function(close, (int), int);
+  register_function(fcntl, (int, int, ...), int);
+  register_function(fcntl64, (int, int, ...), int);
+  register_function(msgget, (key_t, int), int);
+  register_function(msgsnd, (int, const void*, size_t, int), int);
+  register_function(flock, (int, int), int);
+  register_function(setenv, (const char*, const char*, int), bool);
+  register_function(unsetenv, (const char*), bool);
+  register_function(read, (int, void*, size_t), int);
+  register_function(poll, (struct pollfd*, nfds_t, int), int);
+  register_function(
+    ppoll,
+    (struct pollfd*, nfds_t, const struct timespec*, const sigset_t*),
+    int
+  );
+  register_function(
+    __ppoll64,
+    (struct pollfd*, nfds_t, const struct timespec*, const sigset_t*),
+    int
+  );
+  register_function(
+    select,
+    (int, fd_set*, fd_set*, fd_set*, struct timeval*),
+    int
+  );
+  register_function(
+    pselect,
+    (int, fd_set*, fd_set*, fd_set*, const struct timespec*, const sigset_t*),
+    int
+  );
   int (*epollCtl)(int, int, int, struct epoll_event*) =
     (int (*)(int, int, int, struct epoll_event*))dlsym(RTLD_NEXT, "epoll_ctl");
+  register_function(epoll_wait, (int, struct epoll_event*, int, int), int);
+  register_function(signal, (int, sighandler_t), sighandler_t);
+  register_function(
+    sigaction,
+    (int, const struct sigaction*, struct sigaction*),
+    int
+  );
+  register_function(system, (const char*), int);
+  register_function(fopen, (const char* path, const char* mode), FILE*);
+  register_function(fopen64, (const char* path, const char* mode), FILE*);
+  register_function(
+    getdents,
+    (unsigned int, struct dirent*, unsigned int),
+    int
+  );
+  register_function(getdents64, (int, void*, size_t), ssize_t);
+  register_function(opendir, (const char*), DIR*);
+  register_function(readdir, (DIR*), struct dirent*);
+  register_function(readdir64, (DIR*), struct dirent64*);
+  register_function(closedir, (DIR*), int);
 
-  int (*epoll_wait)(int, struct epoll_event*, int, int) =
-    (int (*)(int, struct epoll_event*, int, int))dlsym(RTLD_NEXT, "epoll_wait");
+#undef register_function
 
-  sighandler_t (*signal)(int, sighandler_t) =
-    (sighandler_t (*)(int, sighandler_t))dlsym(RTLD_NEXT, "signal");
+  bool init() {
+    static bool initialized = false;
+    if (initialized) {
+      return true;
+    }
 
-  int (*sigaction)(int, const struct sigaction*, struct sigaction*) = (int (*)(
-    int,
-    const struct sigaction*,
-    struct sigaction*
-  ))dlsym(RTLD_NEXT, "sigaction");
+    bool success = true;
+#define hook(name, symbol)                                                     \
+  if (Libc::name == nullptr) {                                                 \
+    Libc::name =                                                               \
+      reinterpret_cast<decltype(Libc::name)>(dlsym(RTLD_NEXT, #symbol));       \
+  }
 
-  int (*system)(const char*) = (int (*)(const char*))dlsym(RTLD_NEXT, "system");
+#define hook_ensure(name, symbol)                                              \
+  hook(name, symbol);                                                          \
+  if (Libc::name == nullptr) {                                                 \
+    static const char message[] = "Failed to resolve " #symbol "\n";           \
+    syscall(SYS_write, 2, message, sizeof(message) - 1);                       \
+    success = false;                                                           \
+  }
 
-  FILE* (*fopen)(const char* path, const char* mode) =
-    (FILE * (*)(const char* path, const char* mode)) dlsym(RTLD_NEXT, "fopen");
+    hook_ensure(write, write);
+    hook_ensure(writev, writev);
+    hook_ensure(pwrite, pwrite);
+    hook_ensure(pwrite64, pwrite64);
+    hook_ensure(pwritev, pwritev);
+    hook_ensure(pwritev64, pwritev64);
+    hook_ensure(open, open);
+    hook_ensure(open64, open64);
+    hook_ensure(openat, openat);
+    hook_ensure(openat64, openat64);
+    hook_ensure(ioctl, ioctl);
+    hook_ensure(close, close);
+    hook_ensure(fcntl, fcntl);
+    hook_ensure(fcntl64, fcntl64);
+    hook_ensure(msgget, msgget);
+    hook_ensure(msgsnd, msgsnd);
+    hook_ensure(flock, flock);
+    hook_ensure(setenv, setenv);
+    hook_ensure(unsetenv, unsetenv);
+    hook_ensure(read, read);
+    hook_ensure(poll, poll);
+    hook_ensure(ppoll, ppoll);
+#ifdef __aarch64__
+    hook(__ppoll64, __ppoll64);
+#else
+    hook_ensure(__ppoll64, __ppoll64);
+#endif
+    hook_ensure(select, select);
+    hook_ensure(pselect, pselect);
+    hook_ensure(epollCtl, epoll_ctl);
+    hook_ensure(epoll_wait, epoll_wait);
+    hook_ensure(signal, signal);
+    hook_ensure(sigaction, sigaction);
+    hook_ensure(system, system);
+    hook_ensure(fopen, fopen);
+    hook_ensure(fopen64, fopen64);
+    hook(getdents, getdents);
+    hook_ensure(getdents64, getdents64);
+    hook_ensure(opendir, opendir);
+    hook_ensure(readdir, readdir);
+    hook_ensure(readdir64, readdir64);
+    hook_ensure(closedir, closedir);
 
-  FILE* (*fopen64)(const char* path, const char* mode) =
-    (FILE *
-     (*)(const char* path, const char* mode)) dlsym(RTLD_NEXT, "fopen64");
+#undef hook
+#undef hook_ensure
 
-  int (*getdents)(unsigned int, struct dirent*, unsigned int) = (int (*)(
-    unsigned int,
-    struct dirent*,
-    unsigned int
-  ))dlsym(RTLD_NEXT, "getdents");
-
-  ssize_t (*getdents64)(int, void*, size_t) =
-    (ssize_t (*)(int, void*, size_t))dlsym(RTLD_NEXT, "getdents64");
-
-  DIR* (*opendir)(const char*) =
-    (DIR * (*)(const char*)) dlsym(RTLD_NEXT, "opendir");
-
-  struct dirent* (*readdir)(DIR*) =
-    (struct dirent * (*)(DIR*)) dlsym(RTLD_NEXT, "readdir");
-
-  struct dirent64* (*readdir64)(DIR*) =
-    (struct dirent64 * (*)(DIR*)) dlsym(RTLD_NEXT, "readdir64");
-
-  int (*closedir)(DIR*) = (int (*)(DIR*))dlsym(RTLD_NEXT, "closedir");
+    initialized = true;
+    return success;
+  }
 }

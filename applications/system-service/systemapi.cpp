@@ -432,7 +432,7 @@ SystemAPI::SystemAPI(QObject* parent)
               sharedSettings.setArrayIndex(i);
               swipeStates[(SwipeDirection)i] =
                 sharedSettings.value("enabled", true).toBool();
-              int length = sharedSettings.value("length", 30).toInt();
+              int length = sharedSettings.value("length", 170).toInt();
               swipeLengths[(SwipeDirection)i] = length;
               emit swipeLengthChanged(i, length);
             }
@@ -447,7 +447,7 @@ SystemAPI::SystemAPI(QObject* parent)
           swipeStates[(SwipeDirection)i] =
             sharedSettings.value("enabled", true).toBool();
           swipeLengths[(SwipeDirection)i] =
-            sharedSettings.value("length", 30).toInt();
+            sharedSettings.value("length", 170).toInt();
         }
         sharedSettings.endArray();
       });

@@ -918,10 +918,10 @@ private:
   bool m_lockOnSuspend = true;
   bool m_automaticLock = true;
   int m_columns = 6;
-  int m_swipeLengthRight = 30;
-  int m_swipeLengthLeft = 30;
-  int m_swipeLengthUp = 30;
-  int m_swipeLengthDown = 30;
+  int m_swipeLengthRight = 170;
+  int m_swipeLengthLeft = 170;
+  int m_swipeLengthUp = 170;
+  int m_swipeLengthDown = 170;
   int m_fontSize = 23;
   int m_sleepAfter;
   int m_lockAfter;

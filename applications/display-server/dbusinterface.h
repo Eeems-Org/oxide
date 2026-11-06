@@ -63,8 +63,6 @@ public:
   std::shared_ptr<Connection> getConnection(Connection* ptr);
   const QList<std::shared_ptr<Connection>> getConnections();
   void removeSurface(QString identifier);
-  QList<std::shared_ptr<Surface>> surfaces();
-  QList<std::shared_ptr<Surface>> sortedSurfaces();
   QList<std::shared_ptr<Surface>> visibleSurfaces();
   void sortZ();
   std::shared_ptr<Connection> focused();
@@ -138,7 +136,9 @@ private:
   DbusInterface(QObject* parent);
   QQmlApplicationEngine engine;
   QReadWriteLock connectionsLock;
+  QReadWriteLock surfacesLock;
   QList<std::shared_ptr<Connection>> connections;
+  QList<std::shared_ptr<Surface>> surfaces;
   std::shared_ptr<Connection> m_focused;
   struct {
     QByteArray clipboard;

@@ -22,6 +22,7 @@
 #include <QQmlComponent>
 #include <cstring>
 #include <mutex>
+#include <unordered_set>
 
 #include "connection.h"
 #include "evdevhandler.h"
@@ -494,9 +495,11 @@ DbusInterface::lower(QString identifier, QDBusMessage message) {
   }
   for (auto& surface : childConnection->getSurfaces()) {
     surface->setVisible(false);
-    surface->repaint();
   }
   sortZ();
+  for (auto& surface : childConnection->getSurfaces()) {
+    surface->repaint(QRect(), true);
+  }
 }
 
 void
@@ -528,9 +531,11 @@ DbusInterface::raise(QString identifier, QDBusMessage message) {
   for (auto& surface : childConnection->getSurfaces()) {
     surface->setVisible(true);
     surface->setZ(std::numeric_limits<int>::max());
-    surface->repaint();
   }
   sortZ();
+  for (auto& surface : childConnection->getSurfaces()) {
+    surface->repaint(QRect(), true);
+  }
 }
 
 void
@@ -947,65 +952,33 @@ DbusInterface::hasRunningConnection(pid_t pgid) {
 
 void
 DbusInterface::removeSurface(QString identifier) {
-  QReadLocker _locker(&connectionsLock);
-  for (auto& connection : std::as_const(connections)) {
-    auto surface = connection->getSurface(identifier);
-    if (surface != nullptr) {
-      connection->removeSurface(surface->identifier());
-    }
-  }
-}
-
-QList<std::shared_ptr<Surface>>
-DbusInterface::surfaces() {
-  QList<std::shared_ptr<Surface>> surfaces;
-  QReadLocker _locker(&connectionsLock);
-  for (auto& connection : std::as_const(connections)) {
-    for (auto& surface : connection->getSurfaces()) {
-      if (!surfaces.contains(surface)) {
-        surfaces.append(surface);
+  {
+    QReadLocker _locker(&connectionsLock);
+    for (auto& connection : std::as_const(connections)) {
+      auto surface = connection->getSurface(identifier);
+      if (surface != nullptr) {
+        connection->removeSurface(surface->identifier());
       }
     }
   }
-  return surfaces;
-}
-
-QList<std::shared_ptr<Surface>>
-DbusInterface::sortedSurfaces() {
-  auto sorted = surfaces().toVector();
-  std::sort(
-    sorted.begin(),
-    sorted.end(),
-    [](std::shared_ptr<Surface> surface0, std::shared_ptr<Surface> surface1) {
-      if (surface0 == nullptr || !surface0->visible()) {
-        return false;
-      }
-      if (surface1 == nullptr || !surface1->visible()) {
-        return true;
-      }
-      if (surface0->has("system")) {
-        return false;
-      }
-      if (surface1->has("system")) {
-        return true;
-      }
-      return surface0->z() < surface1->z();
-    }
-  );
-  return QList<std::shared_ptr<Surface>>::fromVector(sorted);
+  sortZ();
 }
 
 QList<std::shared_ptr<Surface>>
 DbusInterface::visibleSurfaces() {
   QList<std::shared_ptr<Surface>> surfaces;
-  for (auto& surface : sortedSurfaces()) {
+  std::unordered_set<Surface*> seen;
+  seen.reserve(10);
+  QReadLocker _locker(&surfacesLock);
+  for (auto& surface : std::as_const(this->surfaces)) {
     auto connection = surface->connection();
     if (connection == nullptr || !surface->visible()) {
       continue;
     }
     if (
-      connection->isRunning() ||
-      (connection->has("unified") && hasRunningConnection(connection->pgid()))
+      (connection->isRunning() || (connection->has("unified") &&
+                                   hasRunningConnection(connection->pgid()))) &&
+      seen.insert(surface.get()).second
     ) {
       surfaces.append(surface);
     }
@@ -1048,41 +1021,74 @@ DbusInterface::setSecondary(const QByteArray& data) {
 
 void
 DbusInterface::sortZ() {
-  auto sorted = sortedSurfaces();
+  QList<std::shared_ptr<Surface>> surfaces;
+  {
+    QReadLocker _locker(&connectionsLock);
+    std::unordered_set<Surface*> seen;
+    seen.reserve(connections.size());
+    for (auto& connection : std::as_const(connections)) {
+      for (auto& surface : connection->getSurfaces()) {
+        if (seen.insert(surface.get()).second) {
+          surfaces.append(surface);
+        }
+      }
+    }
+  }
+  std::sort(
+    surfaces.begin(),
+    surfaces.end(),
+    [](std::shared_ptr<Surface> surface0, std::shared_ptr<Surface> surface1) {
+      if (surface0 == nullptr || !surface0->visible()) {
+        return false;
+      }
+      if (surface1 == nullptr || !surface1->visible()) {
+        return true;
+      }
+      if (surface0->has("system")) {
+        return false;
+      }
+      if (surface1->has("system")) {
+        return true;
+      }
+      return surface0->z() < surface1->z();
+    }
+  );
   int z = 0;
-  for (auto surface : sorted) {
+  for (auto surface : surfaces) {
     if (surface == nullptr) {
       continue;
     }
     surface->setZ(z++);
   }
+  QWriteLocker _locker(&surfacesLock);
+  this->surfaces = surfaces;
   if (
     m_focused != nullptr && (!m_focused->isRunning() || m_focused->isStopped())
   ) {
     setFocus(nullptr);
-  } else if (m_focused != nullptr || sorted.empty()) {
-    return;
   }
-  std::reverse(sorted.begin(), sorted.end());
-  for (auto& surface : sorted) {
-    if (surface == nullptr) {
-      continue;
-    }
-    auto connection = surface->connection();
-    if (
-      connection == nullptr || !connection->isRunning() ||
-      connection->isStopped() || connection->has("system")
-    ) {
-      continue;
-    }
-    {
-      QReadLocker _locker(&connectionsLock);
-      if (!connections.contains(connection)) {
+  if (m_focused == nullptr) {
+    std::reverse(surfaces.begin(), surfaces.end());
+    for (auto& surface : surfaces) {
+      if (surface == nullptr || !surface->visible()) {
         continue;
       }
+      auto connection = surface->connection();
+      if (
+        connection == nullptr || getpgid(connection->pgid()) < 0 ||
+        connection->isStopped() || connection->has("system")
+      ) {
+        continue;
+      }
+      {
+        QReadLocker _locker(&connectionsLock);
+        if (!connections.contains(connection)) {
+          continue;
+        }
+      }
+      setFocus(connection);
+      break;
     }
-    setFocus(connection);
-    break;
   }
 }
 

@@ -2,34 +2,60 @@
 #include "fb.h"
 #include "state.h"
 
-#include <cstdint>
-#include <cstdlib>
-#include <dlfcn.h>
-#include <fcntl.h>
 #include <libblight.h>
 #include <libblight/debug.h>
 #include <libblight/system.h>
+
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <dlfcn.h>
+#include <fcntl.h>
+#include <filesystem>
+#include <fstream>
+#include <mutex>
+#include <sstream>
+#include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
 #include <unistd.h>
-
-#include <algorithm>
-#include <atomic>
-#include <cstring>
-#include <mutex>
-#include <string>
 #include <vector>
+
+static std::string
+format_pointer(const void* pointer) {
+  char buffer[32];
+  std::snprintf(buffer, sizeof(buffer), "%p", pointer);
+  return buffer;
+}
+
+static void
+send_ghost_control(Blight::GhostControlMode mode) {
+  if (!Client::isGhostControlEnabled()) {
+    return;
+  }
+  auto connection = Blight::connection();
+  if (connection == nullptr) {
+    _CRIT("Blight connection missing");
+    std::_Exit(EXIT_FAILURE);
+  }
+  auto maybe = connection->ghostControl(mode);
+  if (maybe.has_value()) {
+    maybe.value()->wait();
+  }
+}
 
 namespace Qt {
   qregion_begin_t qregion_begin() {
-    static auto fn = reinterpret_cast<qregion_begin_t>(
+    static qregion_begin_t fn = reinterpret_cast<qregion_begin_t>(
       dlsym(RTLD_DEFAULT, "_ZNK7QRegion5beginEv")
     );
     return fn;
   }
   qregion_end_t qregion_end() {
-    static auto fn = reinterpret_cast<qregion_end_t>(
+    static qregion_end_t fn = reinterpret_cast<qregion_end_t>(
       dlsym(RTLD_DEFAULT, "_ZNK7QRegion3endEv")
     );
     return fn;
@@ -42,9 +68,13 @@ namespace Qt {
       std::_Exit(EXIT_FAILURE);
     }
     auto rit = begin(region);
+    if (rit == nullptr) {
+      _DEBUG("region_rect_overlaps: qregion_begin is nullptr");
+      return false;
+    }
     auto rend = end(region);
-    if (rit == nullptr || rend == nullptr) {
-      _DEBUG("region_rect_overlaps: qregion_begin/end is nullptr");
+    if (rend == nullptr) {
+      _DEBUG("region_rect_overlaps: qregion_end is nullptr");
       return false;
     }
     for (; rit != rend; rit++) {
@@ -56,6 +86,58 @@ namespace Qt {
       }
     }
     return false;
+  }
+  std::string repr_qrect(const Qt::QRectLayout* rect) {
+    std::ostringstream stream;
+    stream << "QRect<";
+    if (rect == nullptr) {
+      stream << "nullptr>()";
+      return stream.str();
+    }
+    stream << format_pointer(rect) << ">(" << rect->left << ", " << rect->top
+           << ", " << rect->right << ", " << rect->bottom << ")";
+    return stream.str();
+  }
+
+  std::string repr_qregion(const void* region) {
+    std::ostringstream stream;
+    stream << "QRegion<";
+    if (region == nullptr) {
+      stream << "nullptr>()";
+      return stream.str();
+    }
+    stream << format_pointer(region) << ">(";
+    auto begin = Qt::qregion_begin();
+    auto end = Qt::qregion_end();
+    if (begin == nullptr || end == nullptr) {
+      stream << "invalid)";
+      return stream.str();
+    }
+    const Qt::QRectLayout* it = begin(region);
+    const Qt::QRectLayout* endIt = end(region);
+    if (it == nullptr || endIt == nullptr) {
+      stream << "invalid)";
+      return stream.str();
+    }
+    if (it == endIt) {
+      stream << ")";
+      return stream.str();
+    }
+    const Qt::QRectLayout* rect = it;
+    int32_t left = rect->left;
+    int32_t top = rect->top;
+    int32_t right = rect->right;
+    int32_t bottom = rect->bottom;
+    stream << repr_qrect(rect) << ", rects=[";
+    for (rect = it; rect != endIt; ++rect) {
+      left = std::min(left, rect->left);
+      top = std::min(top, rect->top);
+      right = std::max(right, rect->right);
+      bottom = std::max(bottom, rect->bottom);
+      stream << repr_qrect(rect) << ",";
+    }
+    stream << "])";
+    return stream.str();
   }
 }
 
@@ -173,17 +255,104 @@ resolve_qimage_funcs() {
 }
 
 /*!
+ * \brief Check whether QT_VERSION indicates Qt 6.9 or newer.
+ */
+static int
+compareOSVersion(
+  int targetMajor,
+  int targetMinor,
+  int targetPatch,
+  int targetBuild
+) {
+  static long long actualVersion = 0;
+  if (!actualVersion) {
+    int actualMajor = 0;
+    int actualMinor = 0;
+    int actualPatch = 0;
+    int actualBuild = 0;
+    FILE* pipe = popen(
+      "sh -c 'set -a; . /etc/os-release >/dev/null 2>&1; "
+      "printf %s \"$IMG_VERSION\"'",
+      "r"
+    );
+    if (pipe == nullptr) {
+      _CRIT("%s", "/etc/os-release IMG_VERSION missing");
+      std::exit(EXIT_FAILURE);
+    }
+    char buffer[128];
+    std::size_t length = fread(buffer, 1, sizeof(buffer) - 1, pipe);
+    int status = pclose(pipe);
+    if (status != 0 || length == 0) {
+      _CRIT("%s", "/etc/os-release failed to read IMG_VERSION");
+      std::exit(EXIT_FAILURE);
+    }
+    std::string value(buffer, length);
+    int count = sscanf(
+      value.c_str(),
+      "%d.%d.%d.%d",
+      &actualMajor,
+      &actualMinor,
+      &actualPatch,
+      &actualBuild
+    );
+    if (count < 1) {
+      actualMajor = 0;
+    }
+    if (count < 2) {
+      actualMinor = 0;
+    }
+    if (count < 3) {
+      actualPatch = 0;
+    }
+    if (count < 4) {
+      actualBuild = 0;
+    }
+    actualVersion = ((long long)actualMajor * 1000LL * 1000LL * 1000LL) +
+                    (actualMinor * 1000LL * 1000LL) + (actualPatch * 1000LL) +
+                    actualBuild;
+  }
+  long long targetVersion =
+    ((long long)targetMajor * 1000LL * 1000LL * 1000LL) +
+    (targetMinor * 1000LL * 1000LL) + (targetPatch * 1000LL) + targetBuild;
+  if (actualVersion > targetVersion) {
+    return 1;
+  }
+  if (actualVersion < targetVersion) {
+    return -1;
+  }
+  return 0;
+}
+
+/*!
  * \brief Get the frameBuffer offset (used for EPFramebuffer detection)
  */
 int
 frameBufferOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_FRAMEBUFFER_OFFSET");
+  if (offsetenv) {
+    offset = std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return Client::IS_XOCHITL ? 0x50 : 0x60;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      offset = Client::IS_XOCHITL ? 0x58 : 0x50;
+    } else {
+      offset = Client::IS_XOCHITL ? 0x50 : 0x60;
+    }
 #elif defined(__aarch64__)
-  return 0xa8;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      offset = Client::IS_XOCHITL ? 0xb8 : 0x88;
+    } else {
+      offset = 0xa8;
+    }
 #else
-  return 0x00;
+    offset = 0x00;
 #endif
+  }
+  return offset;
 }
 
 /*!
@@ -191,13 +360,31 @@ frameBufferOffset() {
  */
 int
 previousBufferOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_PREVIOUSBUFFER_OFFSET");
+  if (offsetenv) {
+    offset = std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return Client::IS_XOCHITL ? 0x60 : 0x70;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      offset = Client::IS_XOCHITL ? 0x68 : 0x60;
+    } else {
+      offset = Client::IS_XOCHITL ? 0x60 : 0x70;
+    }
 #elif defined(__aarch64__)
-  return Client::IS_XOCHITL ? 0x88 : 0xc8;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      offset = Client::IS_XOCHITL ? 0x98 : 0xa8;
+    } else {
+      offset = Client::IS_XOCHITL ? 0x88 : 0xc8;
+    }
 #else
-  return 0x00;
+    offset = 0x00;
 #endif
+  }
+  return offset;
 }
 
 /*!
@@ -205,13 +392,31 @@ previousBufferOffset() {
  */
 int
 renderTargetOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_RENDERTARGET_OFFSET");
+  if (offsetenv) {
+    offset = std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return Client::IS_XOCHITL ? 0x5c : 0x6c;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      offset = Client::IS_XOCHITL ? 0x64 : 0x5c;
+    } else {
+      offset = Client::IS_XOCHITL ? 0x5c : 0x6c;
+    }
 #elif defined(__aarch64__)
-  return Client::IS_XOCHITL ? 0xa0 : 0xc0;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      offset = Client::IS_XOCHITL ? 0xb0 : 0xa0;
+    } else {
+      offset = Client::IS_XOCHITL ? 0xa0 : 0xc0;
+    }
 #else
-  return 0x00;
+    offset = 0x00;
 #endif
+  }
+  return offset;
 }
 
 /*!
@@ -219,19 +424,24 @@ renderTargetOffset() {
  */
 int
 swapBuffersOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_SWAPBUFFERS_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
+    offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    return 0x5c; // vtable entry 23
+    offset = 0x5c; // vtable entry 23
 #elif defined(__aarch64__)
-    return 0xb8; // vtable entry 23
+    offset = 0xb8; // vtable entry 23
 #else
     _CRIT("Unsupported architecture");
     std::exit(EXIT_FAILURE);
 #endif
   }
+  return offset;
 }
 
 /*!
@@ -239,19 +449,24 @@ swapBuffersOffset() {
  */
 int
 syncAfterUpdateOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_SYNCAFTERUPDATE_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
+    offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    return 0x60; // vtable entry 24
+    offset = 0x60; // vtable entry 24
 #elif defined(__aarch64__)
-    return 0xc0; // vtable entry 24
+    offset = 0xc0; // vtable entry 24
 #else
     _CRIT("Unsupported architecture");
     std::exit(EXIT_FAILURE);
 #endif
   }
+  return offset;
 }
 
 /*!
@@ -259,18 +474,24 @@ syncAfterUpdateOffset() {
  */
 int
 qtMetacallOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_METACALLL_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
-  }
+    offset = std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return 0x08; // vtable entry 2
+    offset = 0x08; // vtable entry 2
 #elif defined(__aarch64__)
-  return 0x10; // vtable entry 2
+    offset = 0x10; // vtable entry 2
 #else
-  _CRIT("Unsupported architecture");
-  std::exit(EXIT_FAILURE);
+    _CRIT("Unsupported architecture");
+    std::exit(EXIT_FAILURE);
 #endif
+  }
+  return offset;
 }
 
 /*!
@@ -278,26 +499,30 @@ qtMetacallOffset() {
  */
 int
 ghostControlOffset() {
+  static int offset = -1;
+  if (offset != -1) {
+    return offset;
+  }
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_GHOSTCONTROL_OFFSET");
   if (offsetenv) {
-    return std::stoi(offsetenv, nullptr, 0);
-  }
+    offset = std::stoi(offsetenv, nullptr, 0);
+  } else {
 #if defined(__arm__)
-  return 0x58; // vtable entry 22
+    offset = 0x58; // vtable entry 22
 #elif defined(__aarch64__)
-  return 0xb0; // vtable entry
+    offset = 0xb0; // vtable entry
 #else
-  _CRIT("Unsupported architecture");
-  std::exit(EXIT_FAILURE);
+    _CRIT("Unsupported architecture");
+    std::exit(EXIT_FAILURE);
 #endif
+  }
+  return offset;
 }
 
 void
 hook_ghostControl(void* this_ptr, int mode) {
   _DEBUG("EPFramebuffer::ghostControl(%d)", mode);
-  if (Client::isGhostControlEnabled()) {
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
+  send_ghost_control((Blight::GhostControlMode)mode);
 }
 
 bool
@@ -460,17 +685,17 @@ hook_qt_metacall(void* this_ptr, int type, int index, void** argv) {
       );
       printMetaMethodsAndExit(metaObject);
     }
-    if (index == scheduleGhostRemovalIndex) {
-      int mode = *reinterpret_cast<int*>(argv[1]);
-      _DEBUG("EPFramebuffer::scheduleGhostRemoval()");
-      // Blight::ghostControl(Blight::GhostControlMode::BlinkLater);
-      return -1;
-    }
-    if (index == clearGhostingIndex) {
-      int mode = *reinterpret_cast<int*>(argv[1]);
-      _DEBUG("EPFramebuffer::clearGhosting()");
-      // Blight::ghostControl(Blight::GhostControlMode::BlinkNow);
-      return -1;
+    if (Client::isGhostControlEnabled()) {
+      if (index == scheduleGhostRemovalIndex) {
+        _DEBUG("EPFramebuffer::scheduleGhostRemoval()");
+        send_ghost_control(Blight::GhostControlMode::BlinkLater);
+        return -1;
+      }
+      if (index == clearGhostingIndex) {
+        _DEBUG("EPFramebuffer::clearGhosting()");
+        send_ghost_control(Blight::GhostControlMode::BlinkNow);
+        return -1;
+      }
     }
   }
   return func(this_ptr, type, index, argv);
@@ -560,10 +785,13 @@ validate_swapbuffers(void* func) {
 #if defined(__arm__)
   // Check arm32 prologue for the swapBuffers(QRegion) variant:
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
-  //   sub sp, sp, #0x44       (0xE24DD044)
-  // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
   if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
+    // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
     if (data[1] == 0xE24DD044) {
+      return true;
+    }
+    // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x4c
+    if (compareOSVersion(3, 28, 0, 0) >= 0 && data[1] == 0xE24DD04C) {
       return true;
     }
     _WARN(
@@ -578,7 +806,6 @@ validate_swapbuffers(void* func) {
     "swapBuffers pattern",
     data[0]
   );
-  return false;
 #elif defined(__aarch64__)
   // Check for common aarch64 function prologue.
   // Most non-leaf functions start with:
@@ -603,8 +830,8 @@ validate_swapbuffers(void* func) {
     }
   }
   _WARN("swapBuffers: PAC prologue not found");
-  return false;
 #endif
+  return false;
 }
 
 /*!
@@ -799,22 +1026,23 @@ update_buffers(const Qt::QRectLayout& rect) {
 /*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
  *
- * on aarch64 this actually hooks EPFramebuffer::backendUpdate(QRegion, ...)
- * which is what swapBuffers calls to handle the screen.
- *
  * \param this_ptr EPFramebuffer instance
  * \param region QRegion instance defining what is being swapped
  * \param contentMap_screenModeMap information on what waveforms to use
  * \param flags Update flags
  */
 void
-hook_swapBuffers_QRegion(
+hook_swapBuffers_xochitl_legacy(
   void* this_ptr,
   const void* region,
   const void* contentMap_screenModeMap,
   int flags
 ) {
   _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
+  if (contentMap_screenModeMap == nullptr) {
+    _DEBUG("swapBuffers: contentMap_screenModeMap is NULL");
+    return;
+  }
   auto begin_fn = Qt::qregion_begin();
   auto end_fn = Qt::qregion_end();
   if (begin_fn == nullptr || end_fn == nullptr) {
@@ -826,46 +1054,125 @@ hook_swapBuffers_QRegion(
   if (!dit || !dend) {
     return;
   }
-  auto updateMode = (Blight::UpdateMode)flags;
+  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
+  auto updateMode = static_cast<Blight::UpdateMode>(flags);
   for (; dit != dend; dit++) {
-    if (contentMap_screenModeMap) {
-      auto regions = static_cast<void* const*>(contentMap_screenModeMap);
-      auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
-      for (int modeId = Blight::WaveformMode::UltraFast;
-           modeId <= Blight::WaveformMode::Full;
-           modeId++) {
-        int slot = slot_remap[modeId];
-        auto region = regions[slot];
-        if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
-          continue;
-        }
-        Blight::ContentType contentType = Blight::ContentType::Color;
-        auto waveform = (Blight::WaveformMode)modeId;
-        switch (waveform) {
-          case Blight::WaveformMode::UltraFast:
-          case Blight::WaveformMode::Fast:
-          case Blight::WaveformMode::UI:
-            contentType = Blight::ContentType::Monochrome;
-            break;
-          case Blight::WaveformMode::Animate:
-          case Blight::WaveformMode::Content:
-          case Blight::WaveformMode::Full:
-            contentType = Blight::ContentType::Color;
-            break;
-        }
-        update_buffers(*dit);
-        repaint(dit, waveform, contentType, updateMode);
+    update_buffers(*dit);
+    auto regions = static_cast<void* const*>(contentMap_screenModeMap);
+    auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
+    for (int modeId = Blight::WaveformMode::Full;
+         modeId >= Blight::WaveformMode::UltraFast;
+         modeId--) {
+      int slot = slot_remap[modeId];
+      auto region = regions[slot];
+      if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
+        continue;
       }
+      Blight::ContentType contentType = Blight::ContentType::Color;
+      auto waveform = (Blight::WaveformMode)modeId;
+      switch (waveform) {
+        case Blight::WaveformMode::UltraFast:
+        case Blight::WaveformMode::Fast:
+        case Blight::WaveformMode::UI:
+          contentType = Blight::ContentType::Monochrome;
+          break;
+        case Blight::WaveformMode::Animate:
+        case Blight::WaveformMode::Content:
+        case Blight::WaveformMode::Full:
+          contentType = Blight::ContentType::Color;
+          break;
+      }
+      repaint(dit, waveform, contentType, updateMode);
+      break;
+    }
+    if (
+      Client::isGhostControlEnabled() &&
+      (flags & Blight::UpdateMode::PenUpdate) != 0
+    ) {
+      // TODO handle pen updates separately like xochitl does
+      send_ghost_control(
+        (flags & Blight::UpdateMode::AnimationUpdate)
+          ? Blight::GhostControlMode::BlinkLater
+          : Blight::GhostControlMode::BlinkNow
+      );
+    }
+  }
+  dump_buffers();
+}
+
+/*!
+ * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
+ *
+ * on aarch64 this actually hooks EPFramebufferAcep2::backendUpdate(QRegion,
+ * ...) which is what swapBuffers calls to handle the screen.
+ *
+ * \param this_ptr EPFramebuffer instance
+ * \param region QRegion instance defining what is being swapped
+ * \param contentMap_screenModeMap information on what waveforms to use
+ * \param flags Update flags
+ */
+void
+hook_swapBuffers_xochitl(
+  void* this_ptr,
+  const void* region,
+  const void* contentMap_screenModeMap,
+  int flags
+) {
+  _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
+  if (contentMap_screenModeMap == nullptr) {
+    _DEBUG("swapBuffers: contentMap_screenModeMap is NULL");
+    return;
+  }
+  auto begin_fn = Qt::qregion_begin();
+  auto end_fn = Qt::qregion_end();
+  if (begin_fn == nullptr || end_fn == nullptr) {
+    _DEBUG("swapBuffers_QRegion: qregion_begin/end is NULL");
+    return;
+  }
+  auto dit = begin_fn(region);
+  auto dend = end_fn(region);
+  if (!dit || !dend) {
+    return;
+  }
+  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
+  auto regions = static_cast<void* const*>(contentMap_screenModeMap);
+  auto updateMode = static_cast<Blight::UpdateMode>(flags);
+  for (; dit != dend; dit++) {
+    update_buffers(*dit);
+    for (int modeId = Blight::WaveformMode::Full;
+         modeId >= Blight::WaveformMode::UltraFast;
+         modeId--) {
+      auto* region = regions[modeId];
+      if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
+        continue;
+      }
+      repaint(
+        dit,
+        (Blight::WaveformMode)modeId,
+        Blight::ContentType::Color,
+        updateMode
+      );
+      break;
+    }
+    if (
+      Client::isGhostControlEnabled() &&
+      (flags & Blight::UpdateMode::PenUpdate) != 0
+    ) {
+      // TODO handle pen updates separately like xochitl does
+      send_ghost_control(
+        (flags & Blight::UpdateMode::AnimationUpdate)
+          ? Blight::GhostControlMode::BlinkLater
+          : Blight::GhostControlMode::BlinkNow
+      );
     }
   }
   dump_buffers();
 }
 
 void
-hook_swapBuffers_impl(
+hook_swapBuffers_qsgepaper(
   void* this_ptr,
   const void* region,
-  const void* contentMap,
   const void* modeMap,
   int flags
 ) {
@@ -881,11 +1188,13 @@ hook_swapBuffers_impl(
   if (!dit || !dend || modeMap == nullptr) {
     return;
   }
+  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
   auto updateMode = static_cast<Blight::UpdateMode>(flags);
   for (; dit != dend; ++dit) {
-    for (int modeId = Blight::WaveformMode::UltraFast;
-         modeId <= Blight::WaveformMode::Full;
-         modeId++) {
+    update_buffers(*dit);
+    for (int modeId = Blight::WaveformMode::Full;
+         modeId >= Blight::WaveformMode::UltraFast;
+         modeId--) {
       auto* region = static_cast<const char*>(modeMap) + modeId * sizeof(void*);
       if (region == nullptr || !Qt::region_rect_overlaps(dit, region)) {
         continue;
@@ -904,11 +1213,22 @@ hook_swapBuffers_impl(
           contentType = Blight::ContentType::Color;
           break;
       }
-      update_buffers(*dit);
       repaint(dit, waveform, contentType, updateMode);
+      break;
     }
   }
   dump_buffers();
+}
+
+void
+hook_swapBuffers_qsgepaper_legacy(
+  void* this_ptr,
+  const void* region,
+  const void* contentMap,
+  const void* modeMap,
+  int flags
+) {
+  hook_swapBuffers_qsgepaper(this_ptr, region, modeMap, flags);
 }
 
 /*!
@@ -971,9 +1291,7 @@ _ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
     );
   }
   _DEBUG("EPFramebuffer::ghostControl(mode=%d)", mode);
-  if (Client::isGhostControlEnabled()) {
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
+  send_ghost_control((Blight::GhostControlMode)mode);
 }
 
 #if defined(__aarch64__)
@@ -985,13 +1303,15 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
   if (!Client::isFbEnabled()) {
     static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
       RTLD_NEXT,
-      "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlMode"
+      "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlMo"
+      "de"
       "E"
     ));
     if (!func) {
       _CRIT(
         "%s",
-        "Failed to resolve real EPFramebufferAcep2::ghostControl via RTLD_NEXT"
+        "Failed to resolve real EPFramebufferAcep2::ghostControl via "
+        "RTLD_NEXT"
       );
       std::exit(EXIT_FAILURE);
     }
@@ -1012,9 +1332,7 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
     );
   }
   _DEBUG("EPFramebufferAcep2::ghostControl(mode=%d)", mode);
-  if (Client::isGhostControlEnabled()) {
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
+  send_ghost_control((Blight::GhostControlMode)mode);
 }
 #endif
 
@@ -1185,17 +1503,18 @@ hook_check_candidate() {
       vtable,
       func_swapBuffers_qregion
     );
-    if (Client::IS_XOCHITL) {
-      install_hook(
-        func_swapBuffers_qregion,
-        reinterpret_cast<void*>(&hook_swapBuffers_QRegion)
-      );
+    void* hookfunc;
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      hookfunc = Client::IS_XOCHITL
+                   ? reinterpret_cast<void*>(&hook_swapBuffers_xochitl)
+                   : reinterpret_cast<void*>(&hook_swapBuffers_qsgepaper);
     } else {
-      install_hook(
-        func_swapBuffers_qregion,
-        reinterpret_cast<void*>(&hook_swapBuffers_impl)
-      );
+      hookfunc =
+        Client::IS_XOCHITL
+          ? reinterpret_cast<void*>(&hook_swapBuffers_xochitl_legacy)
+          : reinterpret_cast<void*>(&hook_swapBuffers_qsgepaper_legacy);
     }
+    install_hook(func_swapBuffers_qregion, hookfunc);
     _DEBUG(
       "Hooked swapBuffers(QRegion,...) at %p with offset=0x%x",
       func_swapBuffers_qregion,

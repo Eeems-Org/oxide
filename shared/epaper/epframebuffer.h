@@ -7,24 +7,36 @@
 #include <QRect>
 #include <QRegion>
 #include <QSize>
+#include <QtGlobal>
 
 #include <dlfcn.h>
 #include <functional>
 #include <tuple>
 
-// libqsgepaper EPFramebufferTcon layout (returned by instance()):
-//   frameBuffer at +0x60, frameBuffer pointer at +0x6c, previousBuffer at
-//   +0x70, total size 0xb8
 #if defined(__arm__)
+#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0)
 #define EPFR_SIZE 0xb8
 #define EPFR_OFFSET_PREVIOUSBUFFER 0x70
 #define EPFR_OFFSET_FRAMEBUFFER 0x60
 #define EPFR_OFFSET_RENDERTARGET 0x6c
+#else
+#define EPFR_SIZE 0xb8
+#define EPFR_OFFSET_PREVIOUSBUFFER 0x60
+#define EPFR_OFFSET_FRAMEBUFFER 0x50
+#define EPFR_OFFSET_RENDERTARGET 0x5c
+#endif
 #elif defined(__aarch64__)
+#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0)
 #define EPFR_SIZE 0x110
 #define EPFR_OFFSET_PREVIOUSBUFFER 0xc8
 #define EPFR_OFFSET_FRAMEBUFFER 0xa8
 #define EPFR_OFFSET_RENDERTARGET 0xc0
+#else
+#define EPFR_SIZE 0x110
+#define EPFR_OFFSET_PREVIOUSBUFFER 0xa8
+#define EPFR_OFFSET_FRAMEBUFFER 0x88
+#define EPFR_OFFSET_RENDERTARGET 0xa0
+#endif
 #else
 #error "Unsupported architecture"
 #endif
@@ -249,12 +261,60 @@ public:
    * \param type    Waveform mode.
    * \param flags   Update flags.
    */
-  void swapBuffers(
+  inline void swapBuffers(
     QRect region,
     EPContentType epct,
     EPScreenMode type,
     QFlags<EPFramebuffer::UpdateFlag> flags
-  );
+  ) {
+    static const auto fn = []() -> std::function<void(
+                                  void*,
+                                  QRect,
+                                  EPContentType,
+                                  EPScreenMode,
+                                  QFlags<EPFramebuffer::UpdateFlag>
+                                )> {
+      void* swapBuffers = dlsym(
+        RTLD_DEFAULT,
+        "_ZN13EPFramebuffer11swapBuffersE5QRect12EPScreenMode6QFlagsINS_10Updat"
+        "eFlagEE"
+      );
+      if (swapBuffers != nullptr) {
+        return [swapBuffers](
+                 void* self,
+                 QRect region,
+                 EPContentType epct,
+                 EPScreenMode type,
+                 QFlags<EPFramebuffer::UpdateFlag> flags
+               ) {
+          Q_UNUSED(epct);
+          reinterpret_cast<void (*)(
+            void*, QRect, EPScreenMode, QFlags<EPFramebuffer::UpdateFlag>
+          )>(swapBuffers)(self, region, type, flags);
+        };
+      }
+      swapBuffers = dlsym(
+        RTLD_DEFAULT,
+        "_ZN13EPFramebuffer11swapBuffersE5QRect14EPContentType12EPScreenMode6QF"
+        "l"
+        "agsINS_10UpdateFlagEE"
+      );
+      if (swapBuffers != nullptr) {
+        return reinterpret_cast<void (*)(
+          void*,
+          QRect,
+          EPContentType,
+          EPScreenMode,
+          QFlags<EPFramebuffer::UpdateFlag>
+        )>(swapBuffers);
+      }
+      return nullptr;
+    }();
+    if (fn == nullptr) {
+      qFatal("Unable to find EPFramebuffer::swapBuffers()");
+    }
+    fn(this, region, epct, type, flags);
+  }
 
   /*!
    * \brief Submit a classified display update using content and mode maps.
@@ -279,20 +339,69 @@ public:
    *
    * Example usage:
    * auto size = instance->frameBuffer.size();
-   * EPContentMap contentMap(size);
-   * contentMap.setTypeForRect(rect, EPContentType::Monochrome);
    * EPScreenModeMap screenModeMap(size, {});
    * screenModeMap.setModeForRegion(QRegion(rect), screenMode);
    * EPFramebuffer::instance()->swapBuffers(
-   *   QRegion(rect), contentMap, screenModeMap, (EPFramebuffer::UpdateFlag)mode
+   *   QRegion(rect), screenModeMap, (EPFramebuffer::UpdateFlag)mode
    * );
    */
-  void swapBuffers(
+  inline void swapBuffers(
     const QRegion& region,
     const EPContentMap& contentMap,
     const EPScreenModeMap& screenModeMap,
     QFlags<UpdateFlag> flags
-  );
+  ) {
+    static const auto fn = []() -> std::function<void(
+                                  void*,
+                                  const QRegion&,
+                                  const EPContentMap&,
+                                  const EPScreenModeMap&,
+                                  QFlags<EPFramebuffer::UpdateFlag>
+                                )> {
+      void* swapBuffers = dlsym(
+        RTLD_DEFAULT,
+        "_ZN13EPFramebuffer11swapBuffersERK7QRegionRK15EPScreenModeMap6QFlagsIN"
+        "S_10UpdateFlagEE"
+      );
+      if (swapBuffers != nullptr) {
+        return [swapBuffers](
+                 void* self,
+                 const QRegion& region,
+                 const EPContentMap& contentMap,
+                 const EPScreenModeMap& screenModeMap,
+                 QFlags<EPFramebuffer::UpdateFlag> flags
+               ) {
+          Q_UNUSED(contentMap);
+          reinterpret_cast<void (*)(
+            void*,
+            const QRegion&,
+            const EPScreenModeMap&,
+            QFlags<EPFramebuffer::UpdateFlag>
+          )>(swapBuffers)(self, region, screenModeMap, flags);
+        };
+      }
+      swapBuffers = dlsym(
+        RTLD_DEFAULT,
+        "_ZN13EPFramebuffer11swapBuffersERK7QRegionRK12EPContentMapRK15EPScreen"
+        "M"
+        "odeMap6QFlagsINS_10UpdateFlagEE"
+      );
+      if (swapBuffers != nullptr) {
+        return reinterpret_cast<void (*)(
+          void*,
+          const QRegion&,
+          const EPContentMap&,
+          const EPScreenModeMap&,
+          QFlags<EPFramebuffer::UpdateFlag>
+        )>(swapBuffers);
+      }
+      return nullptr;
+    }();
+    if (fn == nullptr) {
+      qFatal("Unable to find EPFramebuffer::swapBuffers()");
+    }
+    fn(this, region, contentMap, screenModeMap, flags);
+  }
 
   /*!
    * \brief Try to acquire the framebuffer singleton lock.

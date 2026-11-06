@@ -105,6 +105,7 @@ is_valid_header(const blight_header_t& header) {
     case BlightMessageType::Raise:
     case BlightMessageType::Lower:
     case BlightMessageType::Wait:
+    case BlightMessageType::GhostControl:
       return header.size > 0;
     default:
       return true;
@@ -1160,6 +1161,18 @@ int
 blight_focus(int fd) {
   return blight_send_message(
     fd, BlightMessageType::Focus, 0, 0, nullptr, -1, nullptr
+  );
+}
+int
+blight_ghost_control(int fd, BlightGhostControlMode mode) {
+  return blight_send_message(
+    fd,
+    BlightMessageType::GhostControl,
+    0,
+    sizeof(BlightGhostControlMode),
+    (blight_data_t)&mode,
+    -1,
+    nullptr
   );
 }
 }

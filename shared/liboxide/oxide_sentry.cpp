@@ -222,6 +222,7 @@ namespace Oxide::Sentry {
       options, (std::string(name) + "@" + APP_VERSION).c_str()
     );
     ::sentry_init(options);
+    ::sentry_flush(2000);
 
     // Setup user
     sentry_value_t user = sentry_value_new_object();

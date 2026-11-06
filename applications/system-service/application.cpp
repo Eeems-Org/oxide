@@ -881,7 +881,7 @@ Application::updateEnvironment() {
   auto preload = env.value("LD_PRELOAD", "").split(":");
   if (!flags().contains("nopreload") && !flags().contains("nopreload.sysfs")) {
     QString sysfs_preload("/home/root/.vellum/lib/libsysfs_preload.so");
-    if (!preload.contains(sysfs_preload)) {
+    if (QFile::exists(sysfs_preload) && !preload.contains(sysfs_preload)) {
       preload.append(sysfs_preload);
     }
   }
@@ -889,7 +889,7 @@ Application::updateEnvironment() {
     !flags().contains("nopreload") && !flags().contains("nopreload.compositor")
   ) {
     QString blight_client("/home/root/.vellum/lib/libblight_client.so");
-    if (!preload.contains(blight_client)) {
+    if (QFile::exists(blight_client) && !preload.contains(blight_client)) {
       preload.append(blight_client);
     }
     if (deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2) {

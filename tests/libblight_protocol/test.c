@@ -105,7 +105,7 @@ test_blight_message_from_socket_rejects_zero_data() {
   int sv[2];
   assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
 
-  for (int type = Repaint; type <= Wait; type++) {
+  for (int type = Repaint; type <= GhostControl; type++) {
     if (type == Ack || type == Ping || type == List || type == Focus) {
       continue;
     }
@@ -128,7 +128,7 @@ test_blight_message_from_socket_rejects_zero_data() {
 }
 void
 test_blight_message_from_data_rejects_zero_data() {
-  for (int type = Repaint; type <= Wait; type++) {
+  for (int type = Repaint; type <= GhostControl; type++) {
     if (type == Ack || type == Ping || type == List || type == Focus) {
       continue;
     }
@@ -325,6 +325,8 @@ test_blight_cast_to_surface_info_packet() {
   assert(packet->stride == 0);
   assert(packet->format == 0);
 }
+
+
 
 struct _test_blight_wait_for_read_thread_args {
   int fd;

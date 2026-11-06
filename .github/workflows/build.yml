@@ -58,9 +58,9 @@ jobs:
         run: |
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm.sh 22 clang-format-22
-          sudo apt-get install -y clang-format-22
-          sudo ln -sf clang-format-22 /usr/bin/clang-format
+          sudo ./llvm.sh 23 clang-format-23
+          sudo apt-get install -y clang-format-23
+          sudo ln -sf clang-format-23 /usr/bin/clang-format
           clang-format --version
       - uses: actions/checkout@v6
       - name: Lint

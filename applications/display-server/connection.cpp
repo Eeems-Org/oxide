@@ -623,7 +623,15 @@ Connection::readSocket() {
         }
         dbusInterface->removeSurface(surface->id());
 #ifdef EPAPER
-        guiThread->notify();
+        guiThread->enqueue(
+          nullptr,
+          surface->geometry(),
+          Blight::WaveformMode::UI,
+          Blight::ContentType::Color,
+          Blight::UpdateMode::PartialUpdate,
+          message->header.ackid,
+          true
+        );
 #endif
         break;
       }
@@ -730,6 +738,17 @@ Connection::readSocket() {
         C_DEBUG("Focus requested");
         dbusInterface->setFocus(dbusInterface->getConnection(this));
         do_ack = false;
+        break;
+      }
+      case Blight::MessageType::GhostControl: {
+        C_DEBUG("GhostControl requested");
+#ifdef EPAPER
+        EPFramebuffer::instance()->ghostControl(
+          static_cast<EPFramebuffer::GhostControlMode>(
+            Blight::scalar_cast<Blight::GhostControlMode>(message).value()
+          )
+        );
+#endif
         break;
       }
       case Blight::MessageType::Ping: {

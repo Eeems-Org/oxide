@@ -14,10 +14,8 @@ typedef struct _IO_FILE FILE;
 namespace Libc {
   extern sighandler_t (*signal)(int, sighandler_t);
   extern int (*sigaction)(int, const struct sigaction*, struct sigaction*);
-
   extern ssize_t (*write)(int, const void*, size_t);
   extern ssize_t (*writev)(int, const iovec*, int);
-  extern ssize_t (*writev64)(int, const iovec*, int);
   extern ssize_t (*pwrite)(int, const void*, size_t, off_t);
   extern ssize_t (*pwrite64)(int, const void*, size_t, off64_t);
   extern ssize_t (*pwritev)(int, const iovec*, int, off_t);
@@ -29,6 +27,7 @@ namespace Libc {
   extern int (*ioctl)(int, unsigned long, ...);
   extern int (*close)(int);
   extern int (*fcntl)(int, int, ...);
+  extern int (*fcntl64)(int, int, ...);
   extern int (*msgget)(key_t, int);
   extern int (*msgsnd)(int, const void*, size_t, int);
   extern int (*flock)(int, int);
@@ -68,4 +67,6 @@ namespace Libc {
   extern struct dirent* (*readdir)(DIR*);
   extern struct dirent64* (*readdir64)(DIR*);
   extern int (*closedir)(DIR*);
+
+  bool init();
 }

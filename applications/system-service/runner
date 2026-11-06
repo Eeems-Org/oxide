@@ -5,6 +5,7 @@ case "$(basename "${EXECUTABLE:?EXECUTABLE missing}")" in
 puzzles)
   export OXIDE_PRELOAD_FORCE_INVERT_TOUCH_X=1
   export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
+  export RMKIT_DEFAULT_FONT=/usr/share/fonts/ttf/noto/NotoSansMono-VariableFont_wdth,wght.ttf
   ;;
 tilem | yaft)
   export OXIDE_PRELOAD_FORCE_RM1=1
@@ -12,14 +13,21 @@ tilem | yaft)
 chessmarkable)
   if [[ "$device" != "reMarkable 2.0" ]]; then
     export OXIDE_PRELOAD_FORCE_RM1=1
+    export OXIDE_PRELOAD_FORCE_RGB16=1
   fi
   export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
   ;;
 doommarkable)
   if [[ "$device" != "reMarkable 2.0" ]]; then
     export OXIDE_PRELOAD_FORCE_RM1=1
+    export OXIDE_PRELOAD_FORCE_RGB16=1
   fi
   export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
+  ;;
+plato)
+  if [[ "$device" != "reMarkable 2.0" ]]; then
+    export OXIDE_PRELOAD_FORCE_RGB16=1
+  fi
   ;;
 koreader.sh)
   if [[ "$device" == "reMarkable Chiappa" ]] || [[ "$device" == "reMarkable Ferrari" ]]; then

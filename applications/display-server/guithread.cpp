@@ -24,18 +24,12 @@ GUIThread::run() {
   clearFrameBuffer();
   QTimer::singleShot(0, this, [this] {
     Q_ASSERT(QThread::currentThread() == (QThread*)this);
-    QMutexLocker locker(&m_repaintMutex);
-    Q_UNUSED(locker);
+    RepaintRequest event;
     while (!isInterruptionRequested()) {
-      // New repaint request each loop as we have a shared pointer we need
-      // to clear
-      RepaintRequest event;
       if (!m_repaintEvents.try_dequeue(event)) {
         emit settled();
-        // Wait for up to 500ms before trying again
-        m_repaintWait.wait(&m_repaintMutex, 500);
-        auto found = m_repaintEvents.try_dequeue(event);
-        if (!found) {
+        m_repaintWait.acquire(1);
+        if (!m_repaintEvents.try_dequeue(event)) {
           // Woken by something needing to cleanup
           // connections/surfaces
           continue;
@@ -45,7 +39,9 @@ GUIThread::run() {
         redraw(event);
         if (event.callback != nullptr) {
           event.callback();
+          event.callback = nullptr;
         }
+        event.surface.reset();
       } while (m_repaintEvents.try_dequeue(event));
       eventDispatcher()->processEvents(QEventLoop::AllEvents);
     }
@@ -186,11 +182,11 @@ GUIThread::enqueue(
     }
     return;
   }
-  auto visibleSurfaces = this->visibleSurfaces();
   QRegion repaintRegion(intersected);
   if (!global) {
     // Don't repaint portions covered by another surface that doesn't have
     // alpha channel
+    auto visibleSurfaces = this->visibleSurfaces();
     auto i = visibleSurfaces.constEnd();
     while (i != visibleSurfaces.constBegin()) {
       --i;
@@ -233,7 +229,7 @@ GUIThread::enqueue(
 void
 GUIThread::notify() {
   if (!dbusInterface->inExclusiveMode()) {
-    m_repaintWait.notify_one();
+    m_repaintWait.release(1);
   }
 }
 
@@ -323,6 +319,8 @@ GUIThread::redraw(RepaintRequest& event) {
   // Get visible region on the screen to repaint
   O_DEBUG("Repainting" << region.boundingRect());
   QImage* frameBuffer = getFrameBuffer();
+  QList<std::shared_ptr<Surface>> visibleSurfaces;
+  bool surfacesCached = false;
   // "QPainter::begin: A paint device can only be painted by one painter at a
   // time." Ignore this warning, Nothing is displayed if the painter is not
   // active when calling sendUpdate currently
@@ -337,7 +335,11 @@ GUIThread::redraw(RepaintRequest& event) {
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     if (hasAlpha) {
       painter.fillRect(rect, Qt::white);
-      for (auto& surface : visibleSurfaces()) {
+      if (!surfacesCached) {
+        visibleSurfaces = this->visibleSurfaces();
+        surfacesCached = true;
+      }
+      for (auto& surface : visibleSurfaces) {
         if (surface != nullptr) {
           repaintSurface(&painter, &rect, surface);
         }
@@ -377,7 +379,7 @@ GUIThread::sendUpdate(
   unsigned int marker
 ) {
   Q_UNUSED(marker);
-  auto instance = EPFramebuffer::instance();
+  auto* instance = EPFramebuffer::instance();
   O_DEBUG("Sending screen update" << rect << waveform << contentType << mode);
   instance->swapBuffers(
     rect,
@@ -419,13 +421,8 @@ GUIThread::visibleSurfaces() {
         if (connection == nullptr) {
           return true;
         }
-        if (
-          !connection->isRunning() &&
-          (!connection->has("unified") ||
-           !dbusInterface->hasRunningConnection(connection->pgid()))
-        ) {
-          return true;
-        }
+        // Connection running/unified/hasRunningConnection check done in
+        // dbusInterface->visibleSurfaces already
         if (!surface->has("system") && getpgid(connection->pgid()) < 0) {
           O_WARNING(surface->id() << "With no running process");
           return true;

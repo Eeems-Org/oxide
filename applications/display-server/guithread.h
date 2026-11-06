@@ -72,8 +72,7 @@ private:
   moodycamel::ConcurrentQueue<RepaintRequest> m_repaintEvents;
   Blight::shared_buf_t m_frameBuffer = nullptr;
   QAtomicInteger<unsigned int> m_currentMarker;
-  QMutex m_repaintMutex;
-  QWaitCondition m_repaintWait;
+  QSemaphore m_repaintWait;
   QRect m_screenGeometry;
   QPoint m_screenOffset;
   QRect m_screenRect;
