@@ -974,12 +974,6 @@ update_buffers(const Qt::QRectLayout& rect) {
     _DEBUG("update_buffers: epframebufferInstance not set yet, skipping");
     return;
   }
-  auto* previousBuffer =
-    static_cast<char*>(epframebuffer) + previousBufferOffset();
-  if (previousBuffer == nullptr) {
-    _DEBUG("update_buffers: previousBuffer not set yet, skipping");
-    return;
-  }
   auto* renderTarget = *reinterpret_cast<char**>(
     static_cast<char*>(epframebuffer) + renderTargetOffset()
   );
