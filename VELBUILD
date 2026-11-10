@@ -25,12 +25,14 @@ oxide.tar.gz
 '
 readmeurl="https://raw.githubusercontent.com/$upstream_author/oxide/refs/heads/master/README.md"
 pkgdesc="Launcher application"
-category="apps"
+category="launchers"
 arch="armv7 aarch64"
 depends="
 oxide-display=$pkgver-r$pkgrel
 liboxide=$pkgver-r$pkgrel
 "
+provides="launcher"
+options='strip'
 
 _toolchain=5.8.203
 image() {
@@ -49,11 +51,6 @@ build() {
     cd "$srcdir"
     . "$ENVIRONMENT_SETUP"
     make FEATURES=sentry release
-    find release -type f -print0 | xargs -0 sh -c '
-        for f; do
-            file -b "$f" | grep -q ELF && printf "%s\0" "$f"
-        done
-    ' _ | xargs -0 "$STRIP" --strip-unneeded
 }
 
 package() {
@@ -247,7 +244,7 @@ oxide_display() {
 
 oxide_display_dev() {
     pkgdesc="Oxide display server"
-    category="framework"
+    category="development"
     depends="
     oxide-display=$pkgver-r$pkgrel
     "
@@ -418,7 +415,7 @@ liboxide() {
 
 liboxide_dev() {
     pkgdesc="Shared library for oxide applications"
-    category="framework"
+    category="development"
     depends="
     liboxide=$pkgver-r$pkgrel
     "
