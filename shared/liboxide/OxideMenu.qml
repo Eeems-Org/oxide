@@ -9,10 +9,8 @@ Menu {
     property color borderColor: background.border.color
     property color activeBackgroundColor: "black"
     property color activeColor: "white"
-    // contentItem.rotation: Oxide.landscape ? 90 : 0
     background: Rectangle{
         id: background
-        // rotation: contentItem.rotation
         implicitWidth: 200
         implicitHeight: 40
         color: "white"

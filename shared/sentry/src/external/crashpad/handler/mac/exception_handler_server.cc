@@ -37,8 +37,9 @@ namespace {
 // type.
 class ClientToServerMessageServer : public MachMessageServer::Interface {
  public:
-  explicit ClientToServerMessageServer(ExceptionHandlerServer::Delegate* delegate)
-      : delegate_(delegate) {}
+  ClientToServerMessageServer(ExceptionHandlerServer::Delegate* delegate,
+                              pid_t owner_process_id)
+      : delegate_(delegate), owner_process_id_(owner_process_id) {}
 
   ClientToServerMessageServer(const ClientToServerMessageServer&) = delete;
   ClientToServerMessageServer& operator=(const ClientToServerMessageServer&) =
@@ -53,6 +54,10 @@ class ClientToServerMessageServer : public MachMessageServer::Interface {
       return false;
     }
     *destroy_complex_request = true;
+    if (!RuntimeMessageOriginIsOwner(in_header)) {
+      return true;
+    }
+
     switch (message->type) {
       case ClientToServerMessage::kRequestRetry:
         delegate_->RequestRetry();
@@ -80,7 +85,30 @@ class ClientToServerMessageServer : public MachMessageServer::Interface {
   }
 
  private:
+  bool RuntimeMessageOriginIsOwner(const mach_msg_header_t* in_header) const {
+    if (owner_process_id_ <= 0) {
+      // No owner is configured for launchd Mach service handlers.
+      return true;
+    }
+
+    pid_t sender_process_id =
+        AuditPIDFromMachMessageTrailer(MachMessageTrailerFromHeader(in_header));
+    if (sender_process_id <= 0) {
+      LOG(WARNING) << "rejecting runtime control message without sender pid";
+      return false;
+    }
+
+    if (sender_process_id != owner_process_id_) {
+      LOG(WARNING) << "rejecting runtime control message from non-owner pid "
+                   << sender_process_id;
+      return false;
+    }
+
+    return true;
+  }
+
   ExceptionHandlerServer::Delegate* delegate_;  // weak
+  pid_t owner_process_id_;
 };
 
 class ExceptionHandlerServerRun : public UniversalMachExcServer::Interface,
@@ -89,12 +117,13 @@ class ExceptionHandlerServerRun : public UniversalMachExcServer::Interface,
   ExceptionHandlerServerRun(mach_port_t exception_port,
                             mach_port_t notify_port,
                             bool launchd,
-                            ExceptionHandlerServer::Delegate* delegate)
+                            ExceptionHandlerServer::Delegate* delegate,
+                            pid_t owner_process_id)
       : UniversalMachExcServer::Interface(),
         NotifyServer::DefaultInterface(),
         mach_exc_server_(this),
         notify_server_(this),
-        client_to_server_message_server_(delegate),
+        client_to_server_message_server_(delegate, owner_process_id),
         composite_mach_message_server_(),
         delegate_(delegate),
         exception_port_(exception_port),
@@ -251,9 +280,11 @@ class ExceptionHandlerServerRun : public UniversalMachExcServer::Interface,
 
 ExceptionHandlerServer::ExceptionHandlerServer(
     base::apple::ScopedMachReceiveRight receive_port,
-    bool launchd)
+    bool launchd,
+    pid_t owner_process_id)
     : receive_port_(std::move(receive_port)),
       notify_port_(NewMachPort(MACH_PORT_RIGHT_RECEIVE)),
+      owner_process_id_(owner_process_id),
       launchd_(launchd) {
   CHECK(receive_port_.is_valid());
   CHECK(notify_port_.is_valid());
@@ -263,8 +294,11 @@ ExceptionHandlerServer::~ExceptionHandlerServer() {
 }
 
 void ExceptionHandlerServer::Run(Delegate* delegate) {
-  ExceptionHandlerServerRun run(
-      receive_port_.get(), notify_port_.get(), launchd_, delegate);
+  ExceptionHandlerServerRun run(receive_port_.get(),
+                                notify_port_.get(),
+                                launchd_,
+                                delegate,
+                                owner_process_id_);
   run.Run();
 }
 

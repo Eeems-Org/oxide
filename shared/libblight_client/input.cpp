@@ -221,7 +221,7 @@ namespace Input {
           info.maximums.tiltX = absInfo.maximum;
         } else {
           _WARN(
-            "Unable to get ABS_DISTANCE range for event%d: %s",
+            "Unable to get ABS_TILT_X range for event%d: %s",
             info.device,
             std::strerror(errno)
           );
@@ -231,7 +231,7 @@ namespace Input {
           info.maximums.tiltY = absInfo.maximum;
         } else {
           _WARN(
-            "Unable to get ABS_DISTANCE range for event%d: %s",
+            "Unable to get ABS_TILT_Y range for event%d: %s",
             info.device,
             std::strerror(errno)
           );
@@ -265,7 +265,7 @@ namespace Input {
           info.maximums.orientation = absInfo.maximum;
         } else {
           _WARN(
-            "Unable to get ABS_MT_POSITION_Y range for event%d: %s",
+            "Unable to get ABS_MT_ORIENTATION range for event%d: %s",
             info.device,
             std::strerror(errno)
           );
@@ -275,7 +275,7 @@ namespace Input {
           info.maximums.major = absInfo.maximum;
         } else {
           _WARN(
-            "Unable to get ABS_MT_POSITION_Y range for event%d: %s",
+            "Unable to get ABS_MT_TOUCH_MAJOR range for event%d: %s",
             info.device,
             std::strerror(errno)
           );
@@ -285,7 +285,7 @@ namespace Input {
           info.maximums.minor = absInfo.maximum;
         } else {
           _WARN(
-            "Unable to get ABS_MT_POSITION_Y range for event%d: %s",
+            "Unable to get ABS_MT_TOUCH_MINOR range for event%d: %s",
             info.device,
             std::strerror(errno)
           );
@@ -1239,7 +1239,6 @@ namespace Input {
     size_t count = 0;
     auto& info = *devices.at(device);
     auto& ringBuffer = info.ringBuffer;
-    uint64_t val;
     if (ringBuffer->overflowed()) {
       info.read();
       events[count] = {};

@@ -14,18 +14,13 @@ OxideWindow {
     headerBackgroundColor: "white"
     color: "black"
     backgroundColor: "white"
+    reserveSystemSpace: true
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     onAfterSynchronizing: {
         if (stateController.state == "loading") {
             stateController.state = "loaded"
             controller.startup();
-            appsView.model = controller.getApps();
-        }
-    }
-    Connections {
-        target: controller
-        function onReload() {
-            appsView.model = controller.getApps();
+            controller.refreshApps();
         }
     }
     Shortcut{
@@ -41,7 +36,7 @@ OxideWindow {
     Shortcut{
         sequence: StandardKey.Refresh
         context: Qt.ApplicationShortcut
-        onActivated: controller.reload()
+        onActivated: controller.refreshApps()
     }
     Shortcut{
         sequence: "Ctrl+I"
@@ -65,7 +60,7 @@ OxideWindow {
                     onTriggered: {
                         controller.breadcrumb("menu.reload", "click", "ui");
                         controller.startup();
-                        appsView.model = controller.getApps();
+                        controller.refreshApps();
                     }
                 }
                 Action {
@@ -73,160 +68,7 @@ OxideWindow {
                     onTriggered:{
                         controller.breadcrumb("menu.import", "click", "ui");
                         controller.importDraftApps();
-                        appsView.model = controller.getApps();
-                    }
-                }
-                Action {
-                    text: qsTr(" Options")
-                    onTriggered: {
-                        controller.breadcrumb("menu.options", "click", "ui");
-                        stateController.state = "settings";
-                    }
-                }
-            }
-        },
-        OxideStatusIcon {
-            source: "qrc:/img/notifications/black.png"
-            text: controller.notificationText
-            visible: controller.hasNotification
-            clip: true
-            Layout.maximumWidth: 300
-            MouseArea {
-                anchors.fill: parent
-                enabled: parent.visible
-                onClicked: {
-                    controller.breadcrumb("notifications", "click", "ui");
-                    stateController.state = "notifications";
-                }
-            }
-        }
-    ]
-    centerMenu: [
-        Label {
-            objectName: "clock"
-            Layout.alignment: Qt.AlignCenter
-            color: window.color
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    controller.breadcrumb("clock", "click", "ui");
-                    stateController.state = "calendar";
-                }
-            }
-        }
-    ]
-    rightMenu: [
-        OxideStatusIcon {
-            id: wifiState
-            objectName: "wifiState"
-            property string state: "unknown"
-            property int rssi: 0
-            property bool connected: false
-            source: {
-                var icon;
-                if(state === "unknown"){
-                    icon = "unknown";
-                }else if(state === "down"){
-                    icon = "down";
-                }else if(!connected){
-                    icon = "disconnected";
-                }else if(rssi > -50) {
-                    icon = "4_bar";
-                }else if(rssi > -60){
-                    icon = "3_bar";
-                }else if(rssi > -70){
-                    icon = "2_bar";
-                }else if(rssi > -80){
-                    icon = "1_bar";
-                }else{
-                    icon = "0_bar";
-                }
-                return "qrc:/codes.eeems.oxide/img/wifi/" + icon + ".png";
-            }
-            text: controller.showWifiDb ? rssi + "dBm" : ""
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    controller.breadcrumb("wifi", "click", "ui");
-                    stateController.state = "wifi";
-                }
-            }
-        },
-        OxideStatusIcon {
-            id: batteryLevel
-            objectName: "batteryLevel"
-            property bool alert: false
-            property bool warning: false
-            property bool charging: false
-            property bool connected: false
-            property bool present: true
-            property int level: 0
-            property int temperature: 0
-            source: {
-                var icon = "";
-                if(alert || !present){
-                    icon = "alert";
-                }else if(warning){
-                    icon = "unknown";
-                }else{
-                    if(charging || connected){
-                        icon = "charging_";
-                    }
-                    if(level < 25){
-                        icon += "20";
-                    }else if(level < 35){
-                        icon += "30";
-                    }else if(level < 55){
-                        icon += "50";
-                    }else if(level < 65){
-                        icon += "60";
-                    }else if(level < 85){
-                        icon += "80";
-                    }else if(level < 95){
-                        icon += "90";
-                    }else{
-                        icon += 100;
-                    }
-                }
-                return "qrc:/codes.eeems.oxide/img/battery/" + icon + ".png";
-            }
-            text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
-        },
-        CustomMenu {
-            OxideMenu {
-                id: powerMenu
-                title: qsTr("");
-                font.family: iconFont.name
-                width: 260
-                Action {
-                    text: qsTr(" Suspend")
-                    enabled: !controller.sleepInhibited
-                    onTriggered: {
-                        controller.breadcrumb("menu.suspend", "click", "ui");
-                        controller.suspend();
-                    }
-                }
-                Action {
-                    text: qsTr(" Reboot")
-                    enabled: !controller.powerOffInhibited
-                    onTriggered: {
-                        controller.breadcrumb("menu.reboot", "click", "ui");
-                        controller.reboot();
-                    }
-                }
-                Action {
-                    text: qsTr(" Shutdown")
-                    enabled: !controller.powerOffInhibited
-                    onTriggered: {
-                        controller.breadcrumb("menu.shutdown", "click", "ui");
-                        controller.powerOff();
-                    }
-                }
-                Action {
-                    text: qsTr(" Lock")
-                    onTriggered: {
-                        controller.breadcrumb("menu.lock", "click", "ui");
-                        controller.lock();
+                        controller.refreshApps();
                     }
                 }
             }
@@ -246,7 +88,7 @@ OxideWindow {
             boundsBehavior: Flickable.StopAtBounds
             cellWidth: parent.width / controller.columns
             cellHeight: cellWidth
-            model: apps
+            model: controller.appList
             ScrollBar.vertical: ScrollBar {
                 id: scrollbar
                 snapMode: ScrollBar.SnapAlways
@@ -266,19 +108,19 @@ OxideWindow {
             }
             delegate: AppItem {
                 enabled: appsView.enabled
-                imgFile: model.modelData.imgFile
-                text: (model.modelData.running ? "* " : "") + model.modelData.displayName
-                bold: model.modelData.running
+                imgFile: model.display.imgFile
+                text: (model.display.running ? "* " : "") + model.display.displayName
+                bold: model.display.running
                 width: appsView.cellWidth
                 height: appsView.cellHeight
                 onLongPress: {
                     controller.breadcrumb("appItem", "longPress", "ui");
-                    itemInfo.model = model.modelData;
+                    itemInfo.model = model.display;
                     stateController.state = "itemInfo"
                 }
                 onClicked: {
                     controller.breadcrumb("appItem", "click", "ui");
-                    model.modelData.execute();
+                    model.display.execute();
                 }
             }
         }
@@ -315,7 +157,6 @@ OxideWindow {
                 if(calculatedWidth < minWidth){
                     return minWidth;
                 }
-
                 return calculatedWidth;
             }
             height: itemContent.height + itemAutoStartButton.height + 10
@@ -402,34 +243,17 @@ OxideWindow {
                             controller.breadcrumb("appItem.kill", "click", "ui");
                             if(itemInfo.model){
                                 itemInfo.model.stop();
-                                appsView.model = controller.getApps();
+                                controller.refreshApps();
                             }
                         }
                     }
                 }
             }
         }
-        SettingsPopup {
-            id: settings
-            onClosed: stateController.state = "loaded"
-            visible: false
-        }
-        WifiMenu {
-            id: wifi
-            onClosed: stateController.state = "loaded"
-            visible: false
-            model: controller.networks
-        }
         CalendarMenu {
             id: calendar
             onClosed: stateController.state = "loaded"
             visible: false
-        }
-        NotificationsPopup {
-            id: notifications
-            onClosed: stateController.state = "loaded"
-            visible: false
-            model: controller.notifications
         }
     }
     StateGroup {
@@ -440,41 +264,10 @@ OxideWindow {
         states: [
             State { name: "loading" },
             State { name: "loaded" },
-            State { name: "settings" },
             State { name: "itemInfo" },
-            State { name: "wifi" },
-            State { name: "calendar" },
-            State { name: "notifications" }
+            State { name: "calendar" }
         ]
         transitions: [
-            Transition {
-                from: "*"; to: "settings"
-                SequentialAnimation {
-                    ScriptAction { script: {
-                        controller.breadcrumb("navigation", "settings", "navigation");
-                        stateController.previousState = "settings";
-                    } }
-                    ScriptAction { script: console.log("Opening settings") }
-                    PropertyAction { target: settings; property: "visible"; value: true }
-                    PropertyAction { target: wifi; property: "visible"; value: false }
-                    PropertyAction { target: calendar; property: "visible"; value: false }
-                    PropertyAction { target: notifications; property: "visible"; value: false }
-                }
-            },
-            Transition {
-                from: "*"; to: "wifi"
-                ParallelAnimation {
-                    ScriptAction { script: {
-                        controller.breadcrumb("navigation", "wifi", "navigation");
-                        stateController.previousState = "wifi";
-                    } }
-                    ScriptAction { script: console.log("Opening wifi menu") }
-                    PropertyAction { target: wifi; property: "visible"; value: true }
-                    PropertyAction { target: calendar; property: "visible"; value: false }
-                    PropertyAction { target: settings; property: "visible"; value: false }
-                    PropertyAction { target: notifications; property: "visible"; value: false }
-                }
-            },
             Transition {
                 from: "*"; to: "calendar"
                 SequentialAnimation {
@@ -484,23 +277,6 @@ OxideWindow {
                     } }
                     ScriptAction { script: console.log("Opening calendar") }
                     PropertyAction { target: calendar; property: "visible"; value: true }
-                    PropertyAction { target: settings; property: "visible"; value: false }
-                    PropertyAction { target: wifi; property: "visible"; value: false }
-                    PropertyAction { target: notifications; property: "visible"; value: false }
-                }
-            },
-            Transition {
-                from: "*"; to: "notifications"
-                SequentialAnimation {
-                    ScriptAction { script: {
-                        controller.breadcrumb("navigation", "notifications", "navigation");
-                        stateController.previousState = "notifications";
-                    } }
-                    ScriptAction { script: console.log("Opening notifications") }
-                    PropertyAction { target: notifications; property: "visible"; value: true }
-                    PropertyAction { target: calendar; property: "visible"; value: false }
-                    PropertyAction { target: settings; property: "visible"; value: false }
-                    PropertyAction { target: wifi; property: "visible"; value: false }
                 }
             },
             Transition {
@@ -521,9 +297,6 @@ OxideWindow {
                         console.log("Main display");
                     } }
                     PropertyAction { target: calendar; property: "visible"; value: false }
-                    PropertyAction { target: settings; property: "visible"; value: false }
-                    PropertyAction { target: wifi; property: "visible"; value: false }
-                    PropertyAction { target: notifications; property: "visible"; value: false }
                 }
             }
         ]

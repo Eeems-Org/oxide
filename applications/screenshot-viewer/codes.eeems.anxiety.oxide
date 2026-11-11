@@ -5,5 +5,5 @@
     "icon": "oxide:image-48",
     "type": "foreground",
     "permissions": ["screen"],
-    "flags": ["nopreload"]
+    "flags": ["nopreload", "topbar"]
 }
