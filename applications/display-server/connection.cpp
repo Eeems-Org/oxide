@@ -655,7 +655,7 @@ Connection::readSocket() {
           C_WARNING("Could not allocate ack_data, not enough memory");
           break;
         }
-        ack(message, ack_data, ack_size);
+        ack(message, ack_size, ack_data);
         free(ack_data);
         break;
       }
