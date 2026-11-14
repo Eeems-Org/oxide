@@ -114,9 +114,12 @@ namespace Input {
     return maybe;
   }
   void DeviceInfo::write(const input_event& event) {
-    ringBuffer->insert(event);
+    // Count the event before publishing it. If insert() came first, a reader
+    // could take() the event before the count landed, fail its non-blocking
+    // eventfd read with EAGAIN, and leave a count with no event behind it.
     uint64_t val = 1;
     Libc::write(eventFd, &val, sizeof(val));
+    ringBuffer->insert(event);
   }
 
   int getEventFd(int fd) {
