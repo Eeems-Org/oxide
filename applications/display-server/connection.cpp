@@ -497,6 +497,7 @@ Connection::readSocket() {
 #ifndef ACK_DEBUG
     }
 #endif
+    bool do_ack = true;
     switch (message->header.type) {
       case Blight::MessageType::Repaint: {
         auto repaint = Blight::repaint_t::from_message(message.get());
@@ -517,11 +518,11 @@ Connection::readSocket() {
         auto surface = getSurface(repaint.identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << repaint.identifier);
-          ack(message, 0, nullptr);
           break;
         }
         QRect rect(repaint.x, repaint.y, repaint.width, repaint.height);
 #ifdef EPAPER
+        do_ack = false;
         guiThread->enqueue(
           surface,
           rect,
@@ -534,7 +535,6 @@ Connection::readSocket() {
         );
 #else
         emit surface->update(rect);
-        ack(message, 0, nullptr);
 #endif
         break;
       }
@@ -551,12 +551,12 @@ Connection::readSocket() {
         auto surface = getSurface(move.identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << move.identifier);
-          ack(message, 0, nullptr);
           break;
         }
 #ifdef EPAPER
         auto rect = surface->geometry();
         surface->move(move.x, move.y);
+        do_ack = false;
         guiThread->enqueue(
           surface,
           surface->rawRect(),
@@ -565,7 +565,7 @@ Connection::readSocket() {
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
           false,
-          [message, this] { ack(message, 0, nullptr); }
+          nullptr
         );
         guiThread->enqueue(
           nullptr,
@@ -575,11 +575,10 @@ Connection::readSocket() {
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
           true,
-          nullptr
+          [message, this] { ack(message, 0, nullptr); }
         );
 #else
         surface->move(move.x, move.y);
-        ack(message, 0, nullptr);
 #endif
         break;
       }
@@ -590,29 +589,28 @@ Connection::readSocket() {
         auto surface = getSurface(identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << identifier);
-          ack(message, 0, nullptr);
           break;
         }
         auto geometry = surface->rawGeometry();
-        Blight::data_t ack_data;
-        unsigned int ack_size;
         try {
-          ack_data =
-            reinterpret_cast<Blight::data_t>(new Blight::surface_info_t{
-              {.x = geometry.x(),
-               .y = geometry.y(),
-               .width = (unsigned int)geometry.width(),
-               .height = (unsigned int)geometry.height(),
-               .stride = surface->stride(),
-               .format = (Blight::Format)surface->format(),
-               .scale = surface->scale()}
-          });
-          ack_size = sizeof(Blight::surface_info_t);
-          ack(message, ack_size, ack_data);
-          delete ack_data;
+          auto* data = new Blight::surface_info_t{
+            {.x = geometry.x(),
+             .y = geometry.y(),
+             .width = (unsigned int)geometry.width(),
+             .height = (unsigned int)geometry.height(),
+             .stride = surface->stride(),
+             .format = (Blight::Format)surface->format(),
+             .scale = surface->scale()}
+          };
+          do_ack = false;
+          ack(
+            message,
+            sizeof(Blight::surface_info_t),
+            reinterpret_cast<Blight::data_t>(data)
+          );
+          delete data;
         } catch (const std::bad_alloc&) {
-          C_WARNING("Could not allocate ack_data, not enough memory");
-          ack(message, 0, nullptr);
+          C_WARNING("Could not allocate surface_info_t, not enough memory");
         }
         break;
       }
@@ -623,7 +621,6 @@ Connection::readSocket() {
         auto surface = getSurface(surfaceId);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << surfaceId);
-          ack(message, 0, nullptr);
           break;
         }
         dbusInterface->removeSurface(surface->id());
@@ -638,7 +635,6 @@ Connection::readSocket() {
           true
         );
 #endif
-        ack(message, 0, nullptr);
         break;
       }
       case Blight::MessageType::List: {
@@ -658,9 +654,9 @@ Connection::readSocket() {
         memcpy(ack_data, list.data(), ack_size);
         if (ack_size != 0 && ack_data == nullptr) {
           C_WARNING("Could not allocate ack_data, not enough memory");
-          ack(message, 0, nullptr);
           break;
         }
+        do_ack = false;
         ack(message, ack_size, ack_data);
         free(ack_data);
         break;
@@ -672,13 +668,13 @@ Connection::readSocket() {
         auto surface = getSurface(identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << identifier);
-          ack(message, 0, nullptr);
           break;
         }
         surface->setVisible(true);
         surface->setZ(std::numeric_limits<int>::max());
         dbusInterface->sortZ();
 #ifdef EPAPER
+        do_ack = false;
         guiThread->enqueue(
           surface,
           surface->rawRect(),
@@ -689,8 +685,6 @@ Connection::readSocket() {
           false,
           [message, this] { ack(message, 0, nullptr); }
         );
-#else
-        ack(message, 0, nullptr);
 #endif
         break;
       }
@@ -701,12 +695,12 @@ Connection::readSocket() {
         auto surface = getSurface(identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << identifier);
-          ack(message, 0, nullptr);
           break;
         }
         surface->setVisible(false);
         dbusInterface->sortZ();
 #ifdef EPAPER
+        do_ack = false;
         guiThread->enqueue(
           nullptr,
           surface->geometry(),
@@ -718,7 +712,6 @@ Connection::readSocket() {
           [message, this] { ack(message, 0, nullptr); }
         );
 #else
-        ack(message, 0, nullptr);
 #endif
         break;
       }
@@ -737,7 +730,6 @@ Connection::readSocket() {
               mxcfb_update_marker_data data{marker.value(), 0};
               if (::ioctl(fb, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data) == 0) {
                 ::close(fb);
-                ack(message, 0, nullptr);
                 break;
               }
             }
@@ -746,7 +738,6 @@ Connection::readSocket() {
 #endif
         EPFramebuffer::instance()->sync();
 #endif
-        ack(message, 0, nullptr);
         break;
       }
       case Blight::MessageType::Focus: {
@@ -763,17 +754,16 @@ Connection::readSocket() {
           )
         );
 #endif
-        ack(message, 0, nullptr);
         break;
       }
       case Blight::MessageType::Ping: {
 #ifdef ACK_DEBUG
         O_DEBUG("Pong" << message->header.ackid);
 #endif
-        ack(message, 0, nullptr);
         break;
       }
       case Blight::MessageType::Ack:
+        do_ack = false;
         if (message->header.ackid == pingId) {
 #ifdef ACK_DEBUG
           O_DEBUG("Pong recieved" << message->header.ackid);
@@ -788,6 +778,9 @@ Connection::readSocket() {
         break;
       default:
         C_WARNING("Unexpected message type" << message->header.type);
+    }
+    if (do_ack) {
+      ack(message, 0, nullptr);
     }
   };
   m_notifier->setEnabled(true);
