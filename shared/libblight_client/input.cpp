@@ -110,6 +110,8 @@ namespace Input {
     if (maybe.has_value()) {
       uint64_t val;
       while (Libc::read(eventFd, &val, sizeof(val)) < 0 && errno == EAGAIN) {
+        struct pollfd pfd = {eventFd, POLLIN, 0};
+        Libc::poll(&pfd, 1, 1);
       }
     }
     return maybe;
