@@ -497,10 +497,6 @@ Connection::readSocket() {
 #ifndef ACK_DEBUG
     }
 #endif
-    bool do_ack = true;
-    unsigned int ack_size = 0;
-    Blight::data_t ack_data = nullptr;
-    std::function<void()> ack_free = NULL;
     switch (message->header.type) {
       case Blight::MessageType::Repaint: {
         auto repaint = Blight::repaint_t::from_message(message.get());
@@ -537,8 +533,8 @@ Connection::readSocket() {
         );
 #else
         emit surface->update(rect);
+        ack(message, 0, nullptr);
 #endif
-        do_ack = false;
         break;
       }
       case Blight::MessageType::Move: {
@@ -581,8 +577,8 @@ Connection::readSocket() {
         );
 #else
         surface->move(move.x, move.y);
+        ack(message, 0, nullptr);
 #endif
-        do_ack = false;
         break;
       }
       case Blight::MessageType::Info: {
@@ -595,6 +591,8 @@ Connection::readSocket() {
           break;
         }
         auto geometry = surface->rawGeometry();
+        Blight::data_t ack_data;
+        unsigned int ack_size;
         try {
           ack_data =
             reinterpret_cast<Blight::data_t>(new Blight::surface_info_t{
@@ -607,6 +605,8 @@ Connection::readSocket() {
                .scale = surface->scale()}
           });
           ack_size = sizeof(Blight::surface_info_t);
+          ack(message, ack_size, ack_data);
+          delete ack_data;
         } catch (const std::bad_alloc&) {
           C_WARNING("Could not allocate ack_data, not enough memory");
         }
@@ -633,6 +633,7 @@ Connection::readSocket() {
           true
         );
 #endif
+        ack(message, 0, nullptr);
         break;
       }
       case Blight::MessageType::List: {
@@ -646,14 +647,16 @@ Connection::readSocket() {
             }
           }
         }
-        ack_size = list.size() * sizeof(decltype(list)::value_type);
-        ack_data = (Blight::data_t)malloc(ack_size);
+        unsigned int ack_size = ack_size =
+          list.size() * sizeof(decltype(list)::value_type);
+        Blight::data_t ack_data = (Blight::data_t)malloc(ack_size);
         memcpy(ack_data, list.data(), ack_size);
         if (ack_size != 0 && ack_data == nullptr) {
           C_WARNING("Could not allocate ack_data, not enough memory");
           break;
         }
-        ack_free = [&ack_data] { free(ack_data); };
+        ack(message, ack_data, ack_size);
+        free(ack_data);
         break;
       }
       case Blight::MessageType::Raise: {
@@ -679,8 +682,9 @@ Connection::readSocket() {
           false,
           [message, this] { ack(message, 0, nullptr); }
         );
+#else
+        ack(message, 0, nullptr);
 #endif
-        do_ack = false;
         break;
       }
       case Blight::MessageType::Lower: {
@@ -705,8 +709,9 @@ Connection::readSocket() {
           true,
           [message, this] { ack(message, 0, nullptr); }
         );
+#else
+        ack(message, 0, nullptr);
 #endif
-        do_ack = false;
         break;
       }
       case Blight::MessageType::Wait: {
@@ -732,12 +737,12 @@ Connection::readSocket() {
 #endif
         EPFramebuffer::instance()->sync();
 #endif
+        ack(message, 0, nullptr);
         break;
       }
       case Blight::MessageType::Focus: {
         C_DEBUG("Focus requested");
         dbusInterface->setFocus(dbusInterface->getConnection(this));
-        do_ack = false;
         break;
       }
       case Blight::MessageType::GhostControl: {
@@ -749,16 +754,17 @@ Connection::readSocket() {
           )
         );
 #endif
+        ack(message, 0, nullptr);
         break;
       }
       case Blight::MessageType::Ping: {
 #ifdef ACK_DEBUG
         O_DEBUG("Pong" << message->header.ackid);
 #endif
+        ack(message, 0, nullptr);
         break;
       }
       case Blight::MessageType::Ack:
-        do_ack = false;
         if (message->header.ackid == pingId) {
 #ifdef ACK_DEBUG
           O_DEBUG("Pong recieved" << message->header.ackid);
@@ -773,18 +779,6 @@ Connection::readSocket() {
         break;
       default:
         C_WARNING("Unexpected message type" << message->header.type);
-    }
-    if (ack_size && ack_data == nullptr) {
-      C_WARNING("Ack expected data, but none sent");
-      ack_size = 0;
-    }
-    if (do_ack) {
-      ack(message, ack_size, ack_data);
-    }
-    if (ack_free) {
-      ack_free();
-    } else if (ack_data != nullptr) {
-      delete ack_data;
     }
   };
   m_notifier->setEnabled(true);
