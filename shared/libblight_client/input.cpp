@@ -109,17 +109,17 @@ namespace Input {
     }
     if (maybe.has_value()) {
       uint64_t val;
-      Libc::read(eventFd, &val, sizeof(val));
+      while (Libc::read(eventFd, &val, sizeof(val)) < 0 && errno == EAGAIN) {
+      }
     }
     return maybe;
   }
   void DeviceInfo::write(const input_event& event) {
-    // Count the event before publishing it. If insert() came first, a reader
-    // could take() the event before the count landed, fail its non-blocking
-    // eventfd read with EAGAIN, and leave a count with no event behind it.
-    uint64_t val = 1;
-    Libc::write(eventFd, &val, sizeof(val));
     ringBuffer->insert(event);
+    uint64_t val = 1;
+    while (Libc::write(eventFd, &val, sizeof(val)) < 0 &&
+           (errno == EINTR || errno == EAGAIN)) {
+    }
   }
 
   int getEventFd(int fd) {
