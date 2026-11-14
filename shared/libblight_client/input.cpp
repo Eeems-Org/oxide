@@ -109,14 +109,19 @@ namespace Input {
     }
     if (maybe.has_value()) {
       uint64_t val;
-      Libc::read(eventFd, &val, sizeof(val));
+      while (Libc::read(eventFd, &val, sizeof(val)) < 0 && errno == EAGAIN) {
+        struct pollfd pfd = {eventFd, POLLIN, 0};
+        Libc::poll(&pfd, 1, 1);
+      }
     }
     return maybe;
   }
   void DeviceInfo::write(const input_event& event) {
     ringBuffer->insert(event);
     uint64_t val = 1;
-    Libc::write(eventFd, &val, sizeof(val));
+    while (Libc::write(eventFd, &val, sizeof(val)) < 0 &&
+           (errno == EINTR || errno == EAGAIN)) {
+    }
   }
 
   int getEventFd(int fd) {
