@@ -498,9 +498,6 @@ Connection::readSocket() {
     }
 #endif
     bool do_ack = true;
-    unsigned int ack_size = 0;
-    Blight::data_t ack_data = nullptr;
-    std::function<void()> ack_free = NULL;
     switch (message->header.type) {
       case Blight::MessageType::Repaint: {
         auto repaint = Blight::repaint_t::from_message(message.get());
@@ -525,6 +522,7 @@ Connection::readSocket() {
         }
         QRect rect(repaint.x, repaint.y, repaint.width, repaint.height);
 #ifdef EPAPER
+        do_ack = false;
         guiThread->enqueue(
           surface,
           rect,
@@ -538,7 +536,6 @@ Connection::readSocket() {
 #else
         emit surface->update(rect);
 #endif
-        do_ack = false;
         break;
       }
       case Blight::MessageType::Move: {
@@ -559,6 +556,7 @@ Connection::readSocket() {
 #ifdef EPAPER
         auto rect = surface->geometry();
         surface->move(move.x, move.y);
+        do_ack = false;
         guiThread->enqueue(
           surface,
           surface->rawRect(),
@@ -567,7 +565,7 @@ Connection::readSocket() {
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
           false,
-          [message, this] { ack(message, 0, nullptr); }
+          nullptr
         );
         guiThread->enqueue(
           nullptr,
@@ -577,12 +575,11 @@ Connection::readSocket() {
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
           true,
-          nullptr
+          [message, this] { ack(message, 0, nullptr); }
         );
 #else
         surface->move(move.x, move.y);
 #endif
-        do_ack = false;
         break;
       }
       case Blight::MessageType::Info: {
@@ -596,19 +593,24 @@ Connection::readSocket() {
         }
         auto geometry = surface->rawGeometry();
         try {
-          ack_data =
-            reinterpret_cast<Blight::data_t>(new Blight::surface_info_t{
-              {.x = geometry.x(),
-               .y = geometry.y(),
-               .width = (unsigned int)geometry.width(),
-               .height = (unsigned int)geometry.height(),
-               .stride = surface->stride(),
-               .format = (Blight::Format)surface->format(),
-               .scale = surface->scale()}
-          });
-          ack_size = sizeof(Blight::surface_info_t);
+          auto* data = new Blight::surface_info_t{
+            {.x = geometry.x(),
+             .y = geometry.y(),
+             .width = (unsigned int)geometry.width(),
+             .height = (unsigned int)geometry.height(),
+             .stride = surface->stride(),
+             .format = (Blight::Format)surface->format(),
+             .scale = surface->scale()}
+          };
+          do_ack = false;
+          ack(
+            message,
+            sizeof(Blight::surface_info_t),
+            reinterpret_cast<Blight::data_t>(data)
+          );
+          delete data;
         } catch (const std::bad_alloc&) {
-          C_WARNING("Could not allocate ack_data, not enough memory");
+          C_WARNING("Could not allocate surface_info_t, not enough memory");
         }
         break;
       }
@@ -646,14 +648,17 @@ Connection::readSocket() {
             }
           }
         }
-        ack_size = list.size() * sizeof(decltype(list)::value_type);
-        ack_data = (Blight::data_t)malloc(ack_size);
+        unsigned int ack_size = ack_size =
+          list.size() * sizeof(decltype(list)::value_type);
+        Blight::data_t ack_data = (Blight::data_t)malloc(ack_size);
         memcpy(ack_data, list.data(), ack_size);
         if (ack_size != 0 && ack_data == nullptr) {
           C_WARNING("Could not allocate ack_data, not enough memory");
           break;
         }
-        ack_free = [&ack_data] { free(ack_data); };
+        do_ack = false;
+        ack(message, ack_size, ack_data);
+        free(ack_data);
         break;
       }
       case Blight::MessageType::Raise: {
@@ -669,6 +674,7 @@ Connection::readSocket() {
         surface->setZ(std::numeric_limits<int>::max());
         dbusInterface->sortZ();
 #ifdef EPAPER
+        do_ack = false;
         guiThread->enqueue(
           surface,
           surface->rawRect(),
@@ -680,7 +686,6 @@ Connection::readSocket() {
           [message, this] { ack(message, 0, nullptr); }
         );
 #endif
-        do_ack = false;
         break;
       }
       case Blight::MessageType::Lower: {
@@ -695,6 +700,7 @@ Connection::readSocket() {
         surface->setVisible(false);
         dbusInterface->sortZ();
 #ifdef EPAPER
+        do_ack = false;
         guiThread->enqueue(
           nullptr,
           surface->geometry(),
@@ -705,8 +711,8 @@ Connection::readSocket() {
           true,
           [message, this] { ack(message, 0, nullptr); }
         );
+#else
 #endif
-        do_ack = false;
         break;
       }
       case Blight::MessageType::Wait: {
@@ -737,7 +743,6 @@ Connection::readSocket() {
       case Blight::MessageType::Focus: {
         C_DEBUG("Focus requested");
         dbusInterface->setFocus(dbusInterface->getConnection(this));
-        do_ack = false;
         break;
       }
       case Blight::MessageType::GhostControl: {
@@ -774,17 +779,8 @@ Connection::readSocket() {
       default:
         C_WARNING("Unexpected message type" << message->header.type);
     }
-    if (ack_size && ack_data == nullptr) {
-      C_WARNING("Ack expected data, but none sent");
-      ack_size = 0;
-    }
     if (do_ack) {
-      ack(message, ack_size, ack_data);
-    }
-    if (ack_free) {
-      ack_free();
-    } else if (ack_data != nullptr) {
-      delete ack_data;
+      ack(message, 0, nullptr);
     }
   };
   m_notifier->setEnabled(true);
