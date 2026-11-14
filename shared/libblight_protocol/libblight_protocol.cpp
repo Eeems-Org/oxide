@@ -115,10 +115,6 @@ is_valid_header(const blight_header_t& header) {
 bool
 should_ack(BlightMessageType type) {
   switch (type) {
-    case BlightMessageType::Repaint:
-    case BlightMessageType::Move:
-    case BlightMessageType::Raise:
-    case BlightMessageType::Lower:
     case BlightMessageType::Focus:
     case BlightMessageType::Ack:
       return false;
