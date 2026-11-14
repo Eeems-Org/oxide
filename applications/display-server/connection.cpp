@@ -517,6 +517,7 @@ Connection::readSocket() {
         auto surface = getSurface(repaint.identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << repaint.identifier);
+          ack(message, 0, nullptr);
           break;
         }
         QRect rect(repaint.x, repaint.y, repaint.width, repaint.height);
@@ -550,6 +551,7 @@ Connection::readSocket() {
         auto surface = getSurface(move.identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << move.identifier);
+          ack(message, 0, nullptr);
           break;
         }
 #ifdef EPAPER
@@ -588,6 +590,7 @@ Connection::readSocket() {
         auto surface = getSurface(identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << identifier);
+          ack(message, 0, nullptr);
           break;
         }
         auto geometry = surface->rawGeometry();
@@ -609,6 +612,7 @@ Connection::readSocket() {
           delete ack_data;
         } catch (const std::bad_alloc&) {
           C_WARNING("Could not allocate ack_data, not enough memory");
+          ack(message, 0, nullptr);
         }
         break;
       }
@@ -619,6 +623,7 @@ Connection::readSocket() {
         auto surface = getSurface(surfaceId);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << surfaceId);
+          ack(message, 0, nullptr);
           break;
         }
         dbusInterface->removeSurface(surface->id());
@@ -653,6 +658,7 @@ Connection::readSocket() {
         memcpy(ack_data, list.data(), ack_size);
         if (ack_size != 0 && ack_data == nullptr) {
           C_WARNING("Could not allocate ack_data, not enough memory");
+          ack(message, 0, nullptr);
           break;
         }
         ack(message, ack_size, ack_data);
@@ -666,6 +672,7 @@ Connection::readSocket() {
         auto surface = getSurface(identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << identifier);
+          ack(message, 0, nullptr);
           break;
         }
         surface->setVisible(true);
@@ -694,6 +701,7 @@ Connection::readSocket() {
         auto surface = getSurface(identifier);
         if (surface == nullptr) {
           C_WARNING("Could not find surface" << identifier);
+          ack(message, 0, nullptr);
           break;
         }
         surface->setVisible(false);
