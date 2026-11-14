@@ -729,6 +729,7 @@ Connection::readSocket() {
               mxcfb_update_marker_data data{marker.value(), 0};
               if (::ioctl(fb, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data) == 0) {
                 ::close(fb);
+                ack(message, 0, nullptr);
                 break;
               }
             }
