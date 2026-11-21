@@ -37,25 +37,28 @@ Button {
     height: basesize
 
     function getText() {
-        if (keyboard && keyboard.hasShift && keyboard.hasAlt && keyboard.hasCtrl) {
+        if (!keyboard){
+            return text
+        }
+        if ((keyboard.hasShift || keyboard.hasCaps) && keyboard.hasAlt && keyboard.hasCtrl) {
             return shiftaltctrltext;
         }
-        if (keyboard && keyboard.hasShift && keyboard.hasAlt) {
+        if ((keyboard.hasShift || keyboard.hasCaps) && keyboard.hasAlt) {
             return shiftalttext;
         }
-        if (keyboard && keyboard.hasShift && keyboard.hasCtrl) {
+        if ((keyboard.hasShift || keyboard.hasCaps) && keyboard.hasCtrl) {
             return shiftctrltext;
         }
-        if (keyboard && keyboard.hasAlt && keyboard.hasCtrl) {
+        if (keyboard.hasAlt && keyboard.hasCtrl) {
             return altctrltext;
         }
-        if (keyboard && keyboard.hasShift) {
+        if (keyboard.hasShift || keyboard.hasCaps) {
             return shifttext;
         }
-        if (keyboard && keyboard.hasAlt) {
+        if (keyboard.hasAlt) {
             return alttext;
         }
-        if (keyboard && keyboard.hasCtrl) {
+        if (keyboard.hasCtrl) {
             return ctrltext;
         }
         return text;
@@ -95,12 +98,11 @@ Button {
         }
     }
 
-    text: getText()
     focusPolicy: Qt.NoFocus
     flat: true
 
     contentItem: Text {
-        text: root.text
+        text: getText()
         font: root.font
         opacity: enabled ? 1.0 : 0.3
         color: "black"

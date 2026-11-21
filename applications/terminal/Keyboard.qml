@@ -84,6 +84,15 @@ Item {
             Row {
                 spacing: parent.spacing
                 anchors.horizontalCenter: parent.horizontalCenter
+                KeyboardKey {
+                    text: "⇑ CapsLock"; key: Qt.Key_CapsLock; size: 2; checkable: true; keyboard: keyboard
+                    borderWidth: this.checked ? 3 : 1
+                    checked: keyboard.hasCaps
+                    onClick: {
+                        keyboard.hasCaps = !keyboard.hasCaps
+                        return true;
+                    }
+                }
                 KeyboardKey { text: "a"; shifttext: "A"; keyboard: keyboard }
                 KeyboardKey { text: "s"; shifttext: "S"; keyboard: keyboard }
                 KeyboardKey { text: "d"; shifttext: "D"; keyboard: keyboard }
@@ -94,6 +103,7 @@ Item {
                 KeyboardKey { text: "k"; shifttext: "K"; keyboard: keyboard }
                 KeyboardKey { text: "l"; shifttext: "L"; keyboard: keyboard }
                 KeyboardKey { text: "Enter"; size: 2; key: Qt.Key_Enter; keyboard: keyboard }
+                Item { width: 90*2; height: 1 }
             }
             Row {
                 spacing: parent.spacing
