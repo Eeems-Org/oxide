@@ -1,0 +1,117 @@
+const std = @import("std");
+const builtin = @import("builtin");
+const Allocator = std.mem.Allocator;
+const testing = std.testing;
+
+/// Search for "cmd" in the PATH and return the absolute path. This will
+/// always allocate if there is a non-null result. The caller must free the
+/// resulting value.
+pub fn expand(
+    io: std.Io,
+    alloc: Allocator,
+    environ_map: *const std.process.Environ.Map,
+    cmd: []const u8,
+) !?[]u8 {
+    // If the command already contains a slash, then we return it as-is
+    // because it is assumed to be absolute or relative.
+    if (std.mem.indexOfScalar(u8, cmd, '/') != null) {
+        return try alloc.dupe(u8, cmd);
+    }
+
+    const PATH = environ_map.get("PATH") orelse return null;
+
+    var path_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    var it = std.mem.tokenizeScalar(u8, PATH, std.fs.path.delimiter);
+    var seen_eacces = false;
+    while (it.next()) |search_path| {
+        // We need enough space in our path buffer to store this
+        const path_len = search_path.len + cmd.len + 1;
+        if (path_buf.len <= path_len) return error.PathTooLong;
+
+        // Copy in the full path
+        @memcpy(path_buf[0..search_path.len], search_path);
+        path_buf[search_path.len] = std.fs.path.sep;
+        @memcpy(path_buf[search_path.len + 1 ..][0..cmd.len], cmd);
+        path_buf[path_len] = 0;
+        const full_path = path_buf[0..path_len :0];
+
+        // Stat it
+        const f = std.Io.Dir.cwd().openFile(
+            io,
+            full_path,
+            .{},
+        ) catch |err| switch (err) {
+            error.FileNotFound => continue,
+            error.AccessDenied => {
+                // Accumulate this and return it later so we can try other
+                // paths that we have access to.
+                seen_eacces = true;
+                continue;
+            },
+            else => return err,
+        };
+        defer f.close(io);
+        const stat = try f.stat(io);
+        if (stat.kind != .directory and isExecutable(stat.permissions)) {
+            return try alloc.dupe(u8, full_path);
+        }
+    }
+
+    if (seen_eacces) return error.AccessDenied;
+
+    return null;
+}
+
+fn isExecutable(perms: std.Io.File.Permissions) bool {
+    return switch (builtin.target.os.tag) {
+        .windows => true,
+        else => posix: {
+            break :posix switch (std.posix.mode_t) {
+                u0 => true,
+                else => perms.toMode() & 0o0111 != 0,
+            };
+        },
+    };
+}
+
+// `uname -n` is the *nix equivalent of `hostname.exe` on Windows
+test "expand: hostname" {
+    var environ_map = try testing.environ.createMap(testing.allocator);
+    defer environ_map.deinit();
+    const executable = if (builtin.target.os.tag == .windows) "hostname.exe" else "uname";
+    const path = (try expand(testing.io, testing.allocator, &environ_map, executable)).?;
+    defer testing.allocator.free(path);
+    try testing.expect(path.len > executable.len);
+}
+
+test "expand: does not exist" {
+    var environ_map = try testing.environ.createMap(testing.allocator);
+    defer environ_map.deinit();
+    const path = try expand(testing.io, testing.allocator, &environ_map, "thisreallyprobablydoesntexist123");
+    try testing.expect(path == null);
+}
+
+test "expand: slash" {
+    var environ_map = try testing.environ.createMap(testing.allocator);
+    defer environ_map.deinit();
+    const path = (try expand(testing.io, testing.allocator, &environ_map, "foo/env")).?;
+    defer testing.allocator.free(path);
+    try testing.expect(path.len == 7);
+}
+
+test "expand: reject path without room for null terminator" {
+    var environ_map: std.process.Environ.Map =
+        .init(testing.allocator);
+    defer environ_map.deinit();
+
+    // The directory, separator and command exactly fill the buffer,
+    // leaving no room for the null terminator.
+    var search_path: [std.Io.Dir.max_path_bytes - "/x".len]u8 = undefined;
+    @memset(&search_path, 'a');
+    try environ_map.put("PATH", &search_path);
+
+    try testing.expectError(
+        error.PathTooLong,
+        expand(testing.io, testing.allocator, &environ_map, "x"),
+    );
+}

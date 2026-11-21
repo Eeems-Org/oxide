@@ -1,0 +1,1281 @@
+const std = @import("std");
+const assert = @import("../quirks.zig").inlineAssert;
+const testing = std.testing;
+
+const size = @import("size.zig");
+const Offset = size.Offset;
+const OffsetBuf = size.OffsetBuf;
+
+/// A reference counted set.
+///
+/// This set is created with some capacity in mind. You can determine
+/// the exact memory requirement of a given capacity by calling `layout`
+/// and checking the total size.
+///
+/// When the set is full, adding returns `OutOfMemory` and the caller
+/// decides what to do, usually by growing the set.
+///
+/// Each item has a reference count. Call `release` once for every
+/// reference you no longer need. An item whose count reaches zero is dead.
+/// `lookup` won't find it, and a later `add` may give its ID to a
+/// different value.
+///
+/// ```zig
+/// const id = try set.add(base, value); // count is 1
+/// set.use(base, id); // count is 2
+/// set.release(base, id); // count is 1
+/// set.release(base, id); // count is 0, the item is dead
+/// ```
+///
+/// Dead items are removed later, when the set needs their ID or their
+/// slot in the table. The context's `deleted` callback runs then.
+///
+/// The backing data structure of this set is an open addressed hash table
+/// with linear probing and Robin Hood hashing, and a flat array of items.
+///
+/// The table maps values to item IDs, which are indices in the item array
+/// which contain the item's value and its reference count. Item IDs can be
+/// used to efficiently access an item and update its reference count after
+/// it has been added to the table, to avoid having to use the hash map to
+/// look the value back up.
+///
+/// ID 0 is reserved and will never be assigned.
+///
+/// Parameters:
+///
+/// `Context`
+///   A type containing methods to define behaviors.
+///
+///   - `fn hash(*Context, T) u64`    - Return a hash for an item.
+///
+///   - `fn eql(*Context, T, T) bool` - Check two items for equality.
+///     The first of the two items passed in is guaranteed to be from
+///     a value passed in to an `add` or `lookup` function, the second
+///     is guaranteed to be a value already resident in the set.
+///
+///   - `fn deleted(*Context, T) void` - [OPTIONAL] Deletion callback.
+///     If present, called whenever an item is finally deleted.
+///     Useful if the item has memory that needs to be freed.
+///
+pub fn RefCountedSet(
+    comptime T: type,
+    comptime IdT: type,
+    comptime RefCountInt: type,
+    comptime ContextT: type,
+) type {
+    return struct {
+        const Self = @This();
+
+        pub const base_align: std.mem.Alignment = .fromByteUnits(@max(
+            @alignOf(Context),
+            @alignOf(Layout),
+            @alignOf(Item),
+            @alignOf(Id),
+        ));
+
+        /// This is the max load until the set returns OutOfMemory and
+        /// requires more capacity.
+        ///
+        /// Experimentally, this load factor works quite well.
+        pub const load_factor = 0.8125;
+
+        /// Returns the minimum capacity needed to store `n` items,
+        /// accounting for the load factor and the reserved ID 0.
+        pub fn capacityForCount(n: usize) usize {
+            if (n == 0) return 0;
+            // +1 because ID 0 is reserved, so we need at least n+1 slots.
+            return @intFromFloat(@ceil(@as(f64, @floatFromInt(n + 1)) / load_factor));
+        }
+
+        /// Set item
+        pub const Item = struct {
+            /// The value this item represents.
+            value: T = undefined,
+
+            /// Metadata for this item.
+            meta: Metadata = .{},
+
+            pub const Metadata = struct {
+                /// The bucket in the hash table where this item
+                /// is referenced.
+                ///
+                /// Items that are not in the table keep the default,
+                /// but that is not a reliable sentinel: when the table
+                /// has `maxInt(Id) + 1` buckets it is also the last
+                /// bucket. See `deleteItem`.
+                bucket: Id = std.math.maxInt(Id),
+
+                /// The length of the probe sequence between this
+                /// item's starting bucket and the bucket it's in,
+                /// used for Robin Hood hashing.
+                psl: Id = 0,
+
+                /// The reference count for this item.
+                ref: RefCountInt = 0,
+            };
+        };
+
+        // Re-export these types so they can be referenced by the caller.
+        pub const Id = IdT;
+        pub const Context = ContextT;
+
+        /// A hash table of item indices
+        table: Offset(Id),
+
+        /// By keeping track of the max probe sequence length
+        /// we can bail out early when looking up values that
+        /// aren't present.
+        max_psl: Id = 0,
+
+        /// We keep track of how many items have a PSL of any
+        /// given length, so that we can shrink max_psl when
+        /// we delete items.
+        ///
+        /// A probe sequence of length 32 or more is astronomically
+        /// unlikely. Roughly a (1/table_cap)^32 -- with any normal
+        /// table capacity that is so unlikely that it's not worth
+        /// handling.
+        ///
+        /// However, that assumes a uniform hash function, which
+        /// is not guaranteed and can be subverted with a crafted
+        /// input. We handle this gracefully by returning an error
+        /// anywhere where we're about to insert if there's any
+        /// item with a PSL in the last slot of the stats array.
+        psl_stats: [32]Id = @splat(0),
+
+        /// The backing store of items
+        items: Offset(Item),
+
+        /// The number of living items currently stored in the set.
+        living: usize = 0,
+
+        /// The next index to store an item at.
+        /// Id 0 is reserved for unused items.
+        next_id: Id = 1,
+
+        /// Where `reclaimDeadId` resumes searching, so repeated calls
+        /// don't rescan the same live items.
+        free_cursor: Id = 1,
+
+        layout: Layout,
+
+        /// An instance of the context structure.
+        context: Context,
+
+        pub const Layout = struct {
+            cap: usize,
+            table_cap: usize,
+            table_mask: Id,
+            table_start: usize,
+            items_start: usize,
+            total_size: usize,
+
+            /// Returns the memory layout for the given base offset and
+            /// desired capacity. The layout can be used by the caller to
+            /// determine how much memory to allocate, and the layout must
+            /// be used to initialize the set so that the set knows all
+            /// the offsets for the various buffers.
+            ///
+            /// The capacity passed for cap will be used for the hash table,
+            /// which has a load factor of `0.8125` (13/16), so the number of
+            /// items which can actually be stored in the set will be smaller.
+            ///
+            /// The laid out capacity will be at least `cap`, but may be higher,
+            /// since it is rounded up to the next power of 2 for efficiency.
+            ///
+            /// The returned layout `cap` property will be 1 more than the number
+            /// of items that the set can actually store, since ID 0 is reserved.
+            pub fn init(cap: usize) Layout {
+                assert(cap <= @as(usize, @intCast(std.math.maxInt(Id))) + 1);
+
+                // Zero-cap set is valid, return special case
+                if (cap == 0) return .{
+                    .cap = 0,
+                    .table_cap = 0,
+                    .table_mask = 0,
+                    .table_start = 0,
+                    .items_start = 0,
+                    .total_size = 0,
+                };
+
+                const table_cap: usize = std.math.ceilPowerOfTwoAssert(usize, cap);
+                const items_cap: usize = @intFromFloat(load_factor * @as(f64, @floatFromInt(table_cap)));
+
+                const table_mask: Id = @intCast((@as(usize, 1) << std.math.log2_int(usize, table_cap)) - 1);
+
+                const table_start = 0;
+                const table_end = table_start + table_cap * @sizeOf(Id);
+
+                const items_start = std.mem.alignForward(usize, table_end, @alignOf(Item));
+                const items_end = items_start + items_cap * @sizeOf(Item);
+
+                const total_size = items_end;
+
+                return .{
+                    .cap = items_cap,
+                    .table_cap = table_cap,
+                    .table_mask = table_mask,
+                    .table_start = table_start,
+                    .items_start = items_start,
+                    .total_size = total_size,
+                };
+            }
+        };
+
+        pub fn init(base: OffsetBuf, l: Layout, context: Context) Self {
+            const table = base.member(Id, l.table_start);
+            const items = base.member(Item, l.items_start);
+
+            @memset(table.ptr(base)[0..l.table_cap], 0);
+            @memset(items.ptr(base)[0..l.cap], .{});
+
+            return initFromParts(table, items, l, context);
+        }
+
+        /// Like `init`, but for backing memory that the caller guarantees
+        /// is already zero-filled (e.g. fresh OS pages). This writes
+        /// nothing to the backing buffer, so the OS pages behind the table
+        /// and items stay untouched until the first `add`.
+        ///
+        /// Behavior is undefined if the backing memory is not zero.
+        pub fn initAssumeZeroed(base: OffsetBuf, l: Layout, context: Context) Self {
+            return initFromParts(
+                base.member(Id, l.table_start),
+                base.member(Item, l.items_start),
+                l,
+                context,
+            );
+        }
+
+        fn initFromParts(
+            table: Offset(Id),
+            items: Offset(Item),
+            l: Layout,
+            context: Context,
+        ) Self {
+            return .{
+                .table = table,
+                .items = items,
+                .layout = l,
+                .context = context,
+            };
+        }
+
+        /// Possible errors for `add` and `addWithId`.
+        pub const AddError = error{
+            /// There is no room for a new item. Grow the set and add the
+            /// items again.
+            OutOfMemory,
+
+            /// No ID is free and no dead ID could be reused. Rebuild the
+            /// set at the same capacity to free them. `add` reuses dead
+            /// IDs itself, so this means the set's bookkeeping is wrong.
+            /// Safe builds panic instead of returning it.
+            NeedsRehash,
+        };
+
+        /// Add `value` to the set and take one reference to it. Returns its ID.
+        ///
+        /// If an equal value is already present, this returns its ID. The set
+        /// keeps its existing copy, so the context's `deleted` callback runs
+        /// on the `value` you passed in.
+        ///
+        /// A new value may take the ID of a dead item at any time: dead items
+        /// at the end of the IDs are freed first, and a dead item in the new
+        /// value's probe sequence can give up its ID. Once every ID has been
+        /// handed out, new values always reuse the ID of a dead item. If
+        /// fewer than 10% of IDs are dead, this returns `OutOfMemory`.
+        ///
+        /// This also returns `OutOfMemory` if a probe sequence in the table is
+        /// about to get too long, which only a poor hash or crafted input
+        /// causes. Growing the set spreads the values over more buckets.
+        ///
+        /// ```zig
+        /// const a = try set.add(base, 1);
+        /// const b = try set.add(base, 1); // same value, so b == a
+        /// set.release(base, a);
+        /// set.release(base, b); // dead, so a later add may reuse its ID
+        /// ```
+        pub fn add(self: *Self, base: anytype, value: T) AddError!Id {
+            return try self.addContext(base, value, self.context);
+        }
+        pub fn addContext(self: *Self, base: anytype, value: T, ctx: Context) AddError!Id {
+            const items = self.items.ptr(base);
+
+            // Trim dead items from the end of the list.
+            while (self.next_id > 1 and items[self.next_id - 1].meta.ref == 0) {
+                self.next_id -= 1;
+                self.deleteItem(base, self.next_id, ctx);
+            }
+
+            // If the item already exists, return it.
+            if (self.lookupContext(base, value, ctx)) |id| {
+                // Notify the context that the value is "deleted" because
+                // we're reusing the existing value in the set. This allows
+                // callers to clean up any resources associated with the value.
+                if (comptime @hasDecl(Context, "deleted")) ctx.deleted(value);
+
+                items[id].meta.ref += 1;
+                return id;
+            }
+
+            // While it should be statistically impossible to exceed the
+            // bounds of `psl_stats`, the hash function is not perfect and
+            // in such a case we want to remain stable. If we're about to
+            // insert an item and there's something with a PSL of `len - 1`,
+            // we may end up with a PSL of `len` which would exceed the bounds.
+            // In such a case, we claim to be out of memory.
+            if (self.psl_stats[self.psl_stats.len - 1] > 0) {
+                @branchHint(.cold);
+                return AddError.OutOfMemory;
+            }
+
+            // If the item doesn't exist, we need an available ID.
+            if (self.next_id >= self.layout.cap) {
+                // Every ID is taken. Reuse a dead one if at least 10% are
+                // dead. Otherwise ask the caller to grow, since we would
+                // run out again almost immediately. 90% is arbitrary.
+                const reuse_threshold = 0.9;
+                if (self.living < @as(Id, @intFromFloat(@as(f64, @floatFromInt(self.layout.cap)) * reuse_threshold))) {
+                    // The trim at the top leaves the last ID live, so a
+                    // dead ID must exist below it.
+                    const dead_id = self.reclaimDeadId(base, ctx) orelse {
+                        @branchHint(.cold);
+
+                        // Only possible if `living` is wrong. Fail loudly
+                        // in safe builds. Release builds recover by
+                        // asking the caller to rehash.
+                        if (comptime std.debug.runtime_safety) assert(false);
+                        return AddError.NeedsRehash;
+                    };
+
+                    const id = self.insert(base, value, dead_id, ctx);
+                    items[id].meta.ref += 1;
+                    assert(items[id].meta.ref == 1);
+                    self.living += 1;
+
+                    // `insert` may reuse a smaller dead ID it reaped on its
+                    // way, leaving `dead_id` dead and out of the table.
+                    // Reclaim it next.
+                    if (id != dead_id) self.free_cursor = dead_id;
+
+                    return id;
+                }
+
+                // If we don't have at least 10% dead items then
+                // we claim we're out of memory.
+                return AddError.OutOfMemory;
+            }
+
+            const id = self.insert(base, value, self.next_id, ctx);
+            items[id].meta.ref += 1;
+            assert(items[id].meta.ref == 1);
+            self.living += 1;
+
+            // Its possible insert returns a different ID by reusing a
+            // dead item so we only need to update next id if we used it.
+            if (id == self.next_id) self.next_id += 1;
+
+            return id;
+        }
+
+        /// Add an item to the set if not present and increment its
+        /// ref count. If possible, use the provided ID.
+        ///
+        /// Returns the item's ID, or null if the provided ID was used.
+        ///
+        /// If the set has no more room, then an OutOfMemory error is returned.
+        pub fn addWithId(self: *Self, base: anytype, value: T, id: Id) AddError!?Id {
+            return try self.addWithIdContext(base, value, id, self.context);
+        }
+        pub fn addWithIdContext(self: *Self, base: anytype, value: T, id: Id, ctx: Context) AddError!?Id {
+            const items = self.items.ptr(base);
+
+            assert(id > 0);
+
+            if (id < self.next_id) {
+                if (items[id].meta.ref == 0) {
+                    // Requested ID is dead, but if the value exists not under
+                    // another ID then ref count that and increase the ID.
+                    if (self.lookupContext(base, value, ctx)) |existing_id| {
+                        // Notify the context that the value is "deleted"
+                        // because we're reusing the existing value in the
+                        // set. This allows callers to clean up any
+                        // resources associated with the value.
+                        if (comptime @hasDecl(Context, "deleted")) ctx.deleted(value);
+
+                        items[existing_id].meta.ref += 1;
+                        return existing_id;
+                    }
+
+                    // See comment in `addContext` for details.
+                    if (self.psl_stats[self.psl_stats.len - 1] > 0) {
+                        @branchHint(.cold);
+                        return AddError.OutOfMemory;
+                    }
+
+                    self.deleteItem(base, id, ctx);
+                    const added_id = self.insert(base, value, id, ctx);
+
+                    items[added_id].meta.ref += 1;
+
+                    self.living += 1;
+
+                    return if (added_id == id) null else added_id;
+                } else if (ctx.eql(value, items[id].value)) {
+                    // Notify the context that the value is "deleted" because
+                    // we're reusing the existing value in the set. This allows
+                    // callers to clean up any resources associated with the value.
+                    if (comptime @hasDecl(Context, "deleted")) ctx.deleted(value);
+
+                    items[id].meta.ref += 1;
+
+                    return null;
+                }
+            }
+
+            return try self.addContext(base, value, ctx);
+        }
+
+        /// Increment an item's reference count by 1.
+        ///
+        /// Asserts that the item's reference count is greater than 0.
+        pub fn use(self: *const Self, base: anytype, id: Id) void {
+            assert(id > 0);
+            assert(id < self.layout.cap);
+
+            const items = self.items.ptr(base);
+            const item = &items[id];
+
+            // If `use` is being called on an item with 0 references, then
+            // either someone forgot to call it before, released too early
+            // or lied about releasing. In any case something is wrong and
+            // shouldn't be allowed.
+            assert(item.meta.ref > 0);
+
+            item.meta.ref += 1;
+        }
+
+        /// Increment an item's reference count by a specified number.
+        ///
+        /// Asserts that the item's reference count is greater than 0.
+        pub fn useMultiple(self: *const Self, base: anytype, id: Id, n: RefCountInt) void {
+            assert(id > 0);
+            assert(id < self.layout.cap);
+
+            const items = self.items.ptr(base);
+            const item = &items[id];
+
+            // If `use` is being called on an item with 0 references, then
+            // either someone forgot to call it before, released too early
+            // or lied about releasing. In any case something is wrong and
+            // shouldn't be allowed.
+            assert(item.meta.ref > 0);
+
+            item.meta.ref += n;
+        }
+
+        /// Get an item by its ID without incrementing its reference count.
+        ///
+        /// Asserts that the item's reference count is greater than 0.
+        pub fn get(self: *const Self, base: anytype, id: Id) *T {
+            assert(id > 0);
+            assert(id < self.layout.cap);
+
+            const items = self.items.ptr(base);
+            const item = &items[id];
+
+            assert(item.meta.ref > 0);
+
+            return @ptrCast(&item.value);
+        }
+
+        /// Releases a reference to an item by its ID.
+        ///
+        /// Asserts that the item's reference count is greater than 0.
+        pub fn release(self: *Self, base: anytype, id: Id) void {
+            assert(id > 0);
+            assert(id < self.layout.cap);
+
+            const items = self.items.ptr(base);
+            const item = &items[id];
+
+            assert(item.meta.ref > 0);
+            item.meta.ref -= 1;
+            if (item.meta.ref == 0) self.living -= 1;
+        }
+
+        /// Release a specified number of references to an item by its ID.
+        ///
+        /// Asserts that `n` is greater than 0 and that the item's
+        /// reference count is at least `n`.
+        pub fn releaseMultiple(self: *Self, base: anytype, id: Id, n: Id) void {
+            assert(id > 0);
+            assert(id < self.layout.cap);
+
+            // Releasing zero references from a dead item would count
+            // it as dying again and undercount `living`.
+            assert(n > 0);
+
+            const items = self.items.ptr(base);
+            const item = &items[id];
+
+            assert(item.meta.ref >= n);
+            item.meta.ref -= n;
+
+            if (item.meta.ref == 0) {
+                self.living -= 1;
+            }
+        }
+
+        /// Get the ref count for an item by its ID.
+        pub fn refCount(self: *const Self, base: anytype, id: Id) RefCountInt {
+            assert(id > 0);
+            assert(id < self.layout.cap);
+
+            const items = self.items.ptr(base);
+            const item = &items[id];
+            return item.meta.ref;
+        }
+
+        /// Get the current number of non-dead items in the set.
+        pub fn count(self: *const Self) usize {
+            return self.living;
+        }
+
+        /// A live entry returned by `Iterator`.
+        pub const Entry = struct {
+            id: Id,
+            value_ptr: *T,
+        };
+
+        /// Iterates live entries in ascending ID order.
+        ///
+        /// Released entries whose reference count reached zero are skipped.
+        /// Any mutation of the set invalidates the iterator.
+        pub const Iterator = struct {
+            items: [*]Item,
+            id: Id = 1,
+            end: Id,
+
+            pub fn next(self: *Iterator) ?Entry {
+                while (self.id < self.end) {
+                    const id = self.id;
+                    self.id += 1;
+
+                    const item = &self.items[id];
+                    if (item.meta.ref == 0) continue;
+
+                    return .{
+                        .id = id,
+                        .value_ptr = &item.value,
+                    };
+                }
+
+                return null;
+            }
+        };
+
+        /// Return an iterator over the live entries in this set.
+        pub fn iterator(self: *const Self, base: anytype) Iterator {
+            return .{
+                .items = self.items.ptr(base),
+                .end = self.next_id,
+            };
+        }
+
+        /// Remove a dead item from the table and return its ID for reuse,
+        /// or null if every ID is live. Searches from `free_cursor`,
+        /// wrapping around.
+        fn reclaimDeadId(self: *Self, base: anytype, ctx: Context) ?Id {
+            const items = self.items.ptr(base);
+
+            var id: Id = self.free_cursor;
+            for (1..self.next_id) |_| {
+                if (id == 0 or id >= self.next_id) id = 1;
+                if (items[id].meta.ref == 0) {
+                    // Does nothing if the item already left the table.
+                    self.deleteItem(base, id, ctx);
+                    self.free_cursor = id +% 1;
+                    return id;
+                }
+                id +%= 1;
+            }
+
+            return null;
+        }
+
+        /// Delete an item, removing any references from
+        /// the table, and freeing its ID to be reused.
+        fn deleteItem(self: *Self, base: anytype, id: Id, ctx: Context) void {
+            const table = self.table.ptr(base);
+            const items = self.items.ptr(base);
+
+            const item = items[id];
+
+            // Do nothing if the item already left the table, for example
+            // because `insert` reaped it. Its bucket is then the default,
+            // but with `table_cap = maxInt(Id) + 1` the default is also a
+            // real bucket, so check that the table points back at us. An
+            // ID is in the table at most once, and only at its bucket.
+            if (item.meta.bucket >= self.layout.table_cap or
+                table[item.meta.bucket] != id)
+            {
+                assert(item.meta.bucket == std.math.maxInt(Id));
+                return;
+            }
+
+            if (comptime @hasDecl(Context, "deleted")) {
+                // Inform the context struct that we're
+                // deleting the dead item's value for good.
+                ctx.deleted(item.value);
+            }
+
+            self.psl_stats[item.meta.psl] -= 1;
+            table[item.meta.bucket] = 0;
+            items[id] = .{};
+
+            var p: Id = item.meta.bucket;
+            var n: Id = (p +% 1) & self.layout.table_mask;
+
+            while (table[n] != 0 and items[table[n]].meta.psl > 0) {
+                items[table[n]].meta.bucket = p;
+                self.psl_stats[items[table[n]].meta.psl] -= 1;
+                items[table[n]].meta.psl -= 1;
+                self.psl_stats[items[table[n]].meta.psl] += 1;
+                table[p] = table[n];
+                p = n;
+                n = (p +% 1) & self.layout.table_mask;
+            }
+
+            while (self.max_psl > 0 and self.psl_stats[self.max_psl] == 0) {
+                self.max_psl -= 1;
+            }
+
+            table[p] = 0;
+
+            self.assertIntegrity(base, ctx);
+        }
+
+        /// Find an item in the table and return its ID.
+        /// If the item does not exist in the table, null is returned.
+        pub fn lookup(self: *const Self, base: anytype, value: T) ?Id {
+            return self.lookupContext(base, value, self.context);
+        }
+        pub fn lookupContext(self: *const Self, base: anytype, value: T, ctx: Context) ?Id {
+            // A zero-capacity set (a valid special case of Layout.init)
+            // contains nothing and has a zero-size table, so we can't
+            // probe it: table[0] would read whatever memory follows the
+            // set in the backing buffer.
+            if (self.layout.table_cap == 0) {
+                @branchHint(.cold);
+                return null;
+            }
+
+            const table = self.table.ptr(base);
+            const items = self.items.ptr(base);
+
+            const hash: u64 = ctx.hash(value);
+
+            for (0..self.max_psl + 1) |i| {
+                const p: usize = @intCast((hash +% i) & self.layout.table_mask);
+                const id = table[p];
+
+                // Empty bucket, our item cannot have probed to
+                // any point after this, meaning it's not present.
+                if (id == 0) {
+                    return null;
+                }
+
+                const item = items[id];
+
+                // An item with a shorter probe sequence length would never
+                // end up in the middle of another sequence, since it would
+                // be swapped out if inserted before the new sequence, and
+                // would not be swapped in if inserted afterwards.
+                //
+                // As such, our item cannot be present.
+                if (item.meta.psl < i) {
+                    return null;
+                }
+
+                // If the item is a part of the same probe sequence,
+                // we make sure it's not dead and then check to see
+                // if it matches the value we're looking for.
+                if (item.meta.psl == i and
+                    item.meta.ref > 0 and
+                    ctx.eql(value, item.value))
+                {
+                    return id;
+                }
+            }
+
+            return null;
+        }
+
+        /// Insert the given value into the hash table with the given ID.
+        ///
+        /// If runtime safety is enabled, asserts that
+        /// the value is not already present in the table.
+        fn insert(self: *Self, base: anytype, value: T, new_id: Id, ctx: Context) Id {
+            if (comptime std.debug.runtime_safety)
+                assert(self.lookupContext(base, value, ctx) == null);
+
+            const table = self.table.ptr(base);
+            const items = self.items.ptr(base);
+
+            // The new item that we'll put in to the table.
+            var new_item: Item = .{
+                .value = value,
+                .meta = .{ .psl = 0, .ref = 0 },
+            };
+
+            const hash: u64 = ctx.hash(value);
+
+            var held_id: Id = new_id;
+            var held_item: *Item = &new_item;
+
+            var chosen_id: Id = new_id;
+
+            for (0..self.layout.table_cap - 1) |i| {
+                const p: Id = @intCast((hash +% i) & self.layout.table_mask);
+                const id = table[p];
+
+                // Empty bucket, put our held item in to it and break.
+                if (id == 0) {
+                    table[p] = held_id;
+                    held_item.meta.bucket = p;
+                    self.psl_stats[held_item.meta.psl] += 1;
+                    self.max_psl = @max(self.max_psl, held_item.meta.psl);
+                    break;
+                }
+
+                const item = &items[id];
+
+                // If there's a dead item then we resurrect it
+                // for our value so that we can reuse its ID,
+                // unless its ID is greater than the one we're
+                // given (i.e. prefer smaller IDs).
+                //
+                // Only take its bucket if the held item may displace
+                // it anyway. A dead item with a longer PSL may sit in
+                // the middle of other items' probe sequences, and
+                // putting a shorter PSL there makes `lookup` stop
+                // early and miss them.
+                if (item.meta.ref == 0 and
+                    item.meta.psl <= held_item.meta.psl)
+                {
+                    // Dead items aren't super common relative
+                    // to other places to insert/swap the held
+                    // item in to the set.
+                    @branchHint(.unlikely);
+
+                    if (comptime @hasDecl(Context, "deleted")) {
+                        // Inform the context struct that we're
+                        // deleting the dead item's value for good.
+                        ctx.deleted(item.value);
+                    }
+
+                    // Reap the dead item.
+                    self.psl_stats[item.meta.psl] -= 1;
+                    item.* = .{};
+
+                    // Only resurrect this item if it has a
+                    // smaller id than the one we were given.
+                    if (id < new_id) chosen_id = id;
+
+                    // Put the currently held item in to the
+                    // bucket of the item that we just reaped.
+                    table[p] = held_id;
+                    held_item.meta.bucket = p;
+                    self.psl_stats[held_item.meta.psl] += 1;
+                    self.max_psl = @max(self.max_psl, held_item.meta.psl);
+
+                    break;
+                }
+
+                // If this item has a lower PSL, or has equal PSL and lower ref
+                // count, then we swap it out with our held item. By doing this,
+                // items with high reference counts are prioritized for earlier
+                // placement. The assumption is that an item which has a higher
+                // reference count will be accessed more frequently, so we want
+                // to minimize the time it takes to find it.
+                if (item.meta.psl < held_item.meta.psl or
+                    item.meta.psl == held_item.meta.psl and
+                        item.meta.ref < held_item.meta.ref)
+                {
+                    // Put our held item in the bucket.
+                    table[p] = held_id;
+                    held_item.meta.bucket = p;
+                    self.psl_stats[held_item.meta.psl] += 1;
+                    self.max_psl = @max(self.max_psl, held_item.meta.psl);
+
+                    // Pick up the item that has a lower PSL.
+                    held_id = id;
+                    held_item = item;
+                    self.psl_stats[item.meta.psl] -= 1;
+                }
+
+                // Advance to the next probe position for our held item.
+                held_item.meta.psl += 1;
+            }
+
+            // Our chosen ID may have changed if we decided
+            // to reuse a dead item's ID, so we make sure
+            // the chosen bucket contains the correct ID.
+            table[new_item.meta.bucket] = chosen_id;
+
+            // Finally place our new item in to our array.
+            items[chosen_id] = new_item;
+
+            self.assertIntegrity(base, ctx);
+
+            return chosen_id;
+        }
+
+        fn assertIntegrity(
+            self: *const Self,
+            base: anytype,
+            ctx: Context,
+        ) void {
+            // Disabled because this is excessively slow, only enable
+            // if debugging a RefCountedSet issue or modifying its logic.
+            if (false and std.debug.runtime_safety) {
+                const table = self.table.ptr(base);
+                const items = self.items.ptr(base);
+
+                var psl_stats: [32]Id = @splat(0);
+
+                // Start at item 1 because item 0 is reserved and never
+                // assigned to. Its metadata doesn't matter.
+                for (items[1..self.next_id], 1..) |item, id| {
+                    if (item.meta.bucket < std.math.maxInt(Id)) {
+                        assert(table[item.meta.bucket] == id);
+                        psl_stats[item.meta.psl] += 1;
+                    }
+                }
+
+                std.testing.expectEqualSlices(Id, &psl_stats, &self.psl_stats) catch assert(false);
+
+                assert(std.mem.eql(Id, &psl_stats, &self.psl_stats));
+
+                psl_stats = @splat(0);
+
+                for (table[0..self.layout.table_cap], 0..) |id, bucket| {
+                    if (id == 0) continue;
+                    const item = items[id];
+                    if (item.meta.bucket < std.math.maxInt(Id)) {
+                        assert(item.meta.bucket == bucket);
+
+                        const hash: u64 = ctx.hash(item.value);
+                        const p: usize = @intCast((hash +% item.meta.psl) & self.layout.table_mask);
+                        assert(p == bucket);
+
+                        psl_stats[item.meta.psl] += 1;
+                    }
+                }
+
+                std.testing.expectEqualSlices(Id, &psl_stats, &self.psl_stats) catch assert(false);
+            }
+        }
+    };
+}
+
+test "addWithId dead id resolving to an existing value" {
+    const alloc = testing.allocator;
+    const TestSet = RefCountedSet(
+        u32,
+        u16,
+        u16,
+        struct {
+            pub fn hash(_: *const @This(), value: u32) u64 {
+                return std.hash.int(value);
+            }
+
+            pub fn eql(_: *const @This(), a: u32, b: u32) bool {
+                return a == b;
+            }
+        },
+    );
+
+    const layout: TestSet.Layout = .init(8);
+    const buf = try alloc.alignedAlloc(
+        u8,
+        TestSet.base_align,
+        layout.total_size,
+    );
+    defer alloc.free(buf);
+
+    var set: TestSet = .init(.init(buf), layout, .{});
+
+    // Create a dead item between two live ones so that it can't
+    // be reaped by the trim loop in `add`, then release it. This
+    // mirrors a page style set after a styled run is erased.
+    const live = try set.add(buf, 11);
+    const released = try set.add(buf, 22);
+    const last = try set.add(buf, 33);
+    set.release(buf, released);
+    try testing.expectEqual(@as(usize, 2), set.count());
+
+    // Request the dead ID for a value that is already live under
+    // a different ID: we must resolve to the existing item and
+    // take a reference, without changing the living count.
+    const resolved = (try set.addWithId(buf, 11, released)).?;
+    try testing.expectEqual(live, resolved);
+    try testing.expectEqual(@as(u16, 2), set.refCount(buf, live));
+    try testing.expectEqual(@as(usize, 2), set.count());
+
+    // The living count must agree with the iterator.
+    var it = set.iterator(buf);
+    var iterated: usize = 0;
+    while (it.next()) |_| iterated += 1;
+    try testing.expectEqual(set.count(), iterated);
+
+    // The dead slot is still reusable for a value that is not
+    // in the set: the requested ID must be used (null return).
+    try testing.expectEqual(@as(?u16, null), try set.addWithId(buf, 44, released));
+    try testing.expectEqual(@as(u16, 1), set.refCount(buf, released));
+    try testing.expectEqual(@as(usize, 3), set.count());
+
+    _ = last;
+}
+
+test "iterator visits live entries in ID order" {
+    const alloc = testing.allocator;
+    const TestSet = RefCountedSet(
+        u32,
+        u16,
+        u16,
+        struct {
+            pub fn hash(_: *const @This(), value: u32) u64 {
+                return std.hash.int(value);
+            }
+
+            pub fn eql(_: *const @This(), a: u32, b: u32) bool {
+                return a == b;
+            }
+        },
+    );
+
+    const layout: TestSet.Layout = .init(8);
+    const buf = try alloc.alignedAlloc(
+        u8,
+        TestSet.base_align,
+        layout.total_size,
+    );
+    defer alloc.free(buf);
+
+    var set: TestSet = .init(.init(buf), layout, .{});
+    const first = try set.add(buf, 11);
+    const released = try set.add(buf, 22);
+    const last = try set.add(buf, 33);
+    _ = try set.add(buf, 11);
+    set.release(buf, released);
+
+    var it = set.iterator(buf);
+
+    const first_entry = it.next().?;
+    try testing.expectEqual(first, first_entry.id);
+    try testing.expectEqual(@as(u32, 11), first_entry.value_ptr.*);
+
+    const last_entry = it.next().?;
+    try testing.expectEqual(last, last_entry.id);
+    try testing.expectEqual(@as(u32, 33), last_entry.value_ptr.*);
+
+    try testing.expect(it.next() == null);
+}
+
+test "add reclaims dead IDs in place instead of NeedsRehash" {
+    const alloc = testing.allocator;
+    const TestSet = RefCountedSet(
+        u32,
+        u16,
+        u16,
+        struct {
+            pub fn hash(_: *const @This(), value: u32) u64 {
+                return std.hash.int(value);
+            }
+
+            pub fn eql(_: *const @This(), a: u32, b: u32) bool {
+                return a == b;
+            }
+        },
+    );
+
+    // 3 is the smallest set that can reuse an ID: two IDs, one of
+    // which must die. 5 has an odd number of IDs, so releasing every
+    // other one also releases the last and `add` trims it first.
+    for ([_]usize{ 3, 5, 16 }) |requested_cap| {
+        const layout: TestSet.Layout = .init(requested_cap);
+        const buf = try alloc.alignedAlloc(
+            u8,
+            TestSet.base_align,
+            layout.total_size,
+        );
+        defer alloc.free(buf);
+
+        var set: TestSet = .init(.init(buf), layout, .{});
+
+        // Hand out every ID. All are live, so `add` must ask to grow.
+        const n: usize = layout.cap - 1;
+        var ids: [64]u16 = undefined;
+        for (0..n) |i| ids[i] = try set.add(buf, @intCast(i + 1000));
+        try testing.expectEqual(layout.cap, @as(usize, set.next_id));
+        try testing.expectError(error.OutOfMemory, set.add(buf, 5000));
+
+        // Release every other item, starting with the first.
+        for (0..n) |i| if (i % 2 == 0) set.release(buf, ids[i]);
+
+        // New values reuse dead IDs until 90% of IDs are live.
+        const threshold: usize = @intFromFloat(@as(f64, @floatFromInt(layout.cap)) * 0.9);
+        const addable = threshold - n / 2;
+        var new_ids: [64]u16 = undefined;
+        for (0..addable) |j| new_ids[j] = try set.add(buf, @intCast(j + 7000));
+        try testing.expectEqual(threshold, set.count());
+        for (0..addable) |j| {
+            try testing.expectEqual(new_ids[j], set.lookup(buf, @intCast(j + 7000)).?);
+        }
+        try testing.expectError(error.OutOfMemory, set.add(buf, 9000));
+
+        // Release and re-add many times so the search wraps around.
+        const rounds = 200;
+        for (0..rounds) |round| {
+            for (0..addable) |j| set.release(buf, new_ids[j]);
+            for (0..addable) |j| new_ids[j] = try set.add(
+                buf,
+                @intCast(100_000 + round * 1000 + j),
+            );
+        }
+        try testing.expectEqual(threshold, set.count());
+        try testing.expectEqual(layout.cap, @as(usize, set.next_id));
+
+        // The last round's values are findable, each under its own ID
+        // with the one reference `add` took.
+        for (0..addable) |j| {
+            const value: u32 = @intCast(100_000 + (rounds - 1) * 1000 + j);
+            try testing.expectEqual(new_ids[j], set.lookup(buf, value).?);
+            try testing.expectEqual(@as(u16, 1), set.refCount(buf, new_ids[j]));
+            for (0..j) |k| try testing.expect(new_ids[j] != new_ids[k]);
+        }
+
+        // Items that were never released keep their IDs and references.
+        for (0..n) |i| if (i % 2 == 1) {
+            try testing.expectEqual(ids[i], set.lookup(buf, @intCast(i + 1000)).?);
+            try testing.expectEqual(@as(u16, 1), set.refCount(buf, ids[i]));
+        };
+    }
+}
+
+test "add does not hide live items behind a reaped dead item" {
+    const alloc = testing.allocator;
+    const TestSet = RefCountedSet(
+        u32,
+        u16,
+        u16,
+        struct {
+            // Identity hash, so each value's home bucket is its value
+            // modulo the table size.
+            pub fn hash(_: *const @This(), value: u32) u64 {
+                return value;
+            }
+
+            pub fn eql(_: *const @This(), a: u32, b: u32) bool {
+                return a == b;
+            }
+        },
+    );
+
+    const layout: TestSet.Layout = .init(8);
+    const buf = try alloc.alignedAlloc(
+        u8,
+        TestSet.base_align,
+        layout.total_size,
+    );
+    defer alloc.free(buf);
+
+    var set: TestSet = .init(.init(buf), layout, .{});
+
+    // Three values with home bucket 0 fill buckets 0, 1 and 2
+    // with PSLs 0, 1 and 2.
+    const a = try set.add(buf, 8);
+    const b = try set.add(buf, 16);
+    const c = try set.add(buf, 24);
+
+    // The dead item in bucket 1 is in the middle of c's probe sequence.
+    set.release(buf, b);
+
+    // A value with home bucket 1 must not take that bucket with PSL 0,
+    // or the lookup for c stops there.
+    const d = try set.add(buf, 1);
+    try testing.expectEqual(@as(usize, 3), set.count());
+    try testing.expectEqual(a, set.lookup(buf, 8).?);
+    try testing.expectEqual(c, set.lookup(buf, 24).?);
+    try testing.expectEqual(d, set.lookup(buf, 1).?);
+
+    // Adding c's value again must find it rather than add a duplicate.
+    try testing.expectEqual(c, try set.add(buf, 24));
+    try testing.expectEqual(@as(u16, 2), set.refCount(buf, c));
+    try testing.expectEqual(@as(usize, 3), set.count());
+}
+
+test "deleting a reaped item when the default bucket is a real bucket" {
+    // A u8 ID with 256 buckets has the same shape as the page style set
+    // at its maximum capacity: `maxInt(Id)`, the default bucket of an
+    // item that is out of the table, is also the last bucket.
+    const alloc = testing.allocator;
+    const TestSet = RefCountedSet(
+        u32,
+        u8,
+        u16,
+        struct {
+            // Identity hash, so each value's home bucket is its value
+            // modulo the table size.
+            pub fn hash(_: *const @This(), value: u32) u64 {
+                return value;
+            }
+
+            pub fn eql(_: *const @This(), a: u32, b: u32) bool {
+                return a == b;
+            }
+        },
+    );
+
+    const layout: TestSet.Layout = .init(255);
+    try testing.expectEqual(@as(usize, 256), layout.table_cap);
+    const buf = try alloc.alignedAlloc(
+        u8,
+        TestSet.base_align,
+        layout.total_size,
+    );
+    defer alloc.free(buf);
+
+    var set: TestSet = .init(.init(buf), layout, .{});
+
+    // A live item in the last bucket.
+    const last = try set.add(buf, 255);
+    const a = try set.add(buf, 10);
+    const b = try set.add(buf, 20);
+    set.release(buf, a);
+    set.release(buf, b);
+
+    // Reuse a's ID for a value whose home is b's bucket. `insert` reaps
+    // b on the way but keeps a's ID, so b is out of the table.
+    try testing.expectEqual(@as(?u8, null), try set.addWithId(buf, 20 + 256, a));
+
+    // b is the last ID, so this add trims it, which must not touch the
+    // last bucket.
+    const c = try set.add(buf, 30);
+    try testing.expectEqual(b, c);
+    try testing.expectEqual(last, set.lookup(buf, 255).?);
+    try testing.expectEqual(a, set.lookup(buf, 20 + 256).?);
+    try testing.expectEqual(c, set.lookup(buf, 30).?);
+    try testing.expectEqual(@as(usize, 3), set.count());
+}
+
+test "add reclaims a reaped item when the default bucket is a real bucket" {
+    // See the test above. This reaches the reaped item through
+    // `reclaimDeadId` instead of the trim.
+    const alloc = testing.allocator;
+    const TestSet = RefCountedSet(
+        u32,
+        u8,
+        u16,
+        struct {
+            pub fn hash(_: *const @This(), value: u32) u64 {
+                return value;
+            }
+
+            pub fn eql(_: *const @This(), a: u32, b: u32) bool {
+                return a == b;
+            }
+        },
+    );
+
+    const layout: TestSet.Layout = .init(255);
+    const buf = try alloc.alignedAlloc(
+        u8,
+        TestSet.base_align,
+        layout.total_size,
+    );
+    defer alloc.free(buf);
+
+    var set: TestSet = .init(.init(buf), layout, .{});
+
+    // Hand out every ID. ID n gets value n + 48, so they fill buckets
+    // 49 through 255 in order and the last ID is in the last bucket.
+    const n = layout.cap - 1;
+    for (1..n + 1) |id| {
+        try testing.expectEqual(@as(u8, @intCast(id)), try set.add(buf, @intCast(id + 48)));
+    }
+
+    // Release IDs 1 through 22, enough to allow reuse.
+    for (1..23) |id| set.release(buf, @intCast(id));
+
+    // Reclaims ID 1. Its home is ID 2's bucket, so `insert` reaps ID 2
+    // on the way and leaves it out of the table.
+    try testing.expectEqual(@as(u8, 1), try set.add(buf, 50 + 256));
+
+    // Reclaims ID 2, which must not touch the last bucket.
+    try testing.expectEqual(@as(u8, 2), try set.add(buf, 5));
+    try testing.expectEqual(@as(u8, @intCast(n)), set.lookup(buf, @intCast(n + 48)).?);
+    try testing.expectEqual(@as(u8, 1), set.lookup(buf, 50 + 256).?);
+    try testing.expectEqual(@as(u8, 2), set.lookup(buf, 5).?);
+    try testing.expectEqual(n - 20, set.count());
+}
+
+test "add reclaims the dead ID that insert passed over" {
+    const alloc = testing.allocator;
+    const TestSet = RefCountedSet(
+        u32,
+        u16,
+        u16,
+        struct {
+            // Identity hash, so each value's home bucket is its value
+            // modulo the table size.
+            pub fn hash(_: *const @This(), value: u32) u64 {
+                return value;
+            }
+
+            pub fn eql(_: *const @This(), a: u32, b: u32) bool {
+                return a == b;
+            }
+        },
+    );
+
+    const layout: TestSet.Layout = .init(16);
+    const buf = try alloc.alignedAlloc(
+        u8,
+        TestSet.base_align,
+        layout.total_size,
+    );
+    defer alloc.free(buf);
+
+    var set: TestSet = .init(.init(buf), layout, .{});
+
+    // Hand out every ID. ID n gets value n, so it sits in bucket n.
+    const n = layout.cap - 1;
+    for (1..n + 1) |id| {
+        try testing.expectEqual(@as(u16, @intCast(id)), try set.add(buf, @intCast(id)));
+    }
+
+    // Reclaim ID 9, which moves the search past it.
+    set.release(buf, 9);
+    set.release(buf, 10);
+    try testing.expectEqual(@as(u16, 9), try set.add(buf, 13));
+
+    // The search reclaims ID 10, but the new value's home is ID 3's
+    // bucket, so `insert` reaps ID 3 and uses that smaller ID instead.
+    set.release(buf, 3);
+    try testing.expectEqual(@as(u16, 3), try set.add(buf, 3 + 16));
+
+    // ID 10 is still dead, so the next reclaim takes it rather than
+    // ID 5, which died later.
+    set.release(buf, 5);
+    try testing.expectEqual(@as(u16, 10), try set.add(buf, 14));
+
+    try testing.expectEqual(@as(u16, 9), set.lookup(buf, 13).?);
+    try testing.expectEqual(@as(u16, 3), set.lookup(buf, 3 + 16).?);
+    try testing.expectEqual(@as(u16, 10), set.lookup(buf, 14).?);
+    try testing.expectEqual(@as(?u16, null), set.lookup(buf, 5));
+    try testing.expectEqual(n - 1, set.count());
+}

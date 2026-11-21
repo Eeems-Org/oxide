@@ -803,7 +803,12 @@ AppsAPI::openTerminal() {
       }
     }
   }
-  auto app = getApplication("yaft");
+  auto app = getApplication("terminal");
+  if (app != nullptr) {
+    app->launchNoSecurityCheck();
+    return;
+  }
+  app = getApplication("yaft");
   if (app != nullptr) {
     app->launchNoSecurityCheck();
     return;

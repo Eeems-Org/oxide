@@ -10,7 +10,6 @@ BUILD=$(CURDIR)/.build
 BUILDNAME?=oxide
 TOOLCHAIN?=5.8.203
 PODMAN?=podman
-
 ifneq ($(filter debug,$(FEATURES)),)
 CONFIG += CONFIG+="debug"
 endif
@@ -33,8 +32,8 @@ clean-base:
 		$(DIST) \
 		$(BUILD)/$(BUILDNAME)/Makefile \
 		$(BUILD)/$(BUILDNAME)/shared/cpptrace/src \
-		$(BUILD)/$(BUILDNAME)/shared/sentry/src
-
+		$(BUILD)/$(BUILDNAME)/shared/sentry/src \
+		$(BUILD)/$(BUILDNAME)/shared/libghostty-vt/src
 .PHONY: clean
 clean: clean-base
 	rm -rf $(BUILD)
@@ -162,7 +161,7 @@ build-amd64: release
 
 .PHONY: _build-%
 _build-%: $(DIST)
-	podman run \
+	$(PODMAN) run \
 		--env BUILDNAME=oxide-$* \
 		--rm \
 		--volume=$(CURDIR):/src \
@@ -238,7 +237,7 @@ $(BUILD)/package/VELBUILD: $(BUILD)/package $(OBJ) VELBUILD
 	sed -i "s/~TIMESTAMP~/$${PKGREL}/" $(BUILD)/package/VELBUILD
 	vbuild -C $(BUILD)/package checksum
 
-SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )
+SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/libghostty-vt | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )
 SRC_FILES += VELBUILD
 
 CPP_FILES = $(wildcard applications/**/*.cpp) $(wildcard applications/**/*.h)
@@ -280,26 +279,31 @@ toolchain: toolchain-rm1 toolchain-rm2 toolchain-rmpp toolchain-rmppm toolchain-
 
 .PHONY: toolchain-rm1
 toolchain-rm1: DEVICE=rm1
+toolchain-rm1: ZIG_TARGET=arm-linux-gnueabihf
 toolchain-rm1: ENVIRONMENT_SETUP=/opt/codex/rm1/$(TOOLCHAIN)/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi
 toolchain-rm1: _toolchain-rm1
 
 .PHONY: toolchain-rm2
 toolchain-rm2: DEVICE=rm2
+toolchain-rm2: ZIG_TARGET=arm-linux-gnueabihf
 toolchain-rm2: ENVIRONMENT_SETUP=/opt/codex/rm2/$(TOOLCHAIN)/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi
 toolchain-rm2: _toolchain-rm2
 
 .PHONY: toolchain-rmpp
 toolchain-rmpp: DEVICE=rmpp
+toolchain-rmpp: ZIG_TARGET=aarch64-linux-gnu
 toolchain-rmpp: ENVIRONMENT_SETUP=/opt/codex/ferrari/$(TOOLCHAIN)/environment-setup-cortexa53-crypto-remarkable-linux
 toolchain-rmpp: _toolchain-rmpp
 
 .PHONY: toolchain-rmppm
 toolchain-rmppm: DEVICE=rmppm
+toolchain-rmppm: ZIG_TARGET=aarch64-linux-gnu
 toolchain-rmppm: ENVIRONMENT_SETUP=/opt/codex/chiappa/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux
 toolchain-rmppm: _toolchain-rmppm
 
 .PHONY: toolchain-rmppure
 toolchain-rmppure: DEVICE=rmppure
+toolchain-rmppure: ZIG_TARGET=aarch64-linux-gnu
 toolchain-rmppure: ENVIRONMENT_SETUP=/opt/codex/tatsu/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux
 toolchain-rmppure: _toolchain-rmppure
 
@@ -310,6 +314,7 @@ _toolchain-%:
 		--build-arg VERSION=$(TOOLCHAIN) \
 		--build-arg DEVICE=$* \
 		--build-arg ENVIRONMENT_SETUP=$(ENVIRONMENT_SETUP) \
+		--build-arg ZIG_TARGET=$(ZIG_TARGET) \
 		--label "org.opencontainers.image.source=https://github.com/Eeems-Org/oxide" \
 		$(if $(REVISION),--label "org.opencontainers.image.revision=$(REVISION)",) \
 		-t ghcr.io/eeems-org/oxide-toolchain:$(TOOLCHAIN)-$* \

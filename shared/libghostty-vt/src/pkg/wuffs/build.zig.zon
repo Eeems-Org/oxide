@@ -1,0 +1,34 @@
+.{
+    .name = .wuffs,
+    .version = "0.0.0",
+    .fingerprint = 0x67c0c059de921c4f,
+    .dependencies = .{
+        .translate_c = .{ .path = "../translate-c" },
+
+        // google/wuffs
+        .wuffs = .{
+            .url = "https://deps.files.ghostty.org/wuffs-7411f488fe2e2c205c3d3b3d28638b7356522930.tar.gz",
+            .hash = "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI",
+            .lazy = true,
+        },
+
+        // make-github-pseudonymous-again/pixels
+        .pixels = .{
+            .url = "https://deps.files.ghostty.org/pixels-12207ff340169c7d40c570b4b6a97db614fe47e0d83b5801a932dcd44917424c8806.tar.gz",
+            .hash = "N-V-__8AADYiAAB_80AWnH1AxXC0tql9thT-R-DYO1gBqTLc",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "include",
+        "src",
+    },
+    // The license and version of the third-party code above, for
+    // packagers. Zig ignores this field. See src/build/LibVtPackages.zig.
+    .third_party = .{
+        .{ .name = "pixels", .license = "CC0-1.0" },
+        .{ .name = "wuffs", .license = "Apache-2.0 OR MIT", .version = "0.4.0-alpha.10" },
+    },
+}

@@ -1,0 +1,1282 @@
+const std = @import("std");
+const assert = @import("../quirks.zig").inlineAssert;
+const fastprint = @import("../fastprint.zig");
+const color = @import("color.zig");
+const sgr = @import("sgr.zig");
+const page = @import("page.zig");
+const size = @import("size.zig");
+const Offset = size.Offset;
+const OffsetBuf = size.OffsetBuf;
+const RefCountedSet = @import("ref_counted_set.zig").RefCountedSet;
+
+/// The unique identifier for a style. This is at most the number of cells
+/// that can fit into a terminal page.
+pub const Id = size.StyleCountInt;
+
+/// The Id to use for default styling.
+pub const default_id: Id = 0;
+
+/// The style attributes for a cell.
+///
+/// Unused bits must be zero so equal styles have identical bits. This lets
+/// us compare and hash styles directly, with all zero bits for the default.
+pub const Style = packed struct(u128) {
+    /// Various colors, all self-explanatory.
+    fg_color: Color = .none,
+    bg_color: Color = .none,
+    underline_color: Color = .none,
+
+    /// On/off attributes that don't require much bit width so we use
+    /// a packed struct to make this take up significantly less space.
+    flags: Flags = .{},
+
+    /// Explicit zero padding to fill the 128 bits.
+    _padding: u16 = 0,
+
+    const Flags = packed struct(u16) {
+        bold: bool = false,
+        italic: bool = false,
+        faint: bool = false,
+        blink: bool = false,
+        inverse: bool = false,
+        invisible: bool = false,
+        strikethrough: bool = false,
+        overline: bool = false,
+        underline: sgr.Attribute.Underline = .none,
+        _padding: u5 = 0,
+    };
+
+    /// The color for an SGR attribute. A color can come from multiple
+    /// sources so we use this to track the source plus color value so that
+    /// we can properly react to things like palette changes.
+    ///
+    /// Use `.none`, `.palette(idx)`, or `.rgb(rgb)` to keep unused bits zero.
+    /// Use `value()` to switch on the color as a tagged union.
+    pub const Color = packed struct(u32) {
+        tag: Tag,
+        data: u24,
+
+        pub const Tag = enum(u8) {
+            none,
+            palette,
+            rgb,
+        };
+
+        /// A tagged-union view of a color, for switching on.
+        pub const Value = union(Tag) {
+            none: void,
+            palette: u8,
+            rgb: color.RGB,
+        };
+
+        pub const none: Color = .{ .tag = .none, .data = 0 };
+
+        pub inline fn palette(idx: u8) Color {
+            return .{ .tag = .palette, .data = idx };
+        }
+
+        pub inline fn rgb(v: color.RGB) Color {
+            return .{ .tag = .rgb, .data = @bitCast(v) };
+        }
+
+        /// Returns the color as a tagged union.
+        pub inline fn value(self: Color) Value {
+            return switch (self.tag) {
+                .none => none: {
+                    // Unused bits must be zero (see the Style doc comment).
+                    // A violation would make eql/hash disagree with value().
+                    assert(self.data == 0);
+                    break :none .none;
+                },
+                .palette => palette: {
+                    assert(self.data <= std.math.maxInt(u8));
+                    break :palette .{ .palette = @truncate(self.data) };
+                },
+                .rgb => .{ .rgb = @bitCast(self.data) },
+            };
+        }
+
+        /// Formatting to make debug logs easier to read
+        /// by only including non-default attributes.
+        pub fn format(
+            self: Color,
+            comptime fmt: []const u8,
+            options: std.fmt.FormatOptions,
+            writer: *std.Io.Writer,
+        ) !void {
+            _ = fmt;
+            _ = options;
+            switch (self.value()) {
+                .none => {
+                    _ = try writer.write("Color.none");
+                },
+                .palette => |p| {
+                    _ = try writer.print("Color.palette{{ {} }}", .{p});
+                },
+                .rgb => |rgb_value| {
+                    _ = try writer.print("Color.rgb{{ {}, {}, {} }}", .{ rgb_value.r, rgb_value.g, rgb_value.b });
+                },
+            }
+        }
+    };
+
+    /// The style as a single integer.
+    pub inline fn bits(self: Style) u128 {
+        return @bitCast(self);
+    }
+
+    /// True if the style is the default style.
+    pub inline fn default(self: Style) bool {
+        return self.bits() == 0;
+    }
+
+    /// True if the style is equal to another style.
+    pub inline fn eql(self: Style, other: Style) bool {
+        return self.bits() == other.bits();
+    }
+
+    /// Returns this style with an SGR attribute applied.
+    pub fn withAttribute(self: Style, attr: sgr.Attribute) Style {
+        var s = self;
+        switch (attr) {
+            // Unknown attributes are ignored. They are common enough in real
+            // output (a bare `38`, font selection `10`) that logging each one
+            // costs more than the sequence itself.
+            .unknown => {},
+            .unset => s = .{},
+
+            .bold => s.flags.bold = true,
+            .faint => s.flags.faint = true,
+            .reset_bold => {
+                // Bold and faint share the same SGR code for reset.
+                s.flags.bold = false;
+                s.flags.faint = false;
+            },
+            .italic => s.flags.italic = true,
+            .reset_italic => s.flags.italic = false,
+            .underline => |v| s.flags.underline = v,
+            .overline => s.flags.overline = true,
+            .reset_overline => s.flags.overline = false,
+            .blink => s.flags.blink = true,
+            .reset_blink => s.flags.blink = false,
+            .inverse => s.flags.inverse = true,
+            .reset_inverse => s.flags.inverse = false,
+            .invisible => s.flags.invisible = true,
+            .reset_invisible => s.flags.invisible = false,
+            .strikethrough => s.flags.strikethrough = true,
+            .reset_strikethrough => s.flags.strikethrough = false,
+
+            .direct_color_fg => |rgb| s.fg_color = .rgb(rgb),
+            .@"8_fg", .@"8_bright_fg" => |n| s.fg_color = .palette(@backingInt(n)),
+            .@"256_fg" => |idx| s.fg_color = .palette(idx),
+            .reset_fg => s.fg_color = .none,
+
+            .direct_color_bg => |rgb| s.bg_color = .rgb(rgb),
+            .@"8_bg", .@"8_bright_bg" => |n| s.bg_color = .palette(@backingInt(n)),
+            .@"256_bg" => |idx| s.bg_color = .palette(idx),
+            .reset_bg => s.bg_color = .none,
+
+            .underline_color => |rgb| s.underline_color = .rgb(rgb),
+            .@"256_underline_color" => |idx| s.underline_color = .palette(idx),
+            .reset_underline_color => s.underline_color = .none,
+        }
+        return s;
+    }
+
+    /// Returns the bg color for a cell with this style given the cell
+    /// that has this style and the palette to use.
+    ///
+    /// Note that generally if a cell is a color-only cell, it SHOULD
+    /// only have the default style, but this is meant to work with the
+    /// default style as well.
+    pub fn bg(
+        self: Style,
+        cell: *const page.Cell,
+        palette: *const color.Palette,
+    ) ?color.RGB {
+        return switch (cell.content_tag) {
+            .bg_color_palette => palette[cell.content.color_palette.data],
+            .bg_color_rgb => rgb: {
+                const rgb = cell.content.color_rgb;
+                break :rgb .{ .r = rgb.r, .g = rgb.g, .b = rgb.b };
+            },
+
+            else => switch (self.bg_color.value()) {
+                .none => null,
+                .palette => |idx| palette[idx],
+                .rgb => |rgb| rgb,
+            },
+        };
+    }
+
+    /// The color to use for bold text. This avoids a dependency on the
+    /// config module by using terminal-native color types.
+    pub const BoldColor = union(enum) {
+        color: color.RGB,
+        bright,
+    };
+
+    pub const Fg = struct {
+        /// The default color to use if the style doesn't specify a
+        /// foreground color and no configuration options override
+        /// it.
+        default: color.RGB,
+
+        /// The current color palette. Required to map palette indices to
+        /// real color values.
+        palette: *const color.Palette,
+
+        /// If specified, the color to use for bold text.
+        bold: ?BoldColor = null,
+    };
+
+    /// Returns the fg color for a cell with this style given the palette
+    /// and various configuration options.
+    pub fn fg(
+        self: Style,
+        opts: Fg,
+    ) color.RGB {
+        // Note we don't pull the bold check to the top-level here because
+        // we don't want to duplicate the conditional multiple times since
+        // certain colors require more checks (e.g. `bold_is_bright`).
+
+        return switch (self.fg_color.value()) {
+            .none => default: {
+                if (self.flags.bold) {
+                    if (opts.bold) |bold| switch (bold) {
+                        .bright => {},
+                        .color => |v| break :default v,
+                    };
+                }
+
+                break :default opts.default;
+            },
+
+            .palette => |idx| palette: {
+                if (self.flags.bold) {
+                    if (opts.bold) |_| {
+                        const bright_offset = @backingInt(color.Name.bright_black);
+                        if (idx < bright_offset) {
+                            break :palette opts.palette[idx + bright_offset];
+                        }
+                    }
+                }
+
+                break :palette opts.palette[idx];
+            },
+
+            .rgb => |rgb| rgb: {
+                if (self.flags.bold and rgb.eql(opts.default)) {
+                    if (opts.bold) |bold| switch (bold) {
+                        .color => |v| break :rgb v,
+                        .bright => {},
+                    };
+                }
+
+                break :rgb rgb;
+            },
+        };
+    }
+
+    /// Returns the underline color for this style.
+    pub fn underlineColor(
+        self: Style,
+        palette: *const color.Palette,
+    ) ?color.RGB {
+        return switch (self.underline_color.value()) {
+            .none => null,
+            .palette => |idx| palette[idx],
+            .rgb => |rgb| rgb,
+        };
+    }
+
+    /// Returns a bg-color only cell from this style, if it exists.
+    pub fn bgCell(self: Style) ?page.Cell {
+        return switch (self.bg_color.value()) {
+            .none => null,
+            .palette => |idx| .{
+                .content_tag = .bg_color_palette,
+                .content = .{ .color_palette = .{ .data = idx } },
+            },
+            .rgb => |rgb| .{
+                .content_tag = .bg_color_rgb,
+                .content = .{ .color_rgb = .{
+                    .r = rgb.r,
+                    .g = rgb.g,
+                    .b = rgb.b,
+                } },
+            },
+        };
+    }
+
+    /// Formatting to make debug logs easier to read
+    /// by only including non-default attributes.
+    pub fn format(
+        self: Style,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: *std.Io.Writer,
+    ) !void {
+        _ = fmt;
+        _ = options;
+
+        const dflt: Style = .{};
+
+        _ = try writer.write("Style{ ");
+
+        var started = false;
+
+        inline for (@typeInfo(Style).@"struct".field_names, @typeInfo(Style).@"struct".field_types) |f, f_type| {
+            if (std.mem.eql(u8, f, "flags")) {
+                if (started) {
+                    _ = try writer.write(", ");
+                }
+
+                _ = try writer.write("flags={ ");
+
+                started = false;
+
+                inline for (@typeInfo(@TypeOf(self.flags)).@"struct".field_names, @typeInfo(@TypeOf(self.flags)).@"struct".field_types) |ff, ff_type| {
+                    const v = @as(ff_type, @field(self.flags, ff));
+                    const d = @as(ff_type, @field(dflt.flags, ff));
+                    if (ff_type == bool) {
+                        if (v) {
+                            if (started) {
+                                _ = try writer.write(", ");
+                            }
+                            _ = try writer.print("{s}", .{ff});
+                            started = true;
+                        }
+                    } else if (!std.meta.eql(v, d)) {
+                        if (started) {
+                            _ = try writer.write(", ");
+                        }
+                        _ = try writer.print(
+                            "{s}={any}",
+                            .{ ff, v },
+                        );
+                        started = true;
+                    }
+                }
+                _ = try writer.write(" }");
+
+                started = true;
+                comptime continue;
+            }
+            const value = @as(f_type, @field(self, f));
+            const d_val = @as(f_type, @field(dflt, f));
+            if (!std.meta.eql(value, d_val)) {
+                if (started) {
+                    _ = try writer.write(", ");
+                }
+                _ = try writer.print(
+                    "{s}={any}",
+                    .{ f, value },
+                );
+                started = true;
+            }
+        }
+
+        _ = try writer.write(" }");
+    }
+
+    /// Returns a formatter that renders this style as VT sequences,
+    /// to be used with `{f}`. This always resets the style first `\x1b[0m`
+    /// since a style is meant to be fully self-contained.
+    ///
+    /// For individual styles, this always emits multiple SGR sequences
+    /// (i.e. an individual `\x1b[<stuff>m` for each attribute) rather than
+    /// trying to combine them into a single sequence. We do this because
+    /// terminals have varying levels of support for combined sequences
+    /// especially with mixed separators (e.g. `:` vs `;`).
+    pub fn formatterVt(self: *const Style) VTFormatter {
+        return .{ .style = self };
+    }
+
+    /// Returns a formatter that renders this style as inline CSS properties,
+    /// to be used with `{f}`. The output is a valid CSS style string suitable
+    /// for use in a `style` attribute (e.g., "color: rgb(255, 0, 0); font-weight: bold;").
+    ///
+    /// Palette colors are emitted as CSS variables like `var(--vt-palette-N)`.
+    pub fn formatterHtml(self: *const Style) HtmlFormatter {
+        return .{ .style = self };
+    }
+
+    const VTFormatter = struct {
+        style: *const Style,
+
+        /// If set, palette colors will be emitted as RGB values instead of
+        /// palette indices. This is useful when you want to capture the
+        /// exact colors at formatting time rather than relying on the
+        /// terminal's palette.
+        palette: ?*const color.Palette = null,
+
+        pub fn format(
+            self: VTFormatter,
+            writer: *std.Io.Writer,
+        ) !void {
+            // Style emission is a hot path when formatting styled terminal
+            // contents, so all of the sequences are assembled in a buffer
+            // and written in one call rather than going through the
+            // (slower) format string machinery with a write per sequence.
+            //
+            // Worst case: `\x1b[0m` (4) + 7 flags (28) + `\x1b[53m` (5) +
+            // `\x1b[4:2m` (6) + 3 RGB colors (19 each = 57) = 100.
+            var buf: [128]u8 = undefined;
+
+            // Always reset the style. Styles are fully self-contained.
+            // Even if this style is empty, then that means we want to go
+            // back to the default.
+            buf[0..4].* = "\x1b[0m".*;
+            var len: usize = 4;
+
+            // Our flags
+            if (self.style.flags.bold) {
+                buf[len..][0..4].* = "\x1b[1m".*;
+                len += 4;
+            }
+            if (self.style.flags.faint) {
+                buf[len..][0..4].* = "\x1b[2m".*;
+                len += 4;
+            }
+            if (self.style.flags.italic) {
+                buf[len..][0..4].* = "\x1b[3m".*;
+                len += 4;
+            }
+            if (self.style.flags.blink) {
+                buf[len..][0..4].* = "\x1b[5m".*;
+                len += 4;
+            }
+            if (self.style.flags.inverse) {
+                buf[len..][0..4].* = "\x1b[7m".*;
+                len += 4;
+            }
+            if (self.style.flags.invisible) {
+                buf[len..][0..4].* = "\x1b[8m".*;
+                len += 4;
+            }
+            if (self.style.flags.strikethrough) {
+                buf[len..][0..4].* = "\x1b[9m".*;
+                len += 4;
+            }
+            if (self.style.flags.overline) {
+                buf[len..][0..5].* = "\x1b[53m".*;
+                len += 5;
+            }
+            switch (self.style.flags.underline) {
+                .none => {},
+                .single => {
+                    buf[len..][0..4].* = "\x1b[4m".*;
+                    len += 4;
+                },
+                .double => {
+                    buf[len..][0..6].* = "\x1b[4:2m".*;
+                    len += 6;
+                },
+                .curly => {
+                    buf[len..][0..6].* = "\x1b[4:3m".*;
+                    len += 6;
+                },
+                .dotted => {
+                    buf[len..][0..6].* = "\x1b[4:4m".*;
+                    len += 6;
+                },
+                .dashed => {
+                    buf[len..][0..6].* = "\x1b[4:5m".*;
+                    len += 6;
+                },
+            }
+
+            // Various colors.
+            len += self.appendColor(buf[len..], 38, self.style.fg_color);
+            len += self.appendColor(buf[len..], 48, self.style.bg_color);
+            len += self.appendColor(buf[len..], 58, self.style.underline_color);
+
+            try writer.writeAll(buf[0..len]);
+        }
+
+        /// Appends a standalone `\x1b[{prefix};5;{idx}m` or
+        /// `\x1b[{prefix};2;{r};{g};{b}m` sequence to buf, returning the
+        /// length written.
+        fn appendColor(
+            self: VTFormatter,
+            buf: []u8,
+            prefix: u8,
+            value: Color,
+        ) usize {
+            switch (value.value()) {
+                .none => return 0,
+
+                .palette => |idx| {
+                    // Direct RGB: `\x1b[{prefix};2;{r};{g};{b}m`
+                    if (self.palette) |p| return appendColorRgb(
+                        buf,
+                        prefix,
+                        p[idx],
+                    );
+
+                    // Palette reference: `\x1b[{prefix};5;{idx}m`
+                    buf[0..2].* = "\x1b[".*;
+                    var len: usize = 2;
+                    len += fastprint.printDecimal(u8, buf[len..], prefix);
+                    buf[len..][0..3].* = ";5;".*;
+                    len += 3;
+                    len += fastprint.printDecimal(u8, buf[len..], idx);
+                    buf[len] = 'm';
+                    len += 1;
+                    return len;
+                },
+
+                .rgb => |rgb| return appendColorRgb(buf, prefix, rgb),
+            }
+        }
+
+        /// Appends `\x1b[{prefix};2;{r};{g};{b}m` to buf, returning the
+        /// length written.
+        fn appendColorRgb(buf: []u8, prefix: u8, rgb: color.RGB) usize {
+            buf[0..2].* = "\x1b[".*;
+            var len: usize = 2;
+            len += fastprint.printDecimal(u8, buf[len..], prefix);
+            buf[len..][0..3].* = ";2;".*;
+            len += 3;
+            len += fastprint.printDecimal(u8, buf[len..], rgb.r);
+            buf[len] = ';';
+            len += 1;
+            len += fastprint.printDecimal(u8, buf[len..], rgb.g);
+            buf[len] = ';';
+            len += 1;
+            len += fastprint.printDecimal(u8, buf[len..], rgb.b);
+            buf[len] = 'm';
+            len += 1;
+            return len;
+        }
+    };
+
+    const HtmlFormatter = struct {
+        style: *const Style,
+
+        /// If set, palette colors will be emitted as RGB values instead of
+        /// CSS variables. This is useful when you want to capture the exact
+        /// colors at formatting time rather than relying on CSS variables.
+        palette: ?*const color.Palette = null,
+
+        pub fn format(
+            self: HtmlFormatter,
+            writer: *std.Io.Writer,
+        ) !void {
+            // Colors
+            try self.formatColor(writer, "color", self.style.fg_color);
+            try self.formatColor(writer, "background-color", self.style.bg_color);
+            try self.formatColor(writer, "text-decoration-color", self.style.underline_color);
+
+            // Text decoration line
+            const has_line = self.style.flags.underline != .none or
+                self.style.flags.strikethrough or
+                self.style.flags.overline or
+                self.style.flags.blink;
+            if (has_line) {
+                try writer.writeAll("text-decoration-line:");
+                if (self.style.flags.underline != .none) try writer.writeAll(" underline");
+                if (self.style.flags.strikethrough) try writer.writeAll(" line-through");
+                if (self.style.flags.overline) try writer.writeAll(" overline");
+                if (self.style.flags.blink) try writer.writeAll(" blink");
+                try writer.writeAll(";");
+            }
+
+            // Text decoration style
+            switch (self.style.flags.underline) {
+                .none => {},
+                .single => try writer.writeAll("text-decoration-style: solid;"),
+                .double => try writer.writeAll("text-decoration-style: double;"),
+                .curly => try writer.writeAll("text-decoration-style: wavy;"),
+                .dotted => try writer.writeAll("text-decoration-style: dotted;"),
+                .dashed => try writer.writeAll("text-decoration-style: dashed;"),
+            }
+
+            if (self.style.flags.bold) try writer.writeAll("font-weight: bold;");
+            if (self.style.flags.italic) try writer.writeAll("font-style: italic;");
+            if (self.style.flags.faint) try writer.writeAll("opacity: 0.5;");
+            if (self.style.flags.invisible) try writer.writeAll("visibility: hidden;");
+            if (self.style.flags.inverse) try writer.writeAll("filter: invert(100%);");
+        }
+
+        fn formatColor(
+            self: HtmlFormatter,
+            writer: *std.Io.Writer,
+            property: []const u8,
+            c: Color,
+        ) !void {
+            // Style emission is a hot path when formatting styled terminal
+            // contents, so the values are assembled in a buffer and written
+            // in one call rather than going through the (slower) format
+            // string machinery.
+            var buf: [32]u8 = undefined;
+            var len: usize = 0;
+            switch (c.value()) {
+                .none => return,
+
+                // `{property}: rgb({r}, {g}, {b});`
+                .palette => |idx| {
+                    if (self.palette) |p| {
+                        len = formatColorRgb(&buf, p[idx]);
+                    } else {
+                        // `{property}: var(--vt-palette-{idx});`
+                        const prefix = ": var(--vt-palette-";
+                        buf[0..prefix.len].* = prefix.*;
+                        len = prefix.len;
+                        len += fastprint.printDecimal(u8, buf[len..], idx);
+                        buf[len..][0..2].* = ");".*;
+                        len += 2;
+                    }
+                },
+
+                .rgb => |rgb| len = formatColorRgb(&buf, rgb),
+            }
+
+            try writer.writeAll(property);
+            try writer.writeAll(buf[0..len]);
+        }
+
+        /// Writes `: rgb({r}, {g}, {b});` into buf, returning the length
+        /// written.
+        fn formatColorRgb(buf: *[32]u8, rgb: color.RGB) usize {
+            buf[0..6].* = ": rgb(".*;
+            var len: usize = 6;
+            len += fastprint.printDecimal(u8, buf[len..], rgb.r);
+            buf[len..][0..2].* = ", ".*;
+            len += 2;
+            len += fastprint.printDecimal(u8, buf[len..], rgb.g);
+            buf[len..][0..2].* = ", ".*;
+            len += 2;
+            len += fastprint.printDecimal(u8, buf[len..], rgb.b);
+            buf[len..][0..2].* = ");".*;
+            len += 2;
+            return len;
+        }
+    };
+
+    pub fn hash(self: *const Style) u64 {
+        // Multiply the upper half (underline color and flags) by an odd
+        // constant to spread its bits before combining it with the lower
+        // half (foreground and background colors). This makes the hash
+        // sensitive to which half a value comes from.
+        const fibonacci_multiplier = 0x9e3779b97f4a7c15; // 2^64 / golden ratio
+        const wide: [2]u64 = @bitCast(self.*);
+        return @call(.always_inline, std.hash.int, .{wide[0] ^ (wide[1] *% fibonacci_multiplier)});
+    }
+
+    comptime {
+        assert(@sizeOf(Style) == 16);
+        assert(@bitSizeOf(Style) == 128);
+        // The default style must be all zero bits: `default()` relies on it.
+        assert((Style{}).bits() == 0);
+    }
+};
+
+pub const Set = RefCountedSet(
+    Style,
+    Id,
+    size.CellCountInt,
+    struct {
+        pub fn hash(self: *const @This(), style: Style) u64 {
+            _ = self;
+            return style.hash();
+        }
+
+        pub fn eql(self: *const @This(), a: Style, b: Style) bool {
+            _ = self;
+            return a.eql(b);
+        }
+    },
+);
+
+test "Style.Color constructors leave unused bits zero" {
+    const testing = std.testing;
+    try testing.expectEqual(0, @as(u32, @bitCast(Style.Color.none)));
+    try testing.expectEqual(
+        0x0000_2A01,
+        @as(u32, @bitCast(Style.Color.palette(42))),
+    );
+    try testing.expectEqual(
+        0x0302_0102,
+        @as(u32, @bitCast(Style.Color.rgb(.{ .r = 1, .g = 2, .b = 3 }))),
+    );
+}
+
+test "Style.hash distinguishes the same value in different fields" {
+    const testing = std.testing;
+    const styles = [_]Style{
+        .{},
+        .{ .fg_color = .palette(1) },
+        .{ .bg_color = .palette(1) },
+        .{ .underline_color = .palette(1) },
+        .{ .fg_color = .rgb(.{ .r = 1, .g = 2, .b = 3 }) },
+        .{ .underline_color = .rgb(.{ .r = 1, .g = 2, .b = 3 }) },
+        .{ .flags = .{ .bold = true } },
+        .{ .flags = .{ .underline = .single } },
+        .{ .fg_color = .palette(1), .underline_color = .palette(1) },
+        .{ .bg_color = .palette(0), .flags = .{ .bold = true } },
+    };
+
+    for (styles, 0..) |a, i| {
+        // Hashing is a pure function of the value.
+        try testing.expectEqual(a.hash(), a.hash());
+        try testing.expect(a.eql(a));
+
+        for (styles[i + 1 ..]) |b| {
+            try testing.expect(!a.eql(b));
+            try testing.expect(a.hash() != b.hash());
+        }
+    }
+}
+
+test "Style.withAttribute reset_bold clears bold and faint only" {
+    const testing = std.testing;
+    const s: Style = .{ .flags = .{ .bold = true, .faint = true, .italic = true } };
+    const expected: Style = .{ .flags = .{ .italic = true } };
+    try testing.expectEqual(expected.bits(), s.withAttribute(.reset_bold).bits());
+}
+
+test "Style VT formatting empty" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{};
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m", builder.writer.buffered());
+}
+
+test "Style VT formatting bold" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .bold = true } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[1m", builder.writer.buffered());
+}
+
+test "Style VT formatting faint" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .faint = true } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[2m", builder.writer.buffered());
+}
+
+test "Style VT formatting italic" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .italic = true } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[3m", builder.writer.buffered());
+}
+
+test "Style VT formatting blink" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .blink = true } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[5m", builder.writer.buffered());
+}
+
+test "Style VT formatting inverse" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .inverse = true } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[7m", builder.writer.buffered());
+}
+
+test "Style VT formatting invisible" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .invisible = true } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[8m", builder.writer.buffered());
+}
+
+test "Style VT formatting strikethrough" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .strikethrough = true } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[9m", builder.writer.buffered());
+}
+
+test "Style VT formatting overline" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .overline = true } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[53m", builder.writer.buffered());
+}
+
+test "Style VT formatting underline single" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .underline = .single } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[4m", builder.writer.buffered());
+}
+
+test "Style VT formatting underline double" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .underline = .double } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[4:2m", builder.writer.buffered());
+}
+
+test "Style VT formatting underline curly" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .underline = .curly } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[4:3m", builder.writer.buffered());
+}
+
+test "Style VT formatting underline dotted" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .underline = .dotted } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[4:4m", builder.writer.buffered());
+}
+
+test "Style VT formatting underline dashed" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .underline = .dashed } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[4:5m", builder.writer.buffered());
+}
+
+test "Style VT formatting fg palette" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .fg_color = .palette(42) };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[38;5;42m", builder.writer.buffered());
+}
+
+test "Style VT formatting fg rgb" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .fg_color = .rgb(.{ .r = 255, .g = 128, .b = 64 }) };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[38;2;255;128;64m", builder.writer.buffered());
+}
+
+test "Style VT formatting bg palette" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .bg_color = .palette(7) };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[48;5;7m", builder.writer.buffered());
+}
+
+test "Style VT formatting bg rgb" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .bg_color = .rgb(.{ .r = 32, .g = 64, .b = 96 }) };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[48;2;32;64;96m", builder.writer.buffered());
+}
+
+test "Style VT formatting underline_color palette" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .underline_color = .palette(15) };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[58;5;15m", builder.writer.buffered());
+}
+
+test "Style VT formatting underline_color rgb" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .underline_color = .rgb(.{ .r = 200, .g = 100, .b = 50 }) };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[58;2;200;100;50m", builder.writer.buffered());
+}
+
+test "Style VT formatting multiple flags" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .bold = true, .italic = true, .underline = .single } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings("\x1b[0m\x1b[1m\x1b[3m\x1b[4m", builder.writer.buffered());
+}
+
+test "Style VT formatting all flags" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{
+        .bold = true,
+        .faint = true,
+        .italic = true,
+        .blink = true,
+        .inverse = true,
+        .invisible = true,
+        .strikethrough = true,
+        .overline = true,
+        .underline = .curly,
+    } };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings(
+        "\x1b[0m\x1b[1m\x1b[2m\x1b[3m\x1b[5m\x1b[7m\x1b[8m\x1b[9m\x1b[53m\x1b[4:3m",
+        builder.writer.buffered(),
+    );
+}
+
+test "Style VT formatting combined colors and flags" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{
+        .fg_color = .rgb(.{ .r = 255, .g = 0, .b = 0 }),
+        .bg_color = .palette(8),
+        .underline_color = .rgb(.{ .r = 0, .g = 255, .b = 0 }),
+        .flags = .{ .bold = true, .italic = true, .underline = .double },
+    };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings(
+        "\x1b[0m\x1b[1m\x1b[3m\x1b[4:2m\x1b[38;2;255;0;0m\x1b[48;5;8m\x1b[58;2;0;255;0m",
+        builder.writer.buffered(),
+    );
+}
+
+test "Style VT formatting all colors rgb" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{
+        .fg_color = .rgb(.{ .r = 10, .g = 20, .b = 30 }),
+        .bg_color = .rgb(.{ .r = 40, .g = 50, .b = 60 }),
+        .underline_color = .rgb(.{ .r = 70, .g = 80, .b = 90 }),
+    };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings(
+        "\x1b[0m\x1b[38;2;10;20;30m\x1b[48;2;40;50;60m\x1b[58;2;70;80;90m",
+        builder.writer.buffered(),
+    );
+}
+
+test "Style VT formatting all colors palette" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{
+        .fg_color = .palette(1),
+        .bg_color = .palette(2),
+        .underline_color = .palette(3),
+    };
+    try builder.writer.print("{f}", .{style.formatterVt()});
+    try testing.expectEqualStrings(
+        "\x1b[0m\x1b[38;5;1m\x1b[48;5;2m\x1b[58;5;3m",
+        builder.writer.buffered(),
+    );
+}
+
+test "Style VT formatting palette with palette set emits rgb" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .fg_color = .palette(1) };
+    var formatter = style.formatterVt();
+    formatter.palette = &color.default;
+    try builder.writer.print("{f}", .{formatter});
+    try testing.expectEqualStrings("\x1b[0m\x1b[38;2;204;102;102m", builder.writer.buffered());
+}
+
+test "Style VT formatting all palette colors with palette set" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{
+        .fg_color = .palette(1),
+        .bg_color = .palette(2),
+        .underline_color = .palette(3),
+    };
+    var formatter = style.formatterVt();
+    formatter.palette = &color.default;
+    try builder.writer.print("{f}", .{formatter});
+    try testing.expectEqualStrings(
+        "\x1b[0m\x1b[38;2;204;102;102m\x1b[48;2;181;189;104m\x1b[58;2;240;198;116m",
+        builder.writer.buffered(),
+    );
+}
+
+test "Set basic usage" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    const layout: Set.Layout = .init(16);
+    const buf = try alloc.alignedAlloc(u8, Set.base_align, layout.total_size);
+    defer alloc.free(buf);
+
+    const style: Style = .{ .flags = .{ .bold = true } };
+    const style2: Style = .{ .flags = .{ .italic = true } };
+
+    var set = Set.init(.init(buf), layout, .{});
+
+    // Add style
+    const id = try set.add(buf, style);
+    try testing.expect(id > 0);
+
+    // Second add should return the same metadata.
+    {
+        const id2 = try set.add(buf, style);
+        try testing.expectEqual(id, id2);
+    }
+
+    // Look it up
+    {
+        const v = set.get(buf, id);
+        try testing.expect(v.flags.bold);
+
+        const v2 = set.get(buf, id);
+        try testing.expectEqual(v, v2);
+    }
+
+    // Add a second style
+    const id2 = try set.add(buf, style2);
+
+    // Look it up
+    {
+        const v = set.get(buf, id2);
+        try testing.expect(v.flags.italic);
+    }
+
+    // Ref count
+    try testing.expect(set.refCount(buf, id) == 2);
+    try testing.expect(set.refCount(buf, id2) == 1);
+
+    // Release
+    set.release(buf, id);
+    try testing.expect(set.refCount(buf, id) == 1);
+    set.release(buf, id2);
+    try testing.expect(set.refCount(buf, id2) == 0);
+
+    // We added the first one twice, so
+    set.release(buf, id);
+    try testing.expect(set.refCount(buf, id) == 0);
+}
+
+test "Set capacities" {
+    // We want to support at least this many styles without overflowing.
+    _ = Set.Layout.init(16384);
+}
+
+test "Set zero capacity" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    // A zero-capacity set is a valid special case (see Layout.init).
+    // It occurs in practice for pages with exact capacities where no
+    // cell is styled (see Page.exactRowCapacity).
+    const layout: Set.Layout = .init(0);
+    try testing.expectEqual(0, layout.total_size);
+
+    // We allocate a nonzero buffer filled with 0xFF to simulate the
+    // set being embedded in a larger structure (e.g. a Page) where
+    // other data follows it. Lookups must not probe the zero-size
+    // table: table[0] would read this adjacent memory and treat it
+    // as an item ID, leading to far out-of-bounds item reads.
+    const buf = try alloc.alignedAlloc(u8, Set.base_align, 64);
+    defer alloc.free(buf);
+    @memset(buf, 0xFF);
+
+    var set = Set.init(.init(buf), layout, .{});
+
+    const style: Style = .{ .flags = .{ .bold = true } };
+    try testing.expectEqual(null, set.lookup(buf, style));
+    try testing.expectError(error.OutOfMemory, set.add(buf, style));
+    try testing.expectEqual(0, set.count());
+
+    // The adjacent memory must be untouched.
+    for (buf) |b| try testing.expectEqual(0xFF, b);
+}
+
+test "Style HTML formatting basic bold" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .bold = true } };
+    try builder.writer.print("{f}", .{style.formatterHtml()});
+    try testing.expectEqualStrings("font-weight: bold;", builder.writer.buffered());
+}
+
+test "Style HTML formatting fg color rgb" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .fg_color = .rgb(.{ .r = 255, .g = 128, .b = 64 }) };
+    try builder.writer.print("{f}", .{style.formatterHtml()});
+    try testing.expectEqualStrings("color: rgb(255, 128, 64);", builder.writer.buffered());
+}
+
+test "Style HTML formatting bg color palette" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .bg_color = .palette(7) };
+    try builder.writer.print("{f}", .{style.formatterHtml()});
+    try testing.expectEqualStrings("background-color: var(--vt-palette-7);", builder.writer.buffered());
+}
+
+test "Style HTML formatting combined colors and flags" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{
+        .fg_color = .rgb(.{ .r = 255, .g = 0, .b = 0 }),
+        .bg_color = .rgb(.{ .r = 0, .g = 0, .b = 255 }),
+        .flags = .{ .bold = true, .italic = true },
+    };
+    try builder.writer.print("{f}", .{style.formatterHtml()});
+    const result = builder.writer.buffered();
+    try testing.expect(std.mem.indexOf(u8, result, "color: rgb(255, 0, 0);") != null);
+    try testing.expect(std.mem.indexOf(u8, result, "background-color: rgb(0, 0, 255);") != null);
+    try testing.expect(std.mem.indexOf(u8, result, "font-weight: bold;") != null);
+    try testing.expect(std.mem.indexOf(u8, result, "font-style: italic;") != null);
+}
+
+test "Style HTML formatting single decoration line" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .underline = .single } };
+    try builder.writer.print("{f}", .{style.formatterHtml()});
+    const result = builder.writer.buffered();
+    try testing.expect(std.mem.indexOf(u8, result, "text-decoration-line: underline;") != null);
+    try testing.expect(std.mem.indexOf(u8, result, "text-decoration-style: solid;") != null);
+}
+
+test "Style HTML formatting multiple decoration lines" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .flags = .{ .underline = .curly, .strikethrough = true, .overline = true } };
+    try builder.writer.print("{f}", .{style.formatterHtml()});
+    const result = builder.writer.buffered();
+    try testing.expect(std.mem.indexOf(u8, result, "text-decoration-line: underline line-through overline;") != null);
+    try testing.expect(std.mem.indexOf(u8, result, "text-decoration-style: wavy;") != null);
+}
+
+test "Style HTML formatting palette with palette set emits rgb" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{ .bg_color = .palette(7) };
+    var formatter = style.formatterHtml();
+    formatter.palette = &color.default;
+    try builder.writer.print("{f}", .{formatter});
+    try testing.expectEqualStrings("background-color: rgb(197, 200, 198);", builder.writer.buffered());
+}
+
+test "Style HTML formatting all palette colors with palette set" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    var builder: std.Io.Writer.Allocating = .init(alloc);
+    defer builder.deinit();
+
+    var style: Style = .{
+        .fg_color = .palette(1),
+        .bg_color = .palette(2),
+        .underline_color = .palette(3),
+    };
+    var formatter = style.formatterHtml();
+    formatter.palette = &color.default;
+    try builder.writer.print("{f}", .{formatter});
+    try testing.expectEqualStrings(
+        "color: rgb(204, 102, 102);background-color: rgb(181, 189, 104);text-decoration-color: rgb(240, 198, 116);",
+        builder.writer.buffered(),
+    );
+}

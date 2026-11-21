@@ -1,0 +1,647 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "libghostty-vt ABI type manifest",
+  "description": "Schema for the JSON returned by ghostty_type_json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "abi", "library_version", "commit", "dirty", "types"],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "abi": {
+      "$ref": "#/$defs/abi"
+    },
+    "library_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commit": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "dirty": {
+      "type": ["boolean", "null"]
+    },
+    "types": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^Ghostty[A-Za-z0-9_]+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/typeDescriptor"
+      }
+    }
+  },
+  "$defs": {
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "typeReference": {
+      "type": "string",
+      "pattern": "^(Ghostty[A-Za-z0-9_]+|bool|f32|f64|function|[iu][1-9][0-9]*|opaque|void)$"
+    },
+    "integerTypeReference": {
+      "type": "string",
+      "pattern": "^[iu][1-9][0-9]*$"
+    },
+    "abi": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "os",
+        "environment",
+        "pointer_size",
+        "usize_size",
+        "max_alignment",
+        "endian"
+      ],
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "os": {
+          "type": "string",
+          "minLength": 1
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pointer_size": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "usize_size": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "max_alignment": {
+          "description": "Maximum fundamental C ABI alignment in bytes.",
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "endian": {
+          "enum": ["little", "big"]
+        }
+      }
+    },
+    "fieldBase": {
+      "type": "object",
+      "required": ["offset", "size", "type"],
+      "properties": {
+        "offset": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "size": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        }
+      }
+    },
+    "plainField": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/fieldBase"
+        },
+        {
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/typeReference"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "arrayField": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/fieldBase"
+        },
+        {
+          "required": ["elem", "count"],
+          "properties": {
+            "type": {
+              "const": "array"
+            },
+            "elem": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/typeReference"
+                },
+                {
+                  "$ref": "#/$defs/pointerElement"
+                }
+              ]
+            },
+            "count": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "pointerElement": {
+      "description": "An array element that is a pointer, such as the reserved slots of GhosttyAllocatorVtable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "elem", "const"],
+      "properties": {
+        "type": {
+          "const": "pointer"
+        },
+        "elem": {
+          "$ref": "#/$defs/typeReference"
+        },
+        "const": {
+          "type": "boolean"
+        },
+        "nullable": {
+          "const": true
+        }
+      }
+    },
+    "valueType": {
+      "description": "The type of a key's value or of a callback parameter. It uses the same type reference forms as a struct field, without offset and size.",
+      "oneOf": [
+        {
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/typeReference"
+            }
+          }
+        },
+        {
+          "required": ["type", "elem", "count"],
+          "properties": {
+            "type": {
+              "const": "array"
+            },
+            "elem": {
+              "$ref": "#/$defs/typeReference"
+            },
+            "count": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            }
+          }
+        },
+        {
+          "required": ["type", "elem", "const"],
+          "properties": {
+            "type": {
+              "const": "pointer"
+            },
+            "elem": {
+              "$ref": "#/$defs/typeReference"
+            },
+            "const": {
+              "type": "boolean"
+            },
+            "nullable": {
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "key": {
+      "description": "One key of a key enum. direction is \"out\" for a key the library writes and \"in\" for a key the library reads. The key's void * value points at a value of the given type. A key whose type names a callback takes the function pointer itself instead.",
+      "allOf": [
+        {
+          "type": "object",
+          "required": ["direction"],
+          "properties": {
+            "direction": {
+              "enum": ["in", "out"]
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/valueType"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "callbackParam": {
+      "description": "A callback parameter or return type.",
+      "allOf": [
+        {
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/valueType"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "pointerField": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/fieldBase"
+        },
+        {
+          "required": ["elem", "const"],
+          "properties": {
+            "type": {
+              "const": "pointer"
+            },
+            "elem": {
+              "$ref": "#/$defs/typeReference"
+            },
+            "const": {
+              "type": "boolean"
+            },
+            "nullable": {
+              "const": true
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "taggedUnionField": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/fieldBase"
+        },
+        {
+          "required": ["tag", "arms"],
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/typeReference"
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arms": {
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "additionalProperties": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "field": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/plainField"
+        },
+        {
+          "$ref": "#/$defs/arrayField"
+        },
+        {
+          "$ref": "#/$defs/pointerField"
+        },
+        {
+          "$ref": "#/$defs/taggedUnionField"
+        }
+      ]
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/field"
+      }
+    },
+    "bitBase": {
+      "type": "object",
+      "required": ["lsb", "width"],
+      "properties": {
+        "lsb": {
+          "description": "Least-significant bit relative to the containing numerical value.",
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "width": {
+          "description": "Physical width of this field in bits.",
+          "$ref": "#/$defs/positiveInteger"
+        }
+      }
+    },
+    "scalarBit": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/bitBase"
+        },
+        {
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/typeReference"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "packedBit": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/bitBase"
+        },
+        {
+          "required": ["kind", "bits"],
+          "properties": {
+            "kind": {
+              "const": "packed"
+            },
+            "bits": {
+              "$ref": "#/$defs/bits"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "packedArm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "width", "bits"],
+      "properties": {
+        "kind": {
+          "const": "packed"
+        },
+        "width": {
+          "description": "Physical width of this inline arm in bits.",
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "bits": {
+          "$ref": "#/$defs/bits"
+        }
+      }
+    },
+    "taggedUnionBit": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/bitBase"
+        },
+        {
+          "required": ["kind", "tag", "arms"],
+          "properties": {
+            "kind": {
+              "const": "union"
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arms": {
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/packedArm"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "bit": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/scalarBit"
+        },
+        {
+          "$ref": "#/$defs/packedBit"
+        },
+        {
+          "$ref": "#/$defs/taggedUnionBit"
+        }
+      ]
+    },
+    "bits": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/bit"
+      }
+    },
+    "descriptorBase": {
+      "type": "object",
+      "required": ["kind", "size", "align"],
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "align": {
+          "$ref": "#/$defs/positiveInteger"
+        }
+      }
+    },
+    "structDescriptor": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/descriptorBase"
+        },
+        {
+          "required": ["fields"],
+          "properties": {
+            "kind": {
+              "const": "struct"
+            },
+            "fields": {
+              "$ref": "#/$defs/fields"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "unionDescriptor": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/descriptorBase"
+        },
+        {
+          "required": ["fields"],
+          "properties": {
+            "kind": {
+              "const": "union"
+            },
+            "fields": {
+              "$ref": "#/$defs/fields"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "enumDescriptor": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/descriptorBase"
+        },
+        {
+          "required": ["underlying", "prefix", "values"],
+          "properties": {
+            "kind": {
+              "const": "enum"
+            },
+            "underlying": {
+              "const": "i32"
+            },
+            "prefix": {
+              "type": "string",
+              "minLength": 1
+            },
+            "values": {
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "keys": {
+              "description": "Present on key enums, the enums that a _get, _set or _get_multi function takes to pick a value. Each entry is named like its entry in values. INVALID and the sentinel are left out.",
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/key"
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "packedDescriptor": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/descriptorBase"
+        },
+        {
+          "required": ["underlying", "bits"],
+          "properties": {
+            "kind": {
+              "const": "packed"
+            },
+            "underlying": {
+              "description": "Integer backing type used to interpret the packed value.",
+              "$ref": "#/$defs/integerTypeReference"
+            },
+            "bits": {
+              "$ref": "#/$defs/bits"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "aliasDescriptor": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/descriptorBase"
+        },
+        {
+          "required": ["type"],
+          "properties": {
+            "kind": {
+              "const": "alias"
+            },
+            "type": {
+              "$ref": "#/$defs/typeReference"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "opaqueDescriptor": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/descriptorBase"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "opaque"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "callbackDescriptor": {
+      "description": "A function pointer typedef, such as GhosttyTerminalBellFn. size and align are those of the function pointer. params lists the parameter types in order, and return is the return type, which is \"void\" when there is none.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/descriptorBase"
+        },
+        {
+          "required": ["params", "return"],
+          "properties": {
+            "kind": {
+              "const": "callback"
+            },
+            "params": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/callbackParam"
+              }
+            },
+            "return": {
+              "$ref": "#/$defs/callbackParam"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "typeDescriptor": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/structDescriptor"
+        },
+        {
+          "$ref": "#/$defs/unionDescriptor"
+        },
+        {
+          "$ref": "#/$defs/enumDescriptor"
+        },
+        {
+          "$ref": "#/$defs/packedDescriptor"
+        },
+        {
+          "$ref": "#/$defs/aliasDescriptor"
+        },
+        {
+          "$ref": "#/$defs/opaqueDescriptor"
+        },
+        {
+          "$ref": "#/$defs/callbackDescriptor"
+        }
+      ]
+    }
+  }
+}
