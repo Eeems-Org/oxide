@@ -358,6 +358,7 @@ TerminalView::openPty() {
     if (home && home[0]) {
       chdir(home);
     }
+    setenv("TERM", "xterm-256color", 1);
     execlp(shell, shell, "-l", nullptr);
     _exit(127);
   }
@@ -443,6 +444,42 @@ TerminalView::keyToBytes(QKeyEvent* e) {
       return QByteArray("\x1b[H");
     case Qt::Key_End:
       return QByteArray("\x1b[F");
+    case Qt::Key_Delete:
+      return QByteArray("\x1b[3~");
+    case Qt::Key_Insert:
+      return QByteArray("\x1b[2~");
+    case Qt::Key_PageUp:
+      return QByteArray("\x1b[5~");
+    case Qt::Key_PageDown:
+      return QByteArray("\x1b[6~");
+    case Qt::Key_Help:
+      return QByteArray("\x1b[28~");
+    case Qt::Key_Menu:
+      return QByteArray("\x1b[29~");
+    case Qt::Key_F1:
+      return QByteArray("\x1bOP");
+    case Qt::Key_F2:
+      return QByteArray("\x1bOQ");
+    case Qt::Key_F3:
+      return QByteArray("\x1bOR");
+    case Qt::Key_F4:
+      return QByteArray("\x1bOS");
+    case Qt::Key_F5:
+      return QByteArray("\x1b[15~");
+    case Qt::Key_F6:
+      return QByteArray("\x1b[17~");
+    case Qt::Key_F7:
+      return QByteArray("\x1b[18~");
+    case Qt::Key_F8:
+      return QByteArray("\x1b[19~");
+    case Qt::Key_F9:
+      return QByteArray("\x1b[20~");
+    case Qt::Key_F10:
+      return QByteArray("\x1b[21~");
+    case Qt::Key_F11:
+      return QByteArray("\x1b[23~");
+    case Qt::Key_F12:
+      return QByteArray("\x1b[24~");
     default:
       break;
   }

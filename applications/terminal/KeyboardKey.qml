@@ -1,8 +1,9 @@
 import QtQuick 2.9
 import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.0
 import "."
 
-Button {
+Item {
     id: root
     clip: true
     property var keyboard: null
@@ -22,20 +23,23 @@ Button {
     property string shiftaltctrlmetatext: shiftalttext
     property int key: 0
     property string value: ""
-    property int size: 1
+    property real size: 1
     property int basesize: keyboard.basesize || 90
     property int borderWidth: 1
+    property alias font: button.font
+    property alias text: button.text
+    property alias checked: button.checked
+    property alias checkable: button.checkable
 
-    width: size * basesize
-    height: basesize
-    focusPolicy: Qt.NoFocus
-    flat: true
-    font.pixelSize: 24
+    signal clicked
 
     onClicked: doClick()
-    autoRepeat: true
-    autoRepeatDelay: 300
-    autoRepeatInterval: 100
+
+    Layout.preferredWidth: (size * basesize) + 1
+    Layout.preferredHeight: basesize + 1
+    Layout.fillHeight: true
+    Layout.leftMargin: -1
+    Layout.topMargin: -1
 
     function getText() {
         if (!keyboard){
@@ -85,7 +89,7 @@ Button {
         if (root.key > 0) {
             handler.keyPress(root.key, modifiers, root.value);
         } else {
-            var t = root.getText();
+            var t = getText();
             if (t.length > 1) {
                 handler.stringPress(t, modifiers);
             } else {
@@ -100,22 +104,35 @@ Button {
         }
     }
 
-    contentItem: Text {
-        text: getText()
-        font: root.font
-        opacity: enabled ? 1.0 : 0.3
-        color: "black"
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
-    }
-    background: Rectangle {
-        implicitWidth: 100
-        implicitHeight: 40
-        opacity: enabled ? 1 : 0.3
-        color: "white"
-        border.color: "black"
-        border.width: root.borderWidth
-        radius: 2
+    Button {
+        id: button
+        anchors.fill: parent
+        focusPolicy: Qt.NoFocus
+        flat: true
+        font.pixelSize: 24
+
+        onClicked: root.clicked()
+        autoRepeat: !checkable
+        autoRepeatDelay: 300
+        autoRepeatInterval: 100
+
+        contentItem: Text {
+            text: root.getText()
+            font: button.font
+            opacity: enabled ? 1.0 : 0.3
+            color: "black"
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+        background: Rectangle {
+            implicitWidth: 100
+            implicitHeight: 40
+            opacity: enabled ? 1 : 0.3
+            color: "white"
+            border.color: "black"
+            border.width: root.borderWidth
+            radius: 2
+        }
     }
 }
