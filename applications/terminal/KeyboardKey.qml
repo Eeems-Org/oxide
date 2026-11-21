@@ -29,14 +29,10 @@ Button {
     property int fontsize: 8
     property int borderWidth: 1
 
-    signal click(Item item)
-    signal hold(Item item)
-    signal release(Item item)
-
     width: size * basesize + (size - 1) * 4
     height: basesize
     Layout.leftMargin: -1
-    Layout.leftMargin: -1
+    Layout.topMargin: -1
 
     function getText() {
         if (!keyboard){
