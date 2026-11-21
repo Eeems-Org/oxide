@@ -85,7 +85,7 @@ Item {
                 spacing: parent.spacing
                 anchors.horizontalCenter: parent.horizontalCenter
                 KeyboardKey {
-                    text: "⇑ CapsLock"; key: Qt.Key_CapsLock; size: 2; checkable: true; keyboard: keyboard
+                    text: "Caps Lock"; key: Qt.Key_CapsLock; size: 2; checkable: true; keyboard: keyboard
                     borderWidth: this.checked ? 3 : 1
                     checked: keyboard.hasCaps
                     onClick: {
