@@ -32,7 +32,6 @@ Item {
             RowLayout {
                 spacing: 0
                 Layout.fillWidth: true
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
                 KeyboardKey {
                     Layout.fillHeight: true
                     Layout.preferredWidth: keyboard.basesize * size
@@ -123,12 +122,10 @@ Item {
                     Layout.leftMargin: -1; Layout.topMargin: -1
                     text: "F12"; key: Qt.Key_F12; keyboard: keyboard
                 }
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
             }
             RowLayout {
                 spacing: 0
                 Layout.fillWidth: true
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
                 KeyboardKey {
                     Layout.fillHeight: true
                     Layout.preferredWidth: keyboard.basesize * size
@@ -214,12 +211,10 @@ Item {
                     text: "Backspace"; size: 2; key: Qt.Key_Backspace;
                     keyboard: keyboard
                 }
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
             }
             RowLayout {
                 spacing: 0
                 Layout.fillWidth: true
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
                 KeyboardKey {
                     Layout.fillHeight: true
                     Layout.preferredWidth: keyboard.basesize * size
@@ -305,12 +300,10 @@ Item {
                     Layout.leftMargin: -1; Layout.topMargin: -1
                     text: "\\"; shifttext: "|"; keyboard: keyboard
                 }
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
             }
             RowLayout {
                 spacing: 0
                 Layout.fillWidth: true
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
                 KeyboardKey {
                     Layout.fillHeight: true
                     Layout.preferredWidth: keyboard.basesize * size
@@ -385,12 +378,14 @@ Item {
                     text: "Enter"; value: "\n"; size: 3; key: Qt.Key_Enter; keyboard: keyboard
                     Layout.columnSpan: size * 2
                 }
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
+                Item {
+                    Layout.fillHeight: true;
+                    implicitWidth: keyboard.basesize
+                }
             }
             RowLayout {
                 spacing: 0
                 Layout.fillWidth: true
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
                 KeyboardKey {
                     Layout.fillHeight: true
                     Layout.preferredWidth: keyboard.basesize * size
@@ -486,12 +481,10 @@ Item {
                     font.pixelSize: 20
                     text: "PgDown"; key: Qt.Key_PageDown; keyboard: keyboard
                 }
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
             }
             RowLayout {
                 spacing: 0
                 Layout.fillWidth: true
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
                 KeyboardKey {
                     Layout.fillHeight: true
                     Layout.preferredWidth: keyboard.basesize * size
@@ -567,7 +560,6 @@ Item {
                     font.pixelSize: 32
                     text: "→"; key: Qt.Key_Right; keyboard: keyboard
                 }
-                Item { Layout.fillWidth: true; Layout.fillHeight: true; width: 1; height: 1 }
             }
         }
     }
