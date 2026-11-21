@@ -20,8 +20,6 @@ Button {
     property string shiftaltmetatext: shiftalttext
     property string shiftctrlmetatext: shiftctrltext
     property string shiftaltctrlmetatext: shiftalttext
-    property bool repeatOnHold: true
-    property int holdInterval: 100
     property int key: 0
     property string value: ""
     property int size: 1
@@ -31,6 +29,13 @@ Button {
 
     width: size * basesize + (size - 1) * 4
     height: basesize
+    focusPolicy: Qt.NoFocus
+    flat: true
+
+    onClicked: doClick()
+    autoRepeat: true
+    autoRepeatDelay: 300
+    autoRepeatInterval: 100
 
     function getText() {
         if (!keyboard){
@@ -94,9 +99,6 @@ Button {
         }
     }
 
-    focusPolicy: Qt.NoFocus
-    flat: true
-
     contentItem: Text {
         text: getText()
         font: root.font
@@ -114,21 +116,5 @@ Button {
         border.color: "black"
         border.width: root.borderWidth
         radius: 2
-    }
-
-    onClicked: doClick()
-    onHold: {
-        hold(this);
-        repeatOnHold && timer.start();
-    }
-    onRelease: {
-        release(this);
-        repeatOnHold && timer.stop();
-    }
-    Timer {
-        id: timer
-        repeat: true
-        interval: root.holdInterval
-        onTriggered: root.doClick()
     }
 }
