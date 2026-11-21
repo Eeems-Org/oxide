@@ -51,6 +51,8 @@ release: clean-base build $(DIST)
 	cd $(BUILD)/$(BUILDNAME)/shared/libblight && make qmake
 	# Force libblight_protocol makefile to regenerate so that install targets get when being built in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/libblight_protocol && make qmake
+	# Force libghostty-vt makefile to regenerate so that install targets get when being built in vbuild
+	cd $(BUILD)/$(BUILDNAME)/shared/libghostty-vt && make qmake
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) install
 
 .PHONY: build

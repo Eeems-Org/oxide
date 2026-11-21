@@ -23,7 +23,7 @@ include(../../qmake/common.pri)
 target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
-applications.files = ../../assets/opt/usr/share/applications/codes.eeems.terminal.oxide
+applications.files = ../../assets/opt/usr/share/applications/codes.eeems.wither.oxide
 applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 

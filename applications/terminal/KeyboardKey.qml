@@ -1,9 +1,10 @@
 import QtQuick 2.9
+import QtQuick.Controls 2.15
 import "."
-
 Item {
     id: root
     clip: true
+    property var keyboard: null
     property string text: ""
     property string shifttext: text
     property string alttext: text

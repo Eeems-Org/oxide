@@ -267,7 +267,7 @@ oxide_extra() {
     oxide=$pkgver-r$pkgrel
     oxide-utils=$pkgver-r$pkgrel
     liboxide=$pkgver-r$pkgrel
-    libghostty-vt=$pkgver-r$pkgrel
+    libghostty-vt
     "
 
     package() {
@@ -290,7 +290,7 @@ oxide_extra() {
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/wither
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
-            home/root/.local/share/applications/codes.eeems.terminal.oxide
+            home/root/.local/share/applications/codes.eeems.wither.oxide
     }
 }
 
@@ -590,8 +590,9 @@ launcherctl_oxide() {
 }
 
 libghostty_vt() {
-    pkgdesc="libghostty-vt terminal emulation library"
+    pkgdesc="Portable, high-performance C library for terminal emulation"
     category="libraries"
+    pkgver="1.0.1"
     depends="
     "
     package() {
@@ -607,14 +608,20 @@ libghostty_vt() {
 libghostty_vt_dev() {
     pkgdesc="Development files for libghostty-vt"
     category="development"
+    pkgver="1.0.1"
     depends="
-    libghostty-vt=$pkgver-r$pkgrel
+    libghostty-vt
     "
     package() {
         cd "$srcdir"/release
         cp -ar home/root/.vellum/include/ghostty \
             "$subpkgdir"/home/root/.vellum/include/
-        install -Dm644 "$srcdir/shared/libghostty-vt/src/LICENSE" \
-            "$subpkgdir/home/root/.vellum/licenses/libghostty-vt/LICENSE"
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/lib/pkgconfig \
+            home/root/.vellum/lib/pkgconfig/libghostty-vt.pc \
+            home/root/.vellum/lib/pkgconfig/libghostty-vt-static.pc
+        mkdir -p "$subpkgdir"/home/root/.vellum/lib/cmake/ghostty-vt
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/lib/cmake/ghostty-vt \
+            home/root/.vellum/lib/cmake/ghostty-vt/ghostty-vt-config.cmake \
+            home/root/.vellum/lib/cmake/ghostty-vt/ghostty-vt-config-version.cmake
     }
 }

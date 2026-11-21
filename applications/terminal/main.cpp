@@ -24,10 +24,10 @@ int
 main(int argc, char* argv[]) {
   deviceSettings.setupQtEnvironment();
   QGuiApplication app(argc, argv);
-  sentry_init("terminal", argv);
+  sentry_init("wither", argv);
   app.setOrganizationName("Eeems");
   app.setOrganizationDomain(OXIDE_SERVICE);
-  app.setApplicationName("terminal");
+  app.setApplicationName("wither");
   app.setApplicationVersion(APP_VERSION);
 
   qmlRegisterType<TerminalView>("Terminal", 1, 0, "TerminalView");
@@ -45,6 +45,5 @@ main(int argc, char* argv[]) {
     root->installEventFilter(new EventFilter(&app));
     qDebug() << root;
   });
-  app.setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents, false);
   return app.exec();
 }

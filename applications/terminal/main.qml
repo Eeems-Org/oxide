@@ -24,9 +24,7 @@ OxideWindow {
         }
 
         Keyboard {
-            visible: !Oxide.landscape
             Layout.fillWidth: true
-            Layout.preferredHeight: 260
         }
     }
 }
