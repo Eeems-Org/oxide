@@ -15,25 +15,25 @@ Item {
     property bool hasAlt: false
     property bool hasCtrl: false
     property bool hasMeta: false
-    property int basesize: 90
+    property int basesize: keyboard.width / 15
     function hide() {
         keyboard.visible = false;
     }
     width: parent.width
-    height: 630
+    height: basesize * 6
     Rectangle {
         color: "transparent"
         anchors.fill: keyboard
         Column {
             id: qwerty
             anchors.centerIn: parent
-            spacing: 4
+            spacing: 0
             visible: keyboard.page == 0
             Row {
                 spacing: parent.spacing
                 anchors.horizontalCenter: parent.horizontalCenter
                 KeyboardKey { text: "Esc"; key: Qt.Key_Escape; fontsize: 6; keyboard: keyboard }
-                Item { width: 90; height: 1 }
+                Item { width: keyboard.basesize; height: 1 }
                 KeyboardKey { text: "F1"; key: Qt.Key_F1; fontsize: 6; keyboard: keyboard }
                 KeyboardKey { text: "F2"; key: Qt.Key_F2; fontsize: 6; keyboard: keyboard }
                 KeyboardKey { text: "F3"; key: Qt.Key_F3; fontsize: 6; keyboard: keyboard }
@@ -50,6 +50,7 @@ Item {
             Row {
                 spacing: parent.spacing
                 anchors.horizontalCenter: parent.horizontalCenter
+                KeyboardKey { text: "`"; shifttext: "~"; keyboard: keyboard }
                 KeyboardKey { text: "1"; shifttext: "!"; keyboard: keyboard }
                 KeyboardKey { text: "2"; shifttext: "@"; keyboard: keyboard }
                 KeyboardKey { text: "3"; shifttext: "#"; keyboard: keyboard }
@@ -103,7 +104,7 @@ Item {
                 KeyboardKey { text: "k"; shifttext: "K"; keyboard: keyboard }
                 KeyboardKey { text: "l"; shifttext: "L"; keyboard: keyboard }
                 KeyboardKey { text: "Enter"; size: 2; key: Qt.Key_Enter; keyboard: keyboard }
-                Item { width: 90*2; height: 1 }
+                Item { width: keyboard.basesize; height: 1 }
             }
             Row {
                 spacing: parent.spacing
@@ -127,9 +128,9 @@ Item {
                 KeyboardKey { text: ","; shifttext: "<"; keyboard: keyboard }
                 KeyboardKey { text: "."; shifttext: ">"; keyboard: keyboard }
                 KeyboardKey { text: "/"; shifttext: "?"; keyboard: keyboard }
-                Item { width: 90; height: 1 }
+                Item { width: keyboard.basesize; height: 1 }
                 KeyboardKey { text: "↑"; key: Qt.Key_Up; fontsize: 6; keyboard: keyboard }
-                Item { width: 90; height: 1 }
+                Item { width: keyboard.basesize; height: 1 }
             }
             Row {
                 spacing: parent.spacing
@@ -161,9 +162,9 @@ Item {
                         return true;
                     }
                 }
-                Item { width: 90*3; height: 1 }
-                KeyboardKey { text: "Space"; key: Qt.Key_Space; value: " "; size: 4; keyboard: keyboard }
-                Item { width: 90*2; height: 1 }
+                Item { width: keyboard.basesize*1; height: 1 }
+                KeyboardKey { text: "Space"; key: Qt.Key_Space; value: " "; size: 7; keyboard: keyboard }
+                Item { width: keyboard.basesize*1; height: 1 }
                 KeyboardKey { text: "←"; key: Qt.Key_Left; fontsize: 6; keyboard: keyboard }
                 KeyboardKey { text: "↓"; key: Qt.Key_Down; fontsize: 6; keyboard: keyboard }
                 KeyboardKey { text: "→"; key: Qt.Key_Right; fontsize: 6; keyboard: keyboard }
