@@ -35,6 +35,8 @@ Button {
 
     width: size * basesize + (size - 1) * 4
     height: basesize
+    margins.left: -1
+    margins.top: -1
 
     function getText() {
         if (!keyboard){
@@ -120,8 +122,15 @@ Button {
         radius: 2
     }
 
-    onClicked: root.doClick()
-
+    onClicked: doClick()
+    onHold: {
+        hold(this);
+        repeatOnHold && timer.start();
+    }
+    onRelease: {
+        release(this);
+        repeatOnHold && timer.stop();
+    }
     Timer {
         id: timer
         repeat: true
