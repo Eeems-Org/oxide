@@ -35,8 +35,8 @@ Button {
 
     width: size * basesize + (size - 1) * 4
     height: basesize
-    margins.left: -1
-    margins.top: -1
+    Layout.leftMargin: -1
+    Layout.leftMargin: -1
 
     function getText() {
         if (!keyboard){
