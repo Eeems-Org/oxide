@@ -43,7 +43,6 @@ main(int argc, char* argv[]) {
       return;
     }
     root->installEventFilter(new EventFilter(&app));
-    qDebug() << root;
   });
   return app.exec();
 }

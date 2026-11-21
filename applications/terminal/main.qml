@@ -10,7 +10,9 @@ OxideWindow {
     id: window
     objectName: "window"
     visible: true
-    title: qsTr("Terminal")
+    focus: true
+    title: terminal.title
+    backgroundColor: "white"
 
     ColumnLayout {
         anchors.fill: parent
@@ -18,12 +20,24 @@ OxideWindow {
 
         TerminalView {
             id: terminal
+            objectName: "terminal"
             Layout.fillWidth: true
             Layout.fillHeight: true
             focus: true
+            Component.onCompleted:{
+                console.log("Forcing focus to terminal")
+                forceActiveFocus()
+            }
+            onActiveFocusChanged: {
+                console.log("TerminalView activeFocus changed to", activeFocus)
+                if(!activeFocus){
+                    forceActiveFocus()
+                }
+            }
         }
 
         Keyboard {
+            id: keyboard
             Layout.fillWidth: true
         }
     }

@@ -4,6 +4,5 @@
     "icon": "utilities-terminal",
     "bin": "/home/root/.vellum/bin/wither",
     "flags": ["nopreload"],
-    "type": "foreground",
-    "permissions": []
+    "type": "foreground"
 }

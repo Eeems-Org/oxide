@@ -1,11 +1,11 @@
 import QtQuick 2.9
 import QtQuick.Controls 2.15
 import "."
-Item {
+
+Button {
     id: root
     clip: true
     property var keyboard: null
-    property string text: ""
     property string shifttext: text
     property string alttext: text
     property string ctrltext: text
@@ -23,53 +23,57 @@ Item {
     property bool repeatOnHold: true
     property int holdInterval: 100
     property int key: 0
-    property string value: null
+    property string value: ""
     property int size: 1
-    property int basesize: 60
+    property int basesize: this.keyboard ? this.keyboard.basesize : 90
     property int fontsize: 8
+    property int borderWidth: 1
+
     signal click(Item item)
     signal hold(Item item)
     signal release(Item item)
-    property bool toggle: false
-    width: size * basesize
+
+    width: size * basesize + (size - 1) * 4
     height: basesize
-    function getText(){
-        if (keyboard.hasShift && keyboard.hasAlt && keyboard.hasCtrl) {
+
+    function getText() {
+        if (keyboard && keyboard.hasShift && keyboard.hasAlt && keyboard.hasCtrl) {
             return shiftaltctrltext;
         }
-        if (keyboard.hasShift && keyboard.hasAlt) {
+        if (keyboard && keyboard.hasShift && keyboard.hasAlt) {
             return shiftalttext;
         }
-        if (keyboard.hasShift && keyboard.hasCtrl) {
+        if (keyboard && keyboard.hasShift && keyboard.hasCtrl) {
             return shiftctrltext;
         }
-        if (keyboard.hasAlt && keyboard.hasCtrl) {
+        if (keyboard && keyboard.hasAlt && keyboard.hasCtrl) {
             return altctrltext;
         }
-        if (keyboard.hasShift) {
+        if (keyboard && keyboard.hasShift) {
             return shifttext;
         }
-        if (keyboard.hasAlt) {
+        if (keyboard && keyboard.hasAlt) {
             return alttext;
         }
-        if (keyboard.hasCtrl) {
+        if (keyboard && keyboard.hasCtrl) {
             return ctrltext;
         }
         return text;
     }
-    function doClick(){
+
+    function doClick() {
         if (root.click(root) !== false) {
             var modifiers = Qt.NoModifier;
-            if (keyboard.hasShift) {
+            if (keyboard && keyboard.hasShift) {
                 modifiers = modifiers | Qt.ShiftModifier;
             }
-            if (keyboard.hasAlt) {
+            if (keyboard && keyboard.hasAlt) {
                 modifiers = modifiers | Qt.AltModifier;
             }
-            if (keyboard.hasCtrl) {
+            if (keyboard && keyboard.hasCtrl) {
                 modifiers = modifiers | Qt.ControlModifier;
             }
-            if (keyboard.hasMeta) {
+            if (keyboard && keyboard.hasMeta) {
                 modifiers = modifiers | Qt.MetaModifier;
             }
             if (root.key > 0) {
@@ -82,7 +86,7 @@ Item {
                     handler.charPress(t, modifiers);
                 }
             }
-            if (!root.toggle) {
+            if (!root.checkable && keyboard) {
                 keyboard.hasShift = false;
                 keyboard.hasAlt = false;
                 keyboard.hasCtrl = false;
@@ -90,12 +94,32 @@ Item {
             }
         }
     }
-    Button {
-        id: button
-        text: root.getText()
-        anchors.fill: parent
-        onClicked: root.doClick()
+
+    text: getText()
+    focusPolicy: Qt.NoFocus
+    flat: true
+
+    contentItem: Text {
+        text: root.text
+        font: root.font
+        opacity: enabled ? 1.0 : 0.3
+        color: "black"
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
     }
+    background: Rectangle {
+        implicitWidth: 100
+        implicitHeight: 40
+        opacity: enabled ? 1 : 0.3
+        color: "white"
+        border.color: "black"
+        border.width: root.borderWidth
+        radius: 2
+    }
+
+    onClicked: root.doClick()
+
     Timer {
         id: timer
         repeat: true

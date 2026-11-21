@@ -15,19 +15,38 @@ Item {
     property bool hasAlt: false
     property bool hasCtrl: false
     property bool hasMeta: false
+    property int basesize: 90
     function hide() {
         keyboard.visible = false;
     }
     width: parent.width
-    height: 260
+    height: 630
     Rectangle {
-        color: "black"
+        color: "transparent"
         anchors.fill: keyboard
         Column {
             id: qwerty
             anchors.centerIn: parent
             spacing: 4
             visible: keyboard.page == 0
+            Row {
+                spacing: parent.spacing
+                anchors.horizontalCenter: parent.horizontalCenter
+                KeyboardKey { text: "Esc"; key: Qt.Key_Escape; fontsize: 6; keyboard: keyboard }
+                Item { width: 90; height: 1 }
+                KeyboardKey { text: "F1"; key: Qt.Key_F1; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F2"; key: Qt.Key_F2; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F3"; key: Qt.Key_F3; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F4"; key: Qt.Key_F4; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F5"; key: Qt.Key_F5; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F6"; key: Qt.Key_F6; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F7"; key: Qt.Key_F7; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F8"; key: Qt.Key_F8; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F9"; key: Qt.Key_F9; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F10"; key: Qt.Key_F10; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F11"; key: Qt.Key_F11; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "F12"; key: Qt.Key_F12; fontsize: 6; keyboard: keyboard }
+            }
             Row {
                 spacing: parent.spacing
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -79,6 +98,15 @@ Item {
             Row {
                 spacing: parent.spacing
                 anchors.horizontalCenter: parent.horizontalCenter
+                KeyboardKey {
+                    text: "Shift"; key: Qt.Key_Shift; size: 2; checkable: true; keyboard: keyboard
+                    borderWidth: this.checked ? 3 : 1
+                    checked: keyboard.hasShift
+                    onClick: {
+                        keyboard.hasShift = !keyboard.hasShift
+                        return true;
+                    }
+                }
                 KeyboardKey { text: "z"; shifttext: "Z"; keyboard: keyboard }
                 KeyboardKey { text: "x"; shifttext: "X"; keyboard: keyboard }
                 KeyboardKey { text: "c"; shifttext: "C"; keyboard: keyboard }
@@ -89,7 +117,46 @@ Item {
                 KeyboardKey { text: ","; shifttext: "<"; keyboard: keyboard }
                 KeyboardKey { text: "."; shifttext: ">"; keyboard: keyboard }
                 KeyboardKey { text: "/"; shifttext: "?"; keyboard: keyboard }
-                KeyboardKey { text: "Space"; size: 4; key: Qt.Key_Space; value: " "; keyboard: keyboard }
+                Item { width: 90; height: 1 }
+                KeyboardKey { text: "↑"; key: Qt.Key_Up; fontsize: 6; keyboard: keyboard }
+                Item { width: 90; height: 1 }
+            }
+            Row {
+                spacing: parent.spacing
+                anchors.horizontalCenter: parent.horizontalCenter
+                KeyboardKey {
+                    text: "Ctrl"; key: Qt.Key_Control; checkable: true; keyboard: keyboard
+                    borderWidth: this.checked ? 3 : 1
+                    checked: keyboard.hasCtrl
+                    onClick: {
+                        keyboard.hasCtrl = !keyboard.hasCtrl
+                        return true;
+                    }
+                }
+                KeyboardKey {
+                    text: "Meta"; key: Qt.Key_Meta; checkable: true; keyboard: keyboard
+                    borderWidth: this.checked ? 3 : 1
+                    checked: keyboard.hasMeta
+                    onClick: {
+                        keyboard.hasMeta = !keyboard.hasMeta
+                        return true;
+                    }
+                }
+                KeyboardKey {
+                    text: "Alt"; key: Qt.Key_Alt; checkable: true; keyboard: keyboard
+                    borderWidth: this.checked ? 3 : 1
+                    checked: keyboard.hasAlt
+                    onClick: {
+                        keyboard.hasAlt = !keyboard.hasAlt
+                        return true;
+                    }
+                }
+                Item { width: 90*3; height: 1 }
+                KeyboardKey { text: "Space"; key: Qt.Key_Space; value: " "; size: 4; keyboard: keyboard }
+                Item { width: 90*2; height: 1 }
+                KeyboardKey { text: "←"; key: Qt.Key_Left; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "↓"; key: Qt.Key_Down; fontsize: 6; keyboard: keyboard }
+                KeyboardKey { text: "→"; key: Qt.Key_Right; fontsize: 6; keyboard: keyboard }
             }
         }
     }

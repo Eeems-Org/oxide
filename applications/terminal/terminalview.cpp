@@ -23,10 +23,31 @@ TerminalView::TerminalView(QQuickItem* parent)
   : QQuickPaintedItem(parent) {
   setAcceptedMouseButtons(Qt::AllButtons);
   setFlag(ItemAcceptsInputMethod, true);
+  setFlag(ItemIsFocusScope, true);
+  setFocusPolicy(Qt::StrongFocus);
   setFocus(true);
 
+  m_title = "Terminal";
   GhosttyTerminal terminal = nullptr;
   ghostty_terminal_new(nullptr, &terminal, 80, 24);
+  ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_USERDATA, this);
+  GhosttyTerminalTitleChangedFn titleCb =
+    [](GhosttyTerminal t, void* userdata) {
+      GhosttyString title = {nullptr, 0};
+      ghostty_terminal_get(t, GHOSTTY_TERMINAL_DATA_TITLE, &title);
+      TerminalView* self = static_cast<TerminalView*>(userdata);
+      if (title.ptr && title.len > 0) {
+        QString qtitle = QString::fromUtf8(
+          reinterpret_cast<const char*>(title.ptr), static_cast<int>(title.len)
+        );
+        QMetaObject::invokeMethod(self, "setTitle", Q_ARG(QString, qtitle));
+      }
+    };
+  ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_TITLE_CHANGED, &titleCb);
+  GhosttyColorRgb fg = {0, 0, 0};
+  GhosttyColorRgb bg = {255, 255, 255};
+  ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_COLOR_FOREGROUND, &fg);
+  ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_COLOR_BACKGROUND, &bg);
   m_terminal = terminal;
 
   GhosttyRenderState rs = nullptr;
@@ -43,7 +64,7 @@ TerminalView::TerminalView(QQuickItem* parent)
 
   m_font = QFont("monospace");
   m_font.setStyleHint(QFont::Monospace);
-  m_font.setPointSize(10);
+  m_font.setPointSize(12);
   QFontMetricsF fm(m_font);
   m_charWidth = fm.horizontalAdvance(QChar('M'));
   if (m_charWidth <= 0) {
@@ -103,7 +124,6 @@ TerminalView::~TerminalView() {
 
 void
 TerminalView::paint(QPainter* painter) {
-  painter->fillRect(boundingRect(), Qt::black);
   if (!m_terminal || !m_renderState) {
     return;
   }
@@ -136,7 +156,7 @@ TerminalView::paint(QPainter* painter) {
   );
 
   painter->setFont(m_font);
-  int y = 0;
+  uint16_t y = 0;
   while (ghostty_render_state_row_iterator_next(rowIter)) {
     ghostty_render_state_row_get(
       rowIter, GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, &cells
@@ -253,6 +273,7 @@ TerminalView::geometryChange(
 
 void
 TerminalView::keyPressEvent(QKeyEvent* event) {
+  qDebug() << "TerminalView keyPressEvent" << event->key() << event->text();
   QByteArray data = keyToBytes(event);
   if (!data.isEmpty() && m_masterFd >= 0) {
     ::write(m_masterFd, data.constData(), data.size());
@@ -298,6 +319,14 @@ TerminalView::updateSize() {
 }
 
 void
+TerminalView::setTitle(const QString& title) {
+  if (m_title != title) {
+    m_title = title;
+    emit titleChanged(m_title);
+  }
+}
+
+void
 TerminalView::openPty() {
   int slave = -1;
   if (openpty(&m_masterFd, &slave, nullptr, nullptr, nullptr) != 0) {
@@ -323,9 +352,13 @@ TerminalView::openPty() {
     }
     const char* shell = getenv("SHELL");
     if (!shell || !shell[0]) {
-      shell = "/bin/sh";
+      shell = "/usr/bin/bash";
     }
-    execlp(shell, shell, nullptr);
+    const char* home = getenv("HOME");
+    if (home && home[0]) {
+      chdir(home);
+    }
+    execlp(shell, shell, "-l", nullptr);
     _exit(127);
   }
   close(slave);
@@ -343,6 +376,7 @@ TerminalView::openPty() {
         );
         update();
       } else if (n == 0) {
+        QCoreApplication::quit();
         break;
       } else {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -413,8 +447,13 @@ TerminalView::keyToBytes(QKeyEvent* e) {
       break;
   }
   QString t = e->text();
+  QByteArray result;
+  if (e->modifiers() & Qt::AltModifier) {
+    result.append('\x1b');
+  }
   if (!t.isEmpty()) {
-    return t.toUtf8();
+    result.append(t.toUtf8());
+    return result;
   }
   return QByteArray();
 }

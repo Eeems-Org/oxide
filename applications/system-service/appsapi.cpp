@@ -808,6 +808,11 @@ AppsAPI::openTerminal() {
     app->launchNoSecurityCheck();
     return;
   }
+  app = getApplication("codes.eeems.wither");
+  if (app != nullptr) {
+    app->launchNoSecurityCheck();
+    return;
+  }
   app = getApplication("yaft");
   if (app != nullptr) {
     app->launchNoSecurityCheck();

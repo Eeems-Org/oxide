@@ -194,8 +194,9 @@ $(BUILD)/package/oxide.tar.gz: $(OBJ) $(BUILD)/package
 	rm -f $(BUILD)/package/oxide.tar.gz
 	tar \
 		--exclude='$(CURDIR)/.git' \
-		--exclude='$(BUILD)' \
 		--exclude='$(CURDIR)/dist' \
+		--exclude='$(CURDIR)/shared/libghostty-vt/src/.zig-cache' \
+		--exclude='$(BUILD)' \
 		--exclude='$(DIST)' \
 		-czvf $(BUILD)/package/oxide.tar.gz \
 		applications \
