@@ -23,14 +23,14 @@ Button {
     property int key: 0
     property string value: ""
     property int size: 1
-    property int basesize: this.keyboard ? this.keyboard.basesize : 90
-    property int fontsize: 8
+    property int basesize: keyboard.basesize || 90
     property int borderWidth: 1
 
-    width: size * basesize + (size - 1) * 4
+    width: size * basesize
     height: basesize
     focusPolicy: Qt.NoFocus
     flat: true
+    font.pixelSize: 24
 
     onClicked: doClick()
     autoRepeat: true
@@ -66,36 +66,37 @@ Button {
     }
 
     function doClick() {
-        if (root.click(root) !== false) {
-            var modifiers = Qt.NoModifier;
-            if (keyboard && keyboard.hasShift) {
-                modifiers = modifiers | Qt.ShiftModifier;
-            }
-            if (keyboard && keyboard.hasAlt) {
-                modifiers = modifiers | Qt.AltModifier;
-            }
-            if (keyboard && keyboard.hasCtrl) {
-                modifiers = modifiers | Qt.ControlModifier;
-            }
-            if (keyboard && keyboard.hasMeta) {
-                modifiers = modifiers | Qt.MetaModifier;
-            }
-            if (root.key > 0) {
-                handler.keyPress(root.key, modifiers, root.value);
+        if(!keyboard){
+            return
+        }
+        var modifiers = Qt.NoModifier;
+        if (keyboard.hasShift) {
+            modifiers = modifiers | Qt.ShiftModifier;
+        }
+        if (keyboard.hasAlt) {
+            modifiers = modifiers | Qt.AltModifier;
+        }
+        if (keyboard.hasCtrl) {
+            modifiers = modifiers | Qt.ControlModifier;
+        }
+        if (keyboard.hasMeta) {
+            modifiers = modifiers | Qt.MetaModifier;
+        }
+        if (root.key > 0) {
+            handler.keyPress(root.key, modifiers, root.value);
+        } else {
+            var t = root.getText();
+            if (t.length > 1) {
+                handler.stringPress(t, modifiers);
             } else {
-                var t = root.getText();
-                if (t.length > 1) {
-                    handler.stringPress(t, modifiers);
-                } else {
-                    handler.charPress(t, modifiers);
-                }
+                handler.charPress(t, modifiers);
             }
-            if (!root.checkable && keyboard) {
-                keyboard.hasShift = false;
-                keyboard.hasAlt = false;
-                keyboard.hasCtrl = false;
-                keyboard.hasMeta = false;
-            }
+        }
+        if (!root.checkable) {
+            keyboard.hasShift = false;
+            keyboard.hasAlt = false;
+            keyboard.hasCtrl = false;
+            keyboard.hasMeta = false;
         }
     }
 

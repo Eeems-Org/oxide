@@ -14,7 +14,7 @@ OxideWindow {
     title: terminal.title
     backgroundColor: "white"
 
-    ColumnLayout {
+    initialItem: ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
