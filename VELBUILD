@@ -51,8 +51,6 @@ build() {
     set -e
     cd "$srcdir"
     . "$ENVIRONMENT_SETUP"
-    ZIG_GLOBAL_CACHE_DIR="$startdir"/.zig-global-cache \
-    ZIG_CACHE_DIR="$startdir"/.zig-cache \
     make FEATURES=sentry release
     find . -type d -name .zig-cache | sort -r | xargs -r rm -r
 }
