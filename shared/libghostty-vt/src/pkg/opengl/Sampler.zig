@@ -1,0 +1,52 @@
+const Sampler = @This();
+
+const std = @import("std");
+const c = @import("opengl_c");
+const errors = @import("errors.zig");
+const glad = @import("glad.zig");
+const Texture = @import("Texture.zig");
+
+id: c.GLuint,
+
+/// Create a single sampler.
+pub fn create() errors.Error!Sampler {
+    var id: c.GLuint = undefined;
+    glad.context.GenSamplers.?(1, &id);
+    try errors.getError();
+    return .{ .id = id };
+}
+
+/// glBindSampler
+pub fn bind(v: Sampler, index: c_uint) !void {
+    glad.context.BindSampler.?(index, v.id);
+    try errors.getError();
+}
+
+pub fn parameter(
+    self: Sampler,
+    comptime name: Texture.Parameter,
+    value: name.Type(),
+) errors.Error!void {
+    const T = name.Type();
+
+    switch (T) {
+        c.GLint => glad.context.SamplerParameteri.?(
+            self.id,
+            @backingInt(name),
+            value,
+        ),
+        else => switch (@typeInfo(T)) {
+            .@"enum" => glad.context.SamplerParameteri.?(
+                self.id,
+                @backingInt(name),
+                @backingInt(value),
+            ),
+            else => @compileLog("unsupported parameter type", T),
+        },
+    }
+    try errors.getError();
+}
+
+pub fn destroy(v: Sampler) void {
+    glad.context.DeleteSamplers.?(1, &v.id);
+}

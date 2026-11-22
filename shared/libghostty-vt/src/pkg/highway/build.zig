@@ -1,0 +1,157 @@
+const std = @import("std");
+
+pub fn build(b: *std.Build) !void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const upstream_ = b.lazyDependency("highway", .{});
+
+    const module = b.addModule("highway", .{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const lib = b.addLibrary(.{
+        .name = "highway",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/detect.zig"),
+            .target = target,
+            .optimize = optimize,
+            // Our highway package is free of libc at runtime (uses no symbols)
+            // but does require libc headers at compile time.
+            .link_libc = true,
+        }),
+        .linkage = .static,
+
+        // Zig's own x86_64 code generator, which Debug builds use, ignores
+        // symbol visibility. Without LLVM, shared libraries that include
+        // this would export ghostty_hwy_detect_targets.
+        .use_llvm = true,
+    });
+
+    lib.root_module.addIncludePath(b.path("src/cpp"));
+    if (upstream_) |upstream| {
+        lib.root_module.addIncludePath(upstream.path(""));
+        module.addIncludePath(upstream.path(""));
+    }
+
+    if (target.result.abi.isAndroid()) {
+        const android_ndk = @import("android_ndk");
+        try android_ndk.addPaths(b, lib);
+    }
+
+    // Mainly for iOS simulators, but we add for all Darwin target for
+    // consistency.
+    if (target.result.os.tag.isDarwin()) {
+        const apple_sdk = @import("apple_sdk");
+        try apple_sdk.addPaths(b, lib);
+    }
+
+    var flags: std.ArrayList([]const u8) = .empty;
+    defer flags.deinit(b.allocator);
+    try flags.appendSlice(b.allocator, &.{
+        // Highway can avoid libc++ entirely as long as all users compile
+        // against the headers with the same define.
+        "-DHWY_NO_LIBCXX",
+
+        // Only linked statically into libghostty-vt and the app: export nothing.
+        "-fvisibility=hidden",
+
+        // Avoid changing binaries based on the current time and date.
+        "-Wno-builtin-macro-redefined",
+        "-D__DATE__=\"redacted\"",
+        "-D__TIMESTAMP__=\"redacted\"",
+        "-D__TIME__=\"redacted\"",
+
+        // Optimizations
+        "-fmerge-all-constants",
+
+        // Warnings
+        "-Wall",
+        "-Wextra",
+
+        // These are not included in Wall nor Wextra:
+        "-Wconversion",
+        "-Wsign-conversion",
+        "-Wvla",
+        "-Wnon-virtual-dtor",
+
+        "-Wfloat-overflow-conversion",
+        "-Wfloat-zero-conversion",
+        "-Wfor-loop-analysis",
+        "-Wgnu-redeclared-enum",
+        "-Winfinite-recursion",
+        "-Wself-assign",
+        "-Wstring-conversion",
+        "-Wtautological-overlap-compare",
+        "-Wthread-safety-analysis",
+        "-Wundefined-func-template",
+
+        "-fno-cxx-exceptions",
+        "-fno-slp-vectorize",
+        "-fno-vectorize",
+
+        // Fixes linker issues for release builds missing ubsanitizer symbols
+        "-fno-sanitize=undefined",
+        "-fno-sanitize-trap=undefined",
+    });
+
+    if (target.result.os.tag == .freebsd or target.result.os.tag == .linux) {
+        try flags.append(b.allocator, "-fPIC");
+        lib.root_module.pic = true;
+    }
+
+    if (target.result.os.tag != .windows) {
+        try flags.appendSlice(b.allocator, &.{
+            "-fmath-errno",
+            "-fno-exceptions",
+        });
+    } else if (target.result.abi == .msvc) {
+        try flags.appendSlice(b.allocator, &.{
+            // -fno-autolink also drops UCRT's /alternatename fallback.
+            "-D_Avx2WmemEnabledWeakValue=_Avx2WmemEnabled",
+            "-fno-autolink",
+            "-fno-stack-protector",
+        });
+
+        // When the C stack protector is disabled we must also disable stack
+        // protection for the Zig code, since otherwise Zig will link to
+        // undefined security cookie symbols.
+        lib.root_module.stack_protector = false;
+    }
+
+    lib.root_module.addCSourceFiles(.{ .flags = flags.items, .files = &.{
+        "src/cpp/abort.cc",
+        "src/cpp/per_target.cc",
+        "src/cpp/targets.cpp",
+    } });
+
+    if (upstream_) |upstream| {
+        lib.installHeadersDirectory(
+            upstream.path("hwy"),
+            "hwy",
+            .{ .include_extensions = &.{".h"} },
+        );
+    }
+
+    b.installArtifact(lib);
+
+    {
+        const test_exe = b.addTest(.{
+            .name = "test",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        test_exe.root_module.linkLibrary(lib);
+
+        var it = module.import_table.iterator();
+        while (it.next()) |entry| test_exe.root_module.addImport(entry.key_ptr.*, entry.value_ptr.*);
+        const tests_run = b.addRunArtifact(test_exe);
+        const test_step = b.step("test", "Run tests");
+        test_step.dependOn(&tests_run.step);
+    }
+}

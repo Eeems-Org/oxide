@@ -1,0 +1,17 @@
+.{
+    .name = .fontconfig,
+    .version = "2.14.2",
+    .fingerprint = 0x4a79a5a40c6d6d8,
+    .paths = .{""},
+    .dependencies = .{
+        .fontconfig = .{
+            .url = "https://deps.files.ghostty.org/N-V-__8AAOgqbADacob-q2_DMQlmgaG4xKHRuW-6PJ4oJzMZ.tar.xz",
+            .hash = "N-V-__8AAOgqbADacob-q2_DMQlmgaG4xKHRuW-6PJ4oJzMZ",
+            .lazy = true,
+        },
+
+        .freetype = .{ .path = "../freetype", .lazy = true },
+        .libxml2 = .{ .path = "../libxml2", .lazy = true },
+        .translate_c = .{ .path = "../translate-c" },
+    },
+}

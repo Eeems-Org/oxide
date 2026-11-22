@@ -4,6 +4,7 @@ SUBDIRS = \
     cpptrace \
     libblight \
     libblight_protocol \
+    libghostty-vt \
     liboxide \
     qpa \
     sentry

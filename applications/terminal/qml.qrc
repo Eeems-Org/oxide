@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>Keyboard.qml</file>
+        <file>KeyboardKey.qml</file>
+        <file>Spacer.qml</file>
+    </qresource>
+</RCC>

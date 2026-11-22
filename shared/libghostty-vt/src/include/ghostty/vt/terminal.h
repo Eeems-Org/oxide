@@ -1,0 +1,3686 @@
+/**
+ * @file terminal.h
+ *
+ * Complete terminal emulator state and rendering.
+ */
+
+#ifndef GHOSTTY_VT_TERMINAL_H
+#define GHOSTTY_VT_TERMINAL_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <ghostty/vt/types.h>
+#include <ghostty/vt/allocator.h>
+#include <ghostty/vt/device.h>
+#include <ghostty/vt/modes.h>
+#include <ghostty/vt/osc.h>
+#include <ghostty/vt/size_report.h>
+#include <ghostty/vt/grid_ref.h>
+#include <ghostty/vt/io.h>
+#include <ghostty/vt/kitty_graphics.h>
+#include <ghostty/vt/screen.h>
+#include <ghostty/vt/point.h>
+#include <ghostty/vt/selection.h>
+#include <ghostty/vt/style.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** @addtogroup terminal
+ *
+ * A GhosttyTerminal is a whole terminal emulator: you write VT data into it, and
+ * it keeps the screen, scrollback, cursor, styles, and modes.
+ *
+ * Nearly everything in this library starts here. All you need to make one is a
+ * size. It doesn't draw and it doesn't talk to a pty. Both of those are yours.
+ * If you only want one parser or encoder, the
+ * @ref api_building_blocks "Building Blocks" work without a terminal.
+ *
+ * ## Example
+ *
+ * @code{.c}
+ * GhosttyTerminal terminal;
+ * ghostty_terminal_new(NULL, &terminal, 80, 24);
+ *
+ * const char* text = "Hello, \x1b[1;32mworld\x1b[0m!\r\n";
+ * ghostty_terminal_vt_write(terminal, (const uint8_t*)text, strlen(text));
+ *
+ * ghostty_terminal_free(terminal);
+ * @endcode
+ *
+ * Full program: @ref c-vt-stream/src/main.c
+ *
+ * The guides cover the rest: @ref guide-effects "Effects" for what programs
+ * ask of the terminal, @ref guide-colors "Colors",
+ * @ref guide-scrollback "Scrollback", and
+ * @ref guide-custom-sequences "Custom Sequences".
+ *
+ * @{
+ */
+
+/**
+ * Amount of compression work to perform before returning.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** Perform one bounded compression step suitable for idle scheduling. */
+  GHOSTTY_TERMINAL_COMPRESSION_MODE_INCREMENTAL = 0,
+
+  /** Synchronously inspect every currently eligible page. */
+  GHOSTTY_TERMINAL_COMPRESSION_MODE_FULL = 1,
+  GHOSTTY_TERMINAL_COMPRESSION_MODE_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalCompressionMode;
+
+/**
+ * Scheduling result from terminal compression.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** Retained-mapping reclamation is unavailable on this target. */
+  GHOSTTY_TERMINAL_COMPRESSION_RESULT_UNSUPPORTED = 0,
+
+  /** More incremental compression work remains. */
+  GHOSTTY_TERMINAL_COMPRESSION_RESULT_PENDING = 1,
+
+  /** The pass has no continuation to schedule. */
+  GHOSTTY_TERMINAL_COMPRESSION_RESULT_COMPLETE = 2,
+  GHOSTTY_TERMINAL_COMPRESSION_RESULT_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalCompressionResult;
+
+/**
+ * Scroll viewport behavior tag.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** Scroll to the top of the scrollback. */
+  GHOSTTY_TERMINAL_SCROLL_VIEWPORT_TOP = 0,
+
+  /** Scroll to the bottom (active area). */
+  GHOSTTY_TERMINAL_SCROLL_VIEWPORT_BOTTOM = 1,
+
+  /** Scroll by a delta amount (up is negative). */
+  GHOSTTY_TERMINAL_SCROLL_VIEWPORT_DELTA = 2,
+
+  /**
+   * Scroll to an absolute row offset from the top of the scrollable
+   * area. Row 0 is the top of the scrollback and the requested row
+   * becomes the first visible row of the viewport. The value is
+   * clamped so the viewport never scrolls beyond the top of the
+   * active area. If the terminal has no scrollback (e.g. the
+   * alternate screen is active), the viewport always remains on the
+   * active area.
+   *
+   * This is the same row space as the offset field of
+   * GhosttyTerminalScrollbar, so a scrollbar position obtained from
+   * GHOSTTY_TERMINAL_DATA_SCROLLBAR round-trips cleanly.
+   */
+  GHOSTTY_TERMINAL_SCROLL_VIEWPORT_ROW = 3,
+
+  /**
+   * Scroll by a number of prompts relative to the viewport top. Negative
+   * values move backward and positive values move forward. Requires semantic
+   * prompt markers from the shell. Zero or no matching prompt is a no-op.
+   * If fewer prompts remain than requested, move to the last matching prompt,
+   * clamped to the active area.
+   *
+   * Moving forward through a final prompt continuation can snap to the active
+   * area even when there is no newer prompt.
+   */
+  GHOSTTY_TERMINAL_SCROLL_VIEWPORT_DELTA_PROMPT = 4,
+  GHOSTTY_TERMINAL_SCROLL_VIEWPORT_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalScrollViewportTag;
+
+/**
+ * Scroll viewport value.
+ *
+ * @ingroup terminal
+ */
+typedef union {
+  /** Scroll delta (only used with GHOSTTY_TERMINAL_SCROLL_VIEWPORT_DELTA).
+   *  Up is negative. */
+  intptr_t delta;
+
+  /** Absolute row offset (only used with
+   *  GHOSTTY_TERMINAL_SCROLL_VIEWPORT_ROW). */
+  size_t row;
+
+  /** Prompt delta (only used with
+   *  GHOSTTY_TERMINAL_SCROLL_VIEWPORT_DELTA_PROMPT). */
+  intptr_t delta_prompt;
+
+  /** Padding for ABI compatibility. Do not use. */
+  uint64_t _padding[2];
+} GhosttyTerminalScrollViewportValue;
+
+/**
+ * Tagged union for scroll viewport behavior.
+ *
+ * @ingroup terminal
+ */
+typedef struct {
+  GhosttyTerminalScrollViewportTag tag;
+  GhosttyTerminalScrollViewportValue value;
+} GhosttyTerminalScrollViewport;
+
+/**
+ * Terminal screen identifier.
+ *
+ * Identifies which screen buffer is active in the terminal.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** The primary (normal) screen. */
+  GHOSTTY_TERMINAL_SCREEN_PRIMARY = 0,
+
+  /** The alternate screen. */
+  GHOSTTY_TERMINAL_SCREEN_ALTERNATE = 1,
+  GHOSTTY_TERMINAL_SCREEN_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalScreen;
+
+/**
+ * A point in the VT stream where ghostty_terminal_vt_write_until() can stop.
+ *
+ * The values are bit flags. Combine them with `|` to stop at any of several
+ * boundaries.
+ *
+ * Most boundaries mark the first or last byte of a control string: an APC,
+ * DCS or OSC sequence, made of an introducer, some content, and a
+ * terminator. GROUND is different. It marks the state between sequences
+ * rather than a byte inside one.
+ *
+ * Terminal protocols spell control bytes two ways, and both are recognized.
+ * A 7-bit introducer is ESC followed by one byte, such as `ESC ]` for OSC.
+ * The 8-bit form is a single byte in the range 0x80 to 0x9F, such as 0x9D
+ * for OSC. The string terminator ST is `ESC \` or the single byte 0x9C.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /**
+   * The stream is not inside any escape sequence or partial UTF-8
+   * character. This is a safe point to insert your own sequences.
+   *
+   * Ground is a state, not an event. If the stream is already at ground,
+   * the call stops immediately and consumes nothing.
+   */
+  GHOSTTY_TERMINAL_BOUNDARY_GROUND = 1 << 0,
+
+  /**
+   * The byte that started an APC string: `_` after ESC, or 0x9F.
+   *
+   * SOS (`X` or 0x98) and PM (`^` or 0x9E) strings also report this
+   * boundary, because the parser handles all three the same way. Check
+   * GhosttyTerminalWriteStop.byte to tell them apart.
+   */
+  GHOSTTY_TERMINAL_BOUNDARY_APC_START = 1 << 1,
+
+  /** The byte that ended an APC, SOS or PM string. */
+  GHOSTTY_TERMINAL_BOUNDARY_APC_END = 1 << 2,
+
+  /**
+   * The byte that started a DCS string: `P` after ESC, or 0x90.
+   *
+   * A DCS has a header before its payload: parameters, intermediates and
+   * a final byte, in the same shape as a CSI sequence. The stop lands on
+   * the introducer, so the header follows it. A 0x90 inside the header
+   * restarts the header without leaving the string, so it does not stop.
+   */
+  GHOSTTY_TERMINAL_BOUNDARY_DCS_START = 1 << 3,
+
+  /**
+   * The byte that ended a DCS string, whether it was still in its header
+   * or already in its payload. A DCS cut short in its header reports this
+   * without ever having had a payload.
+   */
+  GHOSTTY_TERMINAL_BOUNDARY_DCS_END = 1 << 4,
+
+  /** The byte that started an OSC string: `]` after ESC, or 0x9D. */
+  GHOSTTY_TERMINAL_BOUNDARY_OSC_START = 1 << 5,
+
+  /**
+   * The byte that ended an OSC string. This is reported for every OSC,
+   * including ones the terminal does not understand.
+   */
+  GHOSTTY_TERMINAL_BOUNDARY_OSC_END = 1 << 6,
+  GHOSTTY_TERMINAL_BOUNDARY_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalBoundary;
+
+/**
+ * The kind of control string that started or ended.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /**
+   * An APC, SOS or PM string. GhosttyTerminalWriteStop.byte at the start
+   * of the string tells you which one it is:
+   *
+   * | Byte               | String |
+   * |--------------------|--------|
+   * | `_` (0x5F) or 0x9F | APC    |
+   * | `X` (0x58) or 0x98 | SOS    |
+   * | `^` (0x5E) or 0x9E | PM     |
+   */
+  GHOSTTY_TERMINAL_STRING_KIND_APC = 0,
+
+  /** A DCS string, started by `P` (0x50) after ESC or by 0x90. */
+  GHOSTTY_TERMINAL_STRING_KIND_DCS = 1,
+
+  /** An OSC string, started by `]` (0x5D) after ESC or by 0x9D. */
+  GHOSTTY_TERMINAL_STRING_KIND_OSC = 2,
+  GHOSTTY_TERMINAL_STRING_KIND_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalStringKind;
+
+/**
+ * How a control string started.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /**
+   * ESC followed by `_`, `X`, `^`, `P` or `]`. The stop's `consumed`
+   * count includes only the final byte, because the ESC may have arrived
+   * in an earlier call.
+   */
+  GHOSTTY_TERMINAL_STRING_INTRODUCER_ESC = 0,
+
+  /**
+   * A single 8-bit byte: 0x9F (APC), 0x98 (SOS), 0x9E (PM), 0x90 (DCS) or
+   * 0x9D (OSC).
+   *
+   * When the stream is at ground, these bytes are decoded as UTF-8 and do
+   * not start a string. They only start a string when they arrive while
+   * the stream is already inside another escape sequence.
+   */
+  GHOSTTY_TERMINAL_STRING_INTRODUCER_C1 = 1,
+  GHOSTTY_TERMINAL_STRING_INTRODUCER_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalStringIntroducer;
+
+/**
+ * How a control string ended.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /**
+   * ESC, the first byte of the string terminator `ESC \`.
+   *
+   * The ESC is consumed but the `\` after it is not. Pass the `\` as the
+   * first byte of your next write, where it completes the terminator. If
+   * you forward the stream elsewhere, forward the ESC along with the
+   * string.
+   */
+  GHOSTTY_TERMINAL_STRING_END_ST_ESC = 0,
+
+  /**
+   * 0x9C, the 8-bit string terminator. The stream is now at ground.
+   *
+   * Inside an OSC, and inside a DCS once its header is complete, 0x9C is
+   * content rather than a terminator. So this is only reported for an APC
+   * or for a DCS still in its header.
+   */
+  GHOSTTY_TERMINAL_STRING_END_ST_C1 = 1,
+
+  /**
+   * CAN (0x18) or SUB (0x1A) cancelled the string. The stream is now at
+   * ground.
+   *
+   * The terminal discards a cancelled APC or OSC. Its command does not
+   * run and it is not passed to the unknown sequence callback. For
+   * example, `ESC _ G a=t,i=7;AAAA` followed by CAN stores no image.
+   */
+  GHOSTTY_TERMINAL_STRING_END_CANCELLED = 2,
+
+  /**
+   * Another 8-bit control byte cut the string short. Most of these return
+   * the stream to ground. CSI (0x9B) starts a CSI sequence instead. The
+   * introducers DCS (0x90), OSC (0x9D), APC (0x9F), SOS (0x98) and PM
+   * (0x9E) start a new string on the same byte, which the stop reports
+   * with a START flag as well. See GhosttyTerminalWriteStop.reached.
+   *
+   * Inside an OSC, and inside a DCS once its header is complete, 8-bit
+   * bytes are content. So this is only reported for an APC or for a DCS
+   * still in its header.
+   *
+   * The terminal discards an aborted APC, just like a cancelled one.
+   */
+  GHOSTTY_TERMINAL_STRING_END_ABORTED = 3,
+
+  /** BEL (0x07) terminated the string. Only an OSC ends this way. */
+  GHOSTTY_TERMINAL_STRING_END_BEL = 4,
+  GHOSTTY_TERMINAL_STRING_END_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalStringEnd;
+
+/**
+ * Where ghostty_terminal_vt_write_until() stopped, and why.
+ *
+ * This is a sized struct. Initialize it with GHOSTTY_INIT_SIZED() before
+ * the first call. See @ref sized-structs. Each call resets every field except
+ * `size` before it writes the result, so you can reuse one struct across
+ * calls.
+ *
+ * Fields that don't apply to a stop are zero. Zero is also a valid value
+ * for `kind`, `introducer` and `end`, so always check `reached` first to
+ * see which fields apply.
+ *
+ * @ingroup terminal
+ */
+typedef struct {
+  /** Size of this struct in bytes. Set by GHOSTTY_INIT_SIZED(). */
+  size_t size;
+
+  /**
+   * Number of input bytes consumed, including the byte that reached the
+   * boundary. This is 0 when the stream was already at ground and you
+   * asked for GHOSTTY_TERMINAL_BOUNDARY_GROUND.
+   */
+  size_t consumed;
+
+  /**
+   * The GhosttyTerminalBoundary flags that the stopping byte reached. Only
+   * flags you asked for are set, and this is 0 when no boundary was
+   * reached.
+   *
+   * This is usually one flag. It holds two when a single byte does two
+   * things:
+   *
+   * - It ends a string and returns to ground. BEL, CAN, SUB, 0x9C and the
+   *   other 8-bit control bytes all do this. So if you asked for both
+   *   OSC_END and GROUND, an OSC_END stop can include GROUND too.
+   * - It ends one string and starts another. An 8-bit introducer of a
+   *   different kind does this inside an APC, or inside a DCS header: 0x90
+   *   or 0x9D in an APC ends it and starts a DCS or OSC, and 0x9F, 0x98,
+   *   0x9E or 0x9D in a DCS header ends it and starts an APC or OSC. The
+   *   stop has an END flag and a START flag, `end` is ABORTED and
+   *   `introducer` is C1. See ghostty_terminal_vt_write_until() for an
+   *   example.
+   *
+   * A START flag and an END flag of the same kind are never set together.
+   */
+  uint32_t reached;
+
+  /**
+   * The kind of string. Valid when `reached` has a START or END flag.
+   *
+   * When one byte both ends a string and starts another, this is the kind
+   * of the string that ended. The START flag in `reached` names the kind
+   * that started, since APC_START, DCS_START and OSC_START each belong to
+   * one kind.
+   */
+  GhosttyTerminalStringKind kind;
+
+  /** How the string started. Valid when `reached` has a START flag. */
+  GhosttyTerminalStringIntroducer introducer;
+
+  /** How the string ended. Valid when `reached` has an END flag. */
+  GhosttyTerminalStringEnd end;
+
+  /**
+   * The byte that started or ended the string, such as `]`, 0x90, ESC or
+   * BEL. Valid when `reached` has a START or END flag.
+   */
+  uint8_t byte;
+} GhosttyTerminalWriteStop;
+
+/**
+ * Scrollbar state for the terminal viewport.
+ *
+ * Represents the scrollable area dimensions needed to render a scrollbar.
+ *
+ * @ingroup terminal
+ */
+typedef struct {
+  /** Total size of the scrollable area in rows. */
+  uint64_t total;
+
+  /** Offset into the total area that the viewport is at. */
+  uint64_t offset;
+
+  /** Length of the visible area in rows. */
+  uint64_t len;
+} GhosttyTerminalScrollbar;
+
+/**
+ * Memory held by a terminal.
+ *
+ * Read with ghostty_terminal_get() and
+ * `GHOSTTY_TERMINAL_DATA_MEMORY_USAGE`.
+ *
+ * This is a sized struct. Initialize it with GHOSTTY_INIT_SIZED() before
+ * passing it to ghostty_terminal_get(). See @ref sized-structs.
+ *
+ * Each screen has its own set of fields, named with a `primary_` or
+ * `alternate_` prefix. Add the two sets together for the terminal's total.
+ * The alternate fields are all zero until a program first switches to that
+ * screen.
+ *
+ * See @ref guide-scrollback-memory for what these figures cover and which one
+ * to budget against.
+ *
+ * @ingroup terminal
+ */
+typedef struct {
+  /** Size of this struct in bytes. Set by you. */
+  size_t size;
+
+  /**
+   * Whether compressing scrollback can free memory on this platform. When
+   * false, ghostty_terminal_compress() reports
+   * `GHOSTTY_TERMINAL_COMPRESSION_RESULT_UNSUPPORTED` and the compressed
+   * fields are always zero. To reduce a terminal's memory on such a
+   * platform, you have to do something else, such as closing it.
+   */
+  bool compression_supported;
+
+  /** Number of pages in the primary screen, including compressed pages. */
+  uint64_t primary_pages;
+
+  /**
+   * Bytes of address space reserved for the primary screen's pages. This
+   * includes compressed pages and spare pages kept ready for reuse.
+   * Always at least `primary_resident_bytes`.
+   */
+  uint64_t primary_virtual_bytes;
+
+  /**
+   * Bytes of physical memory used by the primary screen's pages. A
+   * compressed page counts only its compressed size. Use this figure for
+   * memory budgets.
+   */
+  uint64_t primary_resident_bytes;
+
+  /** Number of the primary screen's pages that are compressed. */
+  uint64_t primary_compressed_pages;
+
+  /**
+   * Bytes of compressed data held for the primary screen's compressed
+   * pages. This is already included in `primary_resident_bytes`.
+   */
+  uint64_t primary_compressed_bytes;
+
+  /**
+   * Bytes of image data stored for the primary screen through the Kitty
+   * graphics protocol. This is not included in `primary_resident_bytes`.
+   * Always zero when libghostty-vt is built without Kitty graphics.
+   */
+  uint64_t primary_image_bytes;
+
+  /** The same as `primary_pages`, for the alternate screen. */
+  uint64_t alternate_pages;
+
+  /** The same as `primary_virtual_bytes`, for the alternate screen. */
+  uint64_t alternate_virtual_bytes;
+
+  /** The same as `primary_resident_bytes`, for the alternate screen. */
+  uint64_t alternate_resident_bytes;
+
+  /** The same as `primary_compressed_pages`, for the alternate screen. */
+  uint64_t alternate_compressed_pages;
+
+  /** The same as `primary_compressed_bytes`, for the alternate screen. */
+  uint64_t alternate_compressed_bytes;
+
+  /** The same as `primary_image_bytes`, for the alternate screen. */
+  uint64_t alternate_image_bytes;
+} GhosttyTerminalMemoryUsage;
+
+/** @} */
+
+/** @addtogroup effects
+ *
+ * An effect is a callback the terminal calls when a program asks for something
+ * the terminal can't do by itself, such as ringing the bell or changing the
+ * window title.
+ *
+ * You need these as soon as a real program runs in the terminal. Until you
+ * register one, the terminal ignores that request, and a program that asks a
+ * question gets no answer. If you only feed bytes in to read the result back,
+ * you can skip this page.
+ *
+ * ## Example
+ *
+ * @code{.c}
+ * ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_BELL,
+ *                      (const void*)on_bell);
+ * @endcode
+ *
+ * Full program: @ref c-vt-effects/src/main.c
+ *
+ * See the @ref guide-effects "Effects guide" for how to register them, the
+ * rules for callbacks, the list of effects, and examples.
+ *
+ * @{
+ */
+
+/** @name Bell
+ * @{
+ */
+
+/**
+ * Callback function type for bell.
+ *
+ * Called when the terminal receives a BEL character (0x07).
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalBellFn)(GhosttyTerminal terminal,
+                                      void* userdata);
+
+/** @} */
+
+/** @name Unknown Sequences
+ * @{
+ */
+
+/**
+ * The kind of unsupported sequence passed to a
+ * GhosttyTerminalUnknownSequenceFn callback.
+ *
+ * New kinds may be added in later versions. Callbacks should ignore any
+ * tag they don't handle.
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** Application Program Command (APC). */
+  GHOSTTY_TERMINAL_UNKNOWN_SEQUENCE_APC = 0,
+
+  /** Operating System Command (OSC). The value is in `value.osc`. */
+  GHOSTTY_TERMINAL_UNKNOWN_SEQUENCE_OSC = 1,
+  GHOSTTY_TERMINAL_UNKNOWN_SEQUENCE_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalUnknownSequenceTag;
+
+/**
+ * An unsupported string terminal sequence.
+ *
+ * The content is borrowed and valid only for the callback duration. It
+ * contains the bytes between the sequence introducer and terminator, may
+ * contain arbitrary binary data, and is not null-terminated.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /** Whether content was shortened by the byte limit or allocation failure. */
+  bool truncated;
+
+  /** Retained sequence content. */
+  GhosttyString content;
+} GhosttyTerminalUnknownStringSequence;
+
+/**
+ * An OSC sequence whose number libghostty-vt does not implement.
+ *
+ * OSC sequences start with `ESC ]`, followed by a number that identifies
+ * the command, usually a `;`, and then the command's data. The sequence
+ * ends with either BEL or ESC followed by a backslash. For example, a
+ * program might write:
+ *
+ * @code
+ * ESC ] 7400;status=busy BEL
+ * @endcode
+ *
+ * For that sequence, `content` is `7400;status=busy` and `terminator`
+ * is GHOSTTY_OSC_TERMINATOR_BEL. See @ref guide-custom-sequences-unknown
+ * for a complete example.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /**
+   * True if the sequence was longer than
+   * GHOSTTY_TERMINAL_OPT_UNKNOWN_MAX_BYTES, or memory ran out while
+   * reading it. In that case `content` holds only the beginning of the
+   * sequence.
+   */
+  bool truncated;
+
+  /**
+   * Everything between `ESC ]` and the terminator, including the number
+   * at the start. The bytes are not null-terminated and are only valid
+   * until the callback returns. Copy them if you need them later.
+   */
+  GhosttyString content;
+
+  /**
+   * How the program ended the sequence. If you send a reply, end it the
+   * same way.
+   */
+  GhosttyOscTerminator terminator;
+} GhosttyTerminalUnknownOscSequence;
+
+/**
+ * Unsupported terminal sequence value.
+ *
+ * @ingroup effects
+ */
+typedef union {
+  /** Application Program Command (APC). */
+  GhosttyTerminalUnknownStringSequence apc;
+
+  /** Operating System Command (OSC). */
+  GhosttyTerminalUnknownOscSequence osc;
+
+  /**
+   * Padding for ABI compatibility. Do not use.
+   *
+   * 128 bytes leaves room for future structured sequence payloads, such as
+   * CSI with borrowed parameter, separator, and intermediate arrays, without
+   * changing the tagged union's ABI.
+   */
+  uint64_t _padding[16];
+} GhosttyTerminalUnknownSequenceValue;
+
+/**
+ * An unsupported terminal sequence.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  GhosttyTerminalUnknownSequenceTag tag;
+  GhosttyTerminalUnknownSequenceValue value;
+} GhosttyTerminalUnknownSequence;
+
+/**
+ * Callback function type for unsupported terminal sequences.
+ *
+ * Called once for each complete sequence that libghostty-vt does not
+ * implement. Check `sequence->tag` first, because more kinds of sequences
+ * may be reported in later versions.
+ *
+ * These are not reported:
+ *
+ * - Sequences cut short before their terminator, either cancelled by CAN
+ *   or SUB or aborted by another 8-bit control byte.
+ * - Sequences libghostty-vt implements, even when their contents are
+ *   malformed.
+ * - Supported protocols that you turned off.
+ *
+ * The callback runs during ghostty_terminal_vt_write(). It may write a reply
+ * to the pty, and that reply stays in order with the terminal's own
+ * replies. It must not call ghostty_terminal_vt_write() on the same
+ * terminal.
+ *
+ * Nothing is reported until GHOSTTY_TERMINAL_OPT_UNKNOWN_MAX_BYTES is also
+ * set to a nonzero value. Installing the callback by itself keeps no data
+ * and allocates no memory.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param sequence Borrowed unsupported sequence
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalUnknownSequenceFn)(
+    GhosttyTerminal terminal,
+    void* userdata,
+    const GhosttyTerminalUnknownSequence* sequence);
+
+/** @} */
+
+/** @name Clipboard
+ * @{
+ */
+
+/**
+ * Clipboard destination for a clipboard write.
+ *
+ * Protocol-specific destination identifiers are normalized to these values
+ * before the clipboard write callback is invoked.
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** The standard system clipboard. */
+  GHOSTTY_CLIPBOARD_LOCATION_STANDARD = 0,
+
+  /** The selection clipboard. */
+  GHOSTTY_CLIPBOARD_LOCATION_SELECTION = 1,
+
+  /** The primary selection clipboard. */
+  GHOSTTY_CLIPBOARD_LOCATION_PRIMARY = 2,
+  GHOSTTY_CLIPBOARD_LOCATION_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyClipboardLocation;
+
+/**
+ * One MIME representation in a clipboard write.
+ *
+ * Both strings are borrowed and valid only for the duration of the callback.
+ * The data is binary-safe and has already been decoded from any protocol-level
+ * encoding. A zero-length data string is an explicit empty representation; it
+ * does not clear the clipboard.
+ *
+ * This struct has a frozen layout and will not gain fields in future versions.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /** MIME type of the representation. */
+  GhosttyString mime;
+
+  /** Decoded, binary-safe representation data. */
+  GhosttyString data;
+} GhosttyClipboardContent;
+
+/**
+ * Result of a clipboard write reply.
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** The clipboard write completed successfully. */
+  GHOSTTY_CLIPBOARD_WRITE_RESULT_SUCCESS = 0,
+
+  /** The clipboard write was denied by policy or the user. */
+  GHOSTTY_CLIPBOARD_WRITE_RESULT_DENIED = 1,
+
+  /** The destination or one or more representations are unsupported. */
+  GHOSTTY_CLIPBOARD_WRITE_RESULT_UNSUPPORTED = 2,
+
+  /** The clipboard is temporarily unavailable. */
+  GHOSTTY_CLIPBOARD_WRITE_RESULT_BUSY = 3,
+
+  /** One or more representations contain invalid data. */
+  GHOSTTY_CLIPBOARD_WRITE_RESULT_INVALID_DATA = 4,
+
+  /** The clipboard write failed due to an I/O error. */
+  GHOSTTY_CLIPBOARD_WRITE_RESULT_IO_ERROR = 5,
+  GHOSTTY_CLIPBOARD_WRITE_RESULT_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyClipboardWriteResult;
+
+/**
+ * The reply to a clipboard write request.
+ *
+ * This is a sized struct. Initialize it with GHOSTTY_INIT_SIZED(), then set
+ * the fields you need. See @ref sized-structs. If `size` is not valid, the
+ * library ignores the rest of the reply and answers as if you had replied
+ * with GHOSTTY_CLIPBOARD_WRITE_RESULT_UNSUPPORTED.
+ *
+ * The reply is borrowed only for the duration of the reply call and may be
+ * freed as soon as it returns.
+ *
+ * The result answers the program with the matching protocol status for
+ * protocols with a write acknowledgement (OSC 5522: DONE, EPERM, ENOSYS,
+ * EBUSY, EINVAL, EIO); protocols without one (OSC 52, OSC 1337 Copy)
+ * discard the reply. `remember` is ignored on any result other than
+ * GHOSTTY_CLIPBOARD_WRITE_RESULT_SUCCESS.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /** Size of this struct in bytes. */
+  size_t size;
+
+  /** Outcome of the write. */
+  GhosttyClipboardWriteResult result;
+
+  /**
+   * Record a session grant so future requests from the same program skip
+   * the permission prompt. Only honored on success when
+   * GhosttyClipboardWrite::can_remember is set.
+   */
+  bool remember;
+} GhosttyClipboardWriteReply;
+
+typedef struct GhosttyClipboardWrite GhosttyClipboardWrite;
+
+/**
+ * Function type used to answer a clipboard write request. Obtained from
+ * GhosttyClipboardWrite::reply; see that struct for the contract.
+ *
+ * @param write The request being answered
+ * @param reply The reply, borrowed only for the duration of this call
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyClipboardWriteReplyFn)(
+    const GhosttyClipboardWrite* write,
+    const GhosttyClipboardWriteReply* reply);
+
+/**
+ * A synchronous request to write clipboard contents.
+ *
+ * The request and everything it points to, including the contents array
+ * and its strings, are borrowed. They are only valid until the callback
+ * returns.
+ *
+ * All entries in `contents` are representations of the same logical value
+ * and must be committed atomically. A `contents_len` of zero requests that
+ * the destination be cleared. This is distinct from a content entry whose data
+ * has zero length.
+ *
+ * The write is answered by calling `reply` with this request and a
+ * GhosttyClipboardWriteReply. This must happen within the clipboard write
+ * request callback. This struct is only valid during that time. Calling 
+ * `reply` more than once is safely ignored. Returning without replying 
+ * denies the write.
+ *
+ * This struct has a frozen layout and will never gain fields. It is 64 bytes
+ * on 64-bit targets and 32 bytes on wasm32. If a later version of
+ * libghostty-vt has more to report, it will add a new option with a new
+ * struct, and this callback will keep receiving this struct unchanged.
+ *
+ * @ingroup effects
+ */
+struct GhosttyClipboardWrite {
+  /** Clipboard destination. */
+  GhosttyClipboardLocation location;
+
+  /** Borrowed array of MIME representations. */
+  const GhosttyClipboardContent* contents;
+
+  /** Number of entries in contents; zero means clear the destination. */
+  size_t contents_len;
+
+  /**
+   * Name of the writing program for permission prompts, if the protocol
+   * carries one. Empty otherwise.
+   */
+  GhosttyString name;
+
+  /**
+   * True if the terminal already holds a session grant for this request
+   * You should skip any permission prompt and perform the write.
+   */
+  bool granted;
+
+  /**
+   * True if the program supplied a session password, so you may
+   * offer to remember the decision through
+   * GhosttyClipboardWriteReply::remember. When false, remember is ignored.
+   */
+  bool can_remember;
+
+  /** Terminal-owned reply state. Do not access. */
+  const void* ctx;
+
+  /** Answer the write; see the struct documentation. */
+  GhosttyClipboardWriteReplyFn reply;
+};
+
+/**
+ * Callback function type for clipboard_write.
+ *
+ * You may ask for permission to write or perform the write 
+ * async, but the callback itself is synchronous and the reply function
+ * must be called during the lifetime of this function. While this callback
+ * is active the VT stream is paused.
+ *
+ * Answer by calling `write->reply(write, &reply)` before returning. See
+ * GhosttyClipboardWrite for the full contract. 
+ *
+ * The request may carry an optional program name requesting the write
+ * and the state of prior permission granted. If `can_remember` is set
+ * the response may set the `remember` flag and future requests from this
+ * same program will be "granted" and you can skip permission
+ * requests.
+ *
+ * Clipboard read requests (OSC 52 "?" and OSC 5522 reads) are delivered
+ * to GhosttyTerminalClipboardReadFn instead.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param write Borrowed atomic clipboard write request
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalClipboardWriteFn)(
+    GhosttyTerminal terminal,
+    void* userdata,
+    const GhosttyClipboardWrite* write);
+
+/**
+ * Result of a clipboard read reply.
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** The clipboard was read; the reply carries its contents. */
+  GHOSTTY_CLIPBOARD_READ_RESULT_SUCCESS = 0,
+
+  /** The clipboard read was denied by policy or the user. */
+  GHOSTTY_CLIPBOARD_READ_RESULT_DENIED = 1,
+
+  /** You cannot read this clipboard. */
+  GHOSTTY_CLIPBOARD_READ_RESULT_UNSUPPORTED = 2,
+
+  /** The clipboard is temporarily unavailable. */
+  GHOSTTY_CLIPBOARD_READ_RESULT_BUSY = 3,
+
+  /** Reading the clipboard failed due to an I/O error. */
+  GHOSTTY_CLIPBOARD_READ_RESULT_IO_ERROR = 4,
+  GHOSTTY_CLIPBOARD_READ_RESULT_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyClipboardReadResult;
+
+/**
+ * The reply to a clipboard read request.
+ *
+ * This is a sized struct. Initialize it with GHOSTTY_INIT_SIZED(), then set
+ * the fields you need. See @ref sized-structs. If `size` is not valid, the
+ * library ignores the rest of the reply and answers as if you had replied
+ * with GHOSTTY_CLIPBOARD_READ_RESULT_UNSUPPORTED.
+ *
+ * All arrays and the strings they point to are borrowed only for the
+ * duration of the reply call and may be freed as soon as it returns.
+ *
+ * Any result other than GHOSTTY_CLIPBOARD_READ_RESULT_SUCCESS answers the
+ * program with an empty clipboard (OSC 52) or the matching protocol status
+ * (OSC 5522: EPERM, ENOSYS, EBUSY, EIO); the other fields are ignored in
+ * that case. On success, `contents` should carry one representation per
+ * requested MIME type (GhosttyClipboardRead::mimes) that the clipboard
+ * has; unrequested representations are ignored. Protocols that carry a
+ * single text value (OSC 52) use the first entry with a text MIME type
+ * such as "text/plain".
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /** Size of this struct in bytes. */
+  size_t size;
+
+  /** Outcome of the read. */
+  GhosttyClipboardReadResult result;
+
+  /** Borrowed array of MIME representations of the clipboard contents. */
+  const GhosttyClipboardContent* contents;
+
+  /** Number of entries in contents. */
+  size_t contents_len;
+
+  /**
+   * Borrowed array of all MIME types available on the clipboard. Only
+   * used when GhosttyClipboardRead::list is set; may be NULL otherwise.
+   */
+  const GhosttyString* available;
+
+  /** Number of entries in available. */
+  size_t available_len;
+
+  /**
+   * Record a session grant so future requests from the same program skip
+   * the permission prompt. Only honored on success when
+   * GhosttyClipboardRead::can_remember is set.
+   */
+  bool remember;
+} GhosttyClipboardReadReply;
+
+typedef struct GhosttyClipboardRead GhosttyClipboardRead;
+
+/**
+ * Function type used to answer a clipboard read request. Obtained from
+ * GhosttyClipboardRead::reply; see that struct for the contract.
+ *
+ * @param read The request being answered
+ * @param reply The reply, borrowed only for the duration of this call
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyClipboardReadReplyFn)(
+    const GhosttyClipboardRead* read,
+    const GhosttyClipboardReadReply* reply);
+
+/**
+ * A synchronous request to read clipboard contents.
+ *
+ * The request is borrowed and only valid until the callback returns.
+ *
+ * The read is answered by calling `reply` with this request and a
+ * GhosttyClipboardReadReply. This must happen before the callback returns;
+ * the request is invalid afterwards. Calling `reply` more than once is
+ * ignored. Returning without replying answers the program with an empty
+ * clipboard (OSC 52) or EPERM (OSC 5522).
+ *
+ * This struct has a frozen layout and will never gain fields. It is 72 bytes
+ * on 64-bit targets and 36 bytes on wasm32. If a later version of
+ * libghostty-vt has more to report, it will add a new option with a new
+ * struct, and this callback will keep receiving this struct unchanged.
+ *
+ * @ingroup effects
+ */
+struct GhosttyClipboardRead {
+  /** Clipboard to read. */
+  GhosttyClipboardLocation location;
+
+  /**
+   * Borrowed array of the MIME types the program wants, in order of
+   * preference. Protocols that only carry text (OSC 52) request
+   * "text/plain". NULL when mimes_len is zero.
+   */
+  const GhosttyString* mimes;
+
+  /** Number of entries in mimes. */
+  size_t mimes_len;
+
+  /**
+   * True if the program also wants the list of MIME types available on the
+   * clipboard, delivered through GhosttyClipboardReadReply::available.
+   */
+  bool list;
+
+  /**
+   * Name of the requesting program for permission prompts, if the protocol
+   * carries one. Empty otherwise.
+   */
+  GhosttyString name;
+
+  /**
+   * True if the terminal already holds a session grant for this request
+   * (kitty clipboard protocol passwords). You should skip any
+   * permission prompt and serve the read.
+   *
+   * Always false when mimes_len is zero: such a request is served
+   * without a prompt (see the callback docs), so the terminal never
+   * consults grants for it and a one-time password is preserved for
+   * the follow-up data read.
+   */
+  bool granted;
+
+  /**
+   * True if the program supplied a session password, so you may
+   * offer to remember the decision through
+   * GhosttyClipboardReadReply::remember. When false, remember is ignored.
+   */
+  bool can_remember;
+
+  /** Terminal-owned reply state. Do not access. */
+  const void* ctx;
+
+  /** Answer the read; see the struct documentation. */
+  GhosttyClipboardReadReplyFn reply;
+};
+
+/**
+ * Callback function type for clipboard_read.
+ *
+ * Called synchronously when the running program requests clipboard contents
+ * via OSC 52 with a "?" payload or a Kitty clipboard (OSC 5522) read.
+ * Answering lets the program read the clipboard of the person using your terminal, so you are
+ * expected to mediate consent. Because the read is synchronous, an embedder
+ * that needs to ask them must block (for example by running a modal
+ * prompt) until it has an answer; the VT stream waits until the callback
+ * returns.
+ *
+ * Answer by calling `read->reply(read, &reply)` before returning. See
+ * GhosttyClipboardRead for the full contract.
+ *
+ * OSC 5522 requests carry the program's MIME list, name, and password grant
+ * state; a reply that sets `remember` records a session grant so later
+ * requests with the same password arrive with `granted` set. Kitty itself
+ * serves a request for only the targets listing (`list` with no `mimes`)
+ * without prompting, and embedders are expected to do the same; the
+ * terminal never consults grants for such requests (`granted` is false
+ * and one-time passwords are not consumed).
+ *
+ * Installing this callback also enables Kitty paste events (mode 5522):
+ * ghostty_terminal_paste() sends the program an event instead of the text,
+ * and the program's follow-up read arrives here with `granted` set since
+ * the user already pasted. See ghostty_terminal_paste().
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param read Borrowed clipboard read request
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalClipboardReadFn)(
+    GhosttyTerminal terminal,
+    void* userdata,
+    const GhosttyClipboardRead* read);
+
+/** @} */
+
+/** @name Desktop Notifications
+ * @{
+ */
+
+/**
+ * A request to show a desktop notification.
+ *
+ * Both strings are borrowed and only valid until the callback returns.
+ * Copy them if you need them later.
+ *
+ * This struct has a frozen layout and will never gain fields. It is 32 bytes
+ * on 64-bit targets and 16 bytes on wasm32. If a later version of
+ * libghostty-vt has more to report, it will add a new option with a new
+ * struct, and this callback will keep receiving this struct unchanged.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /** Notification title, or an empty string when the protocol omits it. */
+  GhosttyString title;
+
+  /** Notification body. */
+  GhosttyString body;
+} GhosttyTerminalDesktopNotification;
+
+/**
+ * Callback function type for desktop notifications.
+ *
+ * Called synchronously when the terminal receives OSC 9 or OSC 777.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param notification Borrowed desktop notification request
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalDesktopNotificationFn)(
+    GhosttyTerminal terminal,
+    void* userdata,
+    const GhosttyTerminalDesktopNotification* notification);
+
+/** @} */
+
+/** @name Progress Reports
+ * @{
+ */
+
+/**
+ * State of a terminal progress report.
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** Remove any visible progress indication. */
+  GHOSTTY_TERMINAL_PROGRESS_STATE_REMOVE = 0,
+
+  /** Show determinate progress. */
+  GHOSTTY_TERMINAL_PROGRESS_STATE_SET = 1,
+
+  /** Show a failed progress state. */
+  GHOSTTY_TERMINAL_PROGRESS_STATE_ERROR = 2,
+
+  /** Show indeterminate progress. */
+  GHOSTTY_TERMINAL_PROGRESS_STATE_INDETERMINATE = 3,
+
+  /** Show paused progress. */
+  GHOSTTY_TERMINAL_PROGRESS_STATE_PAUSE = 4,
+  GHOSTTY_TERMINAL_PROGRESS_STATE_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalProgressState;
+
+/**
+ * A progress report emitted by the running program.
+ *
+ * This struct has a frozen layout and will never gain fields. It is 8 bytes
+ * on every target. If a later version of libghostty-vt has more to report,
+ * it will add a new option with a new struct, and this callback will keep
+ * receiving this struct unchanged.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /** Literal progress state reported by the running program. */
+  GhosttyTerminalProgressState state;
+
+  /** Progress percentage from 0 through 100, or -1 when omitted. */
+  int8_t progress;
+} GhosttyTerminalProgressReport;
+
+/**
+ * Callback function type for progress reports.
+ *
+ * Called synchronously when the terminal receives OSC 9;4.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param report Borrowed progress report
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalProgressReportFn)(
+    GhosttyTerminal terminal,
+    void* userdata,
+    const GhosttyTerminalProgressReport* report);
+
+/** @} */
+
+/** @name Program Status
+ * @{
+ */
+
+/**
+ * What a program says it is doing, in a program status report (OSC 7501).
+ *
+ * See GhosttyTerminalProgramStatus for an overview of the protocol.
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** At rest, waiting for the user's next instruction. For example, an
+   * interactive tool sitting at its own prompt. */
+  GHOSTTY_PROGRAM_STATUS_STATE_IDLE = 0,
+
+  /** Running on its own. The report may include a progress percentage. */
+  GHOSTTY_PROGRAM_STATUS_STATE_WORKING = 1,
+
+  /** Finished a piece of work, and the result is ready for the user to
+   * look at. */
+  GHOSTTY_PROGRAM_STATUS_STATE_DONE = 2,
+
+  /** Can't continue until the user does something. `kind` says what the
+   * program needs and `message` says why. The report may include a
+   * progress percentage. */
+  GHOSTTY_PROGRAM_STATUS_STATE_BLOCKED = 3,
+
+  /** Failed and stopped. */
+  GHOSTTY_PROGRAM_STATUS_STATE_ERROR = 4,
+
+  /** Not a real state. Remove the record with this report's id and every
+   * record beneath it. If the id is empty, remove every record. */
+  GHOSTTY_PROGRAM_STATUS_STATE_CLEAR = 5,
+  GHOSTTY_PROGRAM_STATUS_STATE_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyProgramStatusState;
+
+/**
+ * What a blocked program needs from the user, in a program status report
+ * (OSC 7501).
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** The program didn't say, or the state isn't
+   * GHOSTTY_PROGRAM_STATUS_STATE_BLOCKED. */
+  GHOSTTY_PROGRAM_STATUS_KIND_NONE = 0,
+
+  /** Approval to do something, such as "Apply these changes?". */
+  GHOSTTY_PROGRAM_STATUS_KIND_PERMISSION = 1,
+
+  /** An answer the user has to type. */
+  GHOSTTY_PROGRAM_STATUS_KIND_QUESTION = 2,
+
+  /** A login, password, token, or other credential. */
+  GHOSTTY_PROGRAM_STATUS_KIND_AUTH = 3,
+  GHOSTTY_PROGRAM_STATUS_KIND_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyProgramStatusKind;
+
+/**
+ * A program status report (OSC 7501).
+ *
+ * The program status protocol lets a program tell the terminal what it is
+ * doing: idle, working, done, waiting on the user, or failed, and why. It
+ * is meant for long-running work like builds, deploys, and coding agents,
+ * where the user is often looking at something else and wants to know when
+ * the work finishes or needs them. The protocol only describes state. How
+ * to show it, if at all, is up to your application.
+ *
+ * The full specification is at
+ * https://www.superlogical.com/rex/docs/build/program-status
+ *
+ * For example, a program waiting for the user to approve a change sends
+ * this, where ST is the string terminator (ESC \ or BEL):
+ *
+ * @code
+ * ESC ] 7501 ; state=blocked:kind=permission:app=terraform:msg=QXBwbHk/ ST
+ * @endcode
+ *
+ * The callback then receives a report with:
+ *
+ * - `state`: GHOSTTY_PROGRAM_STATUS_STATE_BLOCKED
+ * - `kind`: GHOSTTY_PROGRAM_STATUS_KIND_PERMISSION
+ * - `progress`: -1, because the program didn't send one, so the work is
+ *   indeterminate
+ * - `id`: empty, because this is the root record
+ * - `app`: "terraform"
+ * - `title`: empty
+ * - `message`: "Apply?", decoded from the base64 in `msg`
+ *
+ * Only reports that pass every check in the specification reach the
+ * callback. Text that the program didn't send is an empty string (len=0),
+ * never NULL. All strings are only valid during the callback, so copy any
+ * you want to keep.
+ *
+ * This struct has a frozen layout and will never gain fields. It is 80 bytes
+ * on 64-bit targets and 44 bytes on wasm32. If a later version of
+ * libghostty-vt has more to report, it will add a new option with a new
+ * struct, and this callback will keep receiving this struct unchanged.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /** What the program is doing. */
+  GhosttyProgramStatusState state;
+
+  /** What the program needs from the user. Only set for
+   * GHOSTTY_PROGRAM_STATUS_STATE_BLOCKED. It is
+   * GHOSTTY_PROGRAM_STATUS_KIND_NONE for other states, when the program
+   * didn't say, or when it sent a kind this version doesn't know. */
+  GhosttyProgramStatusKind kind;
+
+  /** How far along the work is, from 0 through 100, or -1 when there is
+   * no percentage. Only set for GHOSTTY_PROGRAM_STATUS_STATE_WORKING and
+   * GHOSTTY_PROGRAM_STATUS_STATE_BLOCKED. For those states, -1 means the
+   * work is indeterminate: the program is busy but has no percentage to
+   * report. It is also -1 for other states and when the program sent a
+   * value outside that range. */
+  int8_t progress;
+
+  /** Which record this report is about. Empty for the root record.
+   *
+   * A program that only reports on itself leaves this empty. A program
+   * that reports on several things at once gives each its own id, such as
+   * "us-east" and "eu-west" for a deploy to two regions. A "/" makes one
+   * record the child of another, so "build/test" is a child of "build".
+   * The parent record doesn't have to exist. */
+  GhosttyString id;
+
+  /** A stable name for the program that a machine can match on, such as
+   * "cargo", "terraform", or "claude-code". Use it as a key for grouping,
+   * filtering, or choosing an icon. It is not a label. The label is
+   * `title`. Empty when the report didn't include one. See
+   * GhosttyTerminalProgramStatusFn for how an empty app is filled in from
+   * a parent record. */
+  GhosttyString app;
+
+  /** A short label for the record, meant for people. Programs that report
+   * several records use this to tell them apart. */
+  GhosttyString title;
+
+  /** One line of text for people, saying what the record is doing,
+   * waiting for, or has finished. You may shorten it to fit, but don't
+   * try to read meaning into it. */
+  GhosttyString message;
+} GhosttyTerminalProgramStatus;
+
+/**
+ * Callback function type for program status reports (OSC 7501).
+ *
+ * Called synchronously each time the running program sends a valid
+ * report. See GhosttyTerminalProgramStatus for what a report contains.
+ *
+ * The terminal doesn't store reports, so your application keeps them. To
+ * follow the specification, keep one record per id. A report with an empty
+ * id is about the root record, the program itself. The records follow
+ * these rules:
+ *
+ * - A report replaces its record completely. A value the report leaves
+ *   out is gone from the record afterwards. It doesn't keep its old value.
+ * - A GHOSTTY_PROGRAM_STATUS_STATE_CLEAR report removes the record with
+ *   its id and every record beneath it, so clearing "build" also removes
+ *   "build/test". A clear report with an empty id removes every record.
+ * - A record without an app takes it from its nearest ancestor that has
+ *   one. If the root record has app "deploy" and the record "us-east"
+ *   has none, show "us-east" with app "deploy" too.
+ * - When a new shell prompt starts (GHOSTTY_SEMANTIC_PROMPT_PROMPT_START
+ *   from the GHOSTTY_TERMINAL_OPT_SEMANTIC_PROMPT callback) or the program
+ *   running in the terminal exits, remove `working` and `blocked` records.
+ *   You may remove `idle` records too. Keep `done` and `error` records
+ *   until the user has seen them, for example until they next focus the
+ *   terminal.
+ * - Keep at most 256 records, and allow at least 64. When a new record
+ *   would go over your limit, remove the one that was updated longest ago.
+ *
+ * A full reset (RIS, `ESC c`) removes every record. When that happens,
+ * the terminal calls this with a GHOSTTY_PROGRAM_STATUS_STATE_CLEAR report
+ * and an empty id, and then calls the GHOSTTY_TERMINAL_OPT_RESET callback.
+ *
+ * `title` and `message` are already decoded and contain no control
+ * characters, but they are still untrusted text from the program. Don't
+ * treat them as markup. If you show them outside the terminal, such as in
+ * a tab or a notification, remove invisible formatting characters like
+ * text direction overrides, and say which terminal the text came from so
+ * a program can't pretend to be one running elsewhere.
+ *
+ * Example, where `Records`, `records_clear`, and `records_put` stand in for
+ * your application's own storage:
+ *
+ * @code
+ * void on_program_status(GhosttyTerminal terminal,
+ *                        void* userdata,
+ *                        const GhosttyTerminalProgramStatus* report) {
+ *   (void)terminal;
+ *   Records* records = userdata;
+ *
+ *   if (report->state == GHOSTTY_PROGRAM_STATUS_STATE_CLEAR) {
+ *     // Remove this record and every record beneath it. An empty id
+ *     // removes every record.
+ *     records_clear(records, report->id);
+ *     return;
+ *   }
+ *
+ *   // Replace the whole record. The strings are only valid during this
+ *   // call, so records_put must copy them.
+ *   records_put(records, report->id, report->state, report->message);
+ * }
+ *
+ * // Set write_pty too, so programs that check for support get a reply.
+ * ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_USERDATA, records);
+ * ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_WRITE_PTY,
+ *                      (const void*)on_write_pty);
+ * ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_PROGRAM_STATUS,
+ *                      (const void*)on_program_status);
+ * @endcode
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param report The report. It and its strings are only valid during the
+ *               call.
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalProgramStatusFn)(
+    GhosttyTerminal terminal,
+    void* userdata,
+    const GhosttyTerminalProgramStatus* report);
+
+/** @} */
+
+/** @name Semantic Prompts
+ * @{
+ */
+
+/**
+ * The step of a command that a shell integration event reports.
+ *
+ * More kinds may be added in later versions, so ignore any kind you don't
+ * handle.
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** Never reported. This exists so that a zeroed value is not mistaken
+   * for a real event. */
+  GHOSTTY_SEMANTIC_PROMPT_INVALID = 0,
+
+  /** The shell started drawing a prompt. `prompt_kind` says which one. */
+  GHOSTTY_SEMANTIC_PROMPT_PROMPT_START = 1,
+
+  /** The prompt is drawn and the user can start typing a command. */
+  GHOSTTY_SEMANTIC_PROMPT_INPUT_START = 2,
+
+  /** The user submitted the command and it started running. Anything the
+   * terminal receives after this is the command's output. */
+  GHOSTTY_SEMANTIC_PROMPT_OUTPUT_START = 3,
+
+  /** The command finished running. */
+  GHOSTTY_SEMANTIC_PROMPT_COMMAND_END = 4,
+  GHOSTTY_SEMANTIC_PROMPT_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttySemanticPromptKind;
+
+/**
+ * Which prompt a `GHOSTTY_SEMANTIC_PROMPT_PROMPT_START` event starts.
+ *
+ * Most shells only draw a primary prompt. Some also draw a prompt on the
+ * right side of the line, or a prompt at the start of each extra line
+ * when a command spans several lines.
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** The main prompt shown before each command. This is used when the
+   * shell doesn't say which prompt it is drawing. */
+  GHOSTTY_SEMANTIC_PROMPT_PROMPT_PRIMARY = 0,
+
+  /** A prompt drawn at the right edge of the line, such as zsh's
+   * RPROMPT. */
+  GHOSTTY_SEMANTIC_PROMPT_PROMPT_RIGHT = 1,
+
+  /** A prompt at the start of an extra line of a command that spans
+   * several lines. */
+  GHOSTTY_SEMANTIC_PROMPT_PROMPT_CONTINUATION = 2,
+
+  /** Another prompt for an extra line of input, such as bash's PS2.
+   * Shells differ in whether they report extra lines as continuation or
+   * secondary prompts, so most applications should treat the two the
+   * same. */
+  GHOSTTY_SEMANTIC_PROMPT_PROMPT_SECONDARY = 3,
+  GHOSTTY_SEMANTIC_PROMPT_PROMPT_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttySemanticPromptPromptKind;
+
+/**
+ * A shell integration event, passed to the
+ * `GHOSTTY_TERMINAL_OPT_SEMANTIC_PROMPT` callback.
+ *
+ * `kind` says which step of the command this is. The other fields only
+ * carry information for the kinds listed on each field, and are zero or
+ * empty otherwise.
+ *
+ * Strings are only valid during the callback. Copy them if you need them
+ * later.
+ *
+ * This struct has a frozen layout and will never gain fields. It is 48 bytes
+ * on 64-bit targets and 32 bytes on wasm32. If a later version of
+ * libghostty-vt has more to report, it will add a new option with a new
+ * struct, and this callback will keep receiving this struct unchanged.
+ *
+ * Two fields are likely to be added this way in the future:
+ *
+ * - An identifier the shell assigns to each command.
+ * - A flag on `GHOSTTY_SEMANTIC_PROMPT_PROMPT_START` that says the shell
+ *   redrew a prompt it had already drawn, instead of starting a new one.
+ *
+ * Neither exists yet.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /** Which step of the command this event reports. */
+  GhosttySemanticPromptKind kind;
+
+  /** Which prompt is starting. Set for
+   * `GHOSTTY_SEMANTIC_PROMPT_PROMPT_START`. Always
+   * `GHOSTTY_SEMANTIC_PROMPT_PROMPT_PRIMARY` for other kinds. */
+  GhosttySemanticPromptPromptKind prompt_kind;
+
+  /** True if the shell reported the command's exit code. Only ever true
+   * for `GHOSTTY_SEMANTIC_PROMPT_COMMAND_END`. */
+  bool has_exit_code;
+
+  /** The command's exit code. Only meaningful when `has_exit_code` is
+   * true. Exit codes can be negative, for example on Windows, so use
+   * `has_exit_code` rather than a special value to tell whether one was
+   * reported. */
+  int32_t exit_code;
+
+  /** The command line that is about to run, for
+   * `GHOSTTY_SEMANTIC_PROMPT_OUTPUT_START`. The shell sends it encoded,
+   * and this is the decoded text. Empty (len=0) if the shell didn't send
+   * one or it couldn't be decoded. */
+  GhosttyString command;
+
+  /** A description of what went wrong, for
+   * `GHOSTTY_SEMANTIC_PROMPT_COMMAND_END` when the shell sent one. Empty
+   * (len=0) otherwise. Few shells send this. The exit code is the usual
+   * way to tell whether a command failed. */
+  GhosttyString error;
+} GhosttyTerminalSemanticPrompt;
+
+/**
+ * Callback function type for semantic_prompt.
+ *
+ * Called when the shell reports a step of a command. Each command goes
+ * through four steps, in this order: the prompt starts, input starts,
+ * output starts, and the command ends. Then the next prompt starts.
+ *
+ * Shells differ in what they report. Many don't send the command line or
+ * the exit code, and some skip steps, so handle each event on its own
+ * instead of expecting a strict order. A shell may also start the same
+ * prompt more than once, for example when it redraws the prompt after a
+ * resize, so treat a repeated `GHOSTTY_SEMANTIC_PROMPT_PROMPT_START` as
+ * harmless.
+ *
+ * The terminal has already updated its screen when this is called. A
+ * sequence the terminal rejects as malformed is never reported.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param event The event. It and its strings are only valid during the
+ *              call.
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalSemanticPromptFn)(
+    GhosttyTerminal terminal,
+    void* userdata,
+    const GhosttyTerminalSemanticPrompt* event);
+
+/** @} */
+
+/** @name Reset and Resize
+ * @{
+ */
+
+/**
+ * Callback function type for reset.
+ *
+ * Called when the running program performs a full reset (RIS, `ESC c`).
+ * A full reset clears the screen and scrollback, returns modes to their
+ * defaults, and clears the title and working directory. Use this callback
+ * to reset any state your application keeps about what's running in the
+ * terminal, such as the current command.
+ *
+ * The terminal has already reset itself when this is called. The
+ * GHOSTTY_TERMINAL_OPT_TITLE_CHANGED and GHOSTTY_TERMINAL_OPT_PWD_CHANGED
+ * callbacks are not called for the cleared title and working directory,
+ * so update anything you show for them here. A full reset also removes
+ * any progress report and program status records. If you set
+ * GHOSTTY_TERMINAL_OPT_PROGRESS_REPORT or
+ * GHOSTTY_TERMINAL_OPT_PROGRAM_STATUS, those callbacks are called before
+ * this one.
+ *
+ * A soft reset (DECSTR, `CSI ! p`) keeps the screen, title and working
+ * directory, and doesn't call this.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalResetFn)(GhosttyTerminal terminal,
+                                       void* userdata);
+
+/**
+ * The kind of window resize request passed to a
+ * GhosttyTerminalResizeWindowFn callback.
+ *
+ * New kinds may be added in later versions. Callbacks should ignore any
+ * tag they don't handle.
+ *
+ * @ingroup effects
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /**
+   * Resize the window's text area to a size in rows and columns
+   * (CSI 8 ; rows ; columns t). The value is in `value.grid`.
+   */
+  GHOSTTY_TERMINAL_RESIZE_WINDOW_GRID = 0,
+  GHOSTTY_TERMINAL_RESIZE_WINDOW_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalResizeWindowTag;
+
+/**
+ * A request to resize the window's text area to a size in rows and columns.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  /** Requested height in rows, or 0 to keep the current height. */
+  uint16_t rows;
+
+  /** Requested width in columns, or 0 to keep the current width. */
+  uint16_t columns;
+} GhosttyTerminalResizeWindowGrid;
+
+/**
+ * Window resize request value.
+ *
+ * @ingroup effects
+ */
+typedef union {
+  /** Size in rows and columns (GHOSTTY_TERMINAL_RESIZE_WINDOW_GRID). */
+  GhosttyTerminalResizeWindowGrid grid;
+
+  /** Padding for ABI compatibility. Do not use. */
+  uint64_t _padding[2];
+} GhosttyTerminalResizeWindowValue;
+
+/**
+ * A request from the running program to resize the window.
+ *
+ * @ingroup effects
+ */
+typedef struct {
+  GhosttyTerminalResizeWindowTag tag;
+  GhosttyTerminalResizeWindowValue value;
+} GhosttyTerminalResizeWindow;
+
+/**
+ * Callback function type for window resize requests.
+ *
+ * Called synchronously when the running program asks to resize the window,
+ * such as with CSI 8 ; rows ; columns t. Check `request->tag` first, because
+ * more kinds of requests may be reported in later versions. The terminal is
+ * not resized by this: you decide whether to allow the request,
+ * and if so resizes its window and the terminal. Letting any
+ * program resize the window is a nuisance at best, so consider making this
+ * opt-in for users.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param request Borrowed resize request
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalResizeWindowFn)(
+    GhosttyTerminal terminal,
+    void* userdata,
+    const GhosttyTerminalResizeWindow* request);
+
+/** @} */
+
+/** @name Queries
+ * @{
+ */
+
+/**
+ * Callback function type for color scheme queries (CSI ? 996 n).
+ *
+ * Called when the terminal receives a color scheme device status report
+ * query. Return true and fill *out_scheme with the current color scheme,
+ * or return false to silently ignore the query.
+ *
+ * The library sets *out_scheme to GHOSTTY_COLOR_SCHEME_LIGHT (zero)
+ * before the call, so returning true without writing it reports light.
+ * If the callback writes a value that isn't a GhosttyColorScheme, the
+ * library ignores the query, the same as if the callback returned false.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param[out] out_scheme Pointer to store the current color scheme
+ * @return true if the color scheme was filled, false to ignore the query
+ *
+ * @ingroup effects
+ */
+typedef bool (*GhosttyTerminalColorSchemeFn)(GhosttyTerminal terminal,
+                                             void* userdata,
+                                             GhosttyColorScheme* out_scheme);
+
+/**
+ * Callback function type for device attributes queries (DA1/DA2/DA3).
+ *
+ * Called when the terminal receives a device attributes query (CSI c,
+ * CSI > c, or CSI = c). Return true and fill *out_attrs with the
+ * response data, or return false to answer with the library's default
+ * attributes, which GHOSTTY_TERMINAL_OPT_DEVICE_ATTRIBUTES describes.
+ *
+ * The terminal uses whichever sub-struct (primary, secondary, tertiary)
+ * matches the request type, but all three should be filled for simplicity.
+ *
+ * The library zeroes *out_attrs before the call, so you only need to set
+ * the fields you want to report. Every field you leave alone is reported
+ * as zero. This callback reports a VT220 with color and clipboard
+ * support, and leaves the tertiary unit ID at zero:
+ *
+ * @code
+ * static bool on_device_attributes(GhosttyTerminal terminal,
+ *                                  void* userdata,
+ *                                  GhosttyDeviceAttributes* out_attrs) {
+ *   out_attrs->primary.conformance_level = GHOSTTY_DA_CONFORMANCE_VT220;
+ *   out_attrs->primary.features[0] = GHOSTTY_DA_FEATURE_ANSI_COLOR;
+ *   out_attrs->primary.features[1] = GHOSTTY_DA_FEATURE_CLIPBOARD;
+ *   out_attrs->primary.num_features = 2;
+ *   out_attrs->secondary.device_type = GHOSTTY_DA_DEVICE_TYPE_VT220;
+ *   return true;
+ * }
+ * @endcode
+ *
+ * GhosttyDeviceAttributes is frozen. If a later version of libghostty-vt
+ * needs more fields, it adds a new callback typedef and a new option
+ * key, and keeps calling this callback with GhosttyDeviceAttributes
+ * forever. A callback written against this header keeps working with
+ * every later version of the library.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param[out] out_attrs Pointer to store the device attributes response
+ * @return true if attributes were filled, false to use the defaults
+ *
+ * @ingroup effects
+ */
+typedef bool (*GhosttyTerminalDeviceAttributesFn)(GhosttyTerminal terminal,
+                                                   void* userdata,
+                                                   GhosttyDeviceAttributes* out_attrs);
+
+/**
+ * Callback function type for enquiry (ENQ, 0x05).
+ *
+ * Called when the terminal receives an ENQ character. Return the
+ * response bytes as a GhosttyString. The memory must remain valid
+ * until the callback returns. Return a zero-length string to send
+ * no response.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @return The response bytes to write back to the pty
+ *
+ * @ingroup effects
+ */
+typedef GhosttyString (*GhosttyTerminalEnquiryFn)(GhosttyTerminal terminal,
+                                                   void* userdata);
+
+/**
+ * Callback function type for terminal size reports.
+ *
+ * Called in response to XTWINOPS size queries (CSI 14/16/18/19 t) and when VT
+ * input enables in-band size reports (mode 2048).
+ * Return true and fill *out_size with the current terminal geometry,
+ * or return false to suppress the report.
+ *
+ * The library zeroes *out_size before the call, so any field you don't
+ * write reads as zero. A typical callback copies the geometry from your
+ * own window state, passed in through GHOSTTY_TERMINAL_OPT_USERDATA:
+ *
+ * @code
+ * static bool on_size(GhosttyTerminal terminal,
+ *                     void* userdata,
+ *                     GhosttySizeReportSize* out_size) {
+ *   const MyWindow* window = userdata;
+ *   out_size->rows = window->rows;
+ *   out_size->columns = window->columns;
+ *   out_size->cell_width = window->cell_width;
+ *   out_size->cell_height = window->cell_height;
+ *   return true;
+ * }
+ * @endcode
+ *
+ * GhosttySizeReportSize is frozen. If a later version of libghostty-vt
+ * needs more fields, it adds a new callback typedef and a new option
+ * key, and keeps calling this callback with GhosttySizeReportSize
+ * forever. A callback written against this header keeps working with
+ * every later version of the library.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param[out] out_size Pointer to store the terminal size information
+ * @return true if size was filled, false to suppress the XTWINOPS response or
+ * mode 2048 report
+ *
+ * @ingroup effects
+ */
+typedef bool (*GhosttyTerminalSizeFn)(GhosttyTerminal terminal,
+                                      void* userdata,
+                                      GhosttySizeReportSize* out_size);
+
+/** @} */
+
+/** @name Terminal State
+ * @{
+ */
+
+/**
+ * Callback function type for title_changed.
+ *
+ * Called when the terminal title changes via escape sequences
+ * (e.g. OSC 0 or OSC 2). Use ghostty_terminal_get() with
+ * GHOSTTY_TERMINAL_DATA_TITLE inside the callback to read the new value.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalTitleChangedFn)(GhosttyTerminal terminal,
+                                              void* userdata);
+
+/**
+ * Callback function type for render_hold.
+ *
+ * Called when the running program asks the terminal to stop updating
+ * the screen, and again when it lets the screen update again. We call
+ * the time in between a "render hold". See @ref guide-rendering-holds for
+ * what to do about one.
+ *
+ * `held` is true when the program sets mode 2026
+ * (GHOSTTY_MODE_SYNCHRONIZED_OUTPUT), which is the only way to start a hold today.
+ *
+ * `held` is false when the hold ends, which happens when:
+ *
+ *   - the program resets mode 2026
+ *   - the terminal is fully reset, by the program (RIS) or by
+ *     ghostty_terminal_reset()
+ *   - the terminal is resized with ghostty_terminal_resize()
+ *
+ * The two calls always come in pairs. Setting the mode while a hold is
+ * already active does nothing, and neither does resetting it when there
+ * is no hold. Changing the mode yourself with GHOSTTY_TERMINAL_OPT_MODE
+ * never invokes the callback.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param held True when a hold begins, false when it ends
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalRenderHoldFn)(GhosttyTerminal terminal,
+                                            void* userdata,
+                                            bool held);
+
+/**
+ * Callback function type for pwd_changed.
+ *
+ * Called when the terminal pwd (current working directory) changes via
+ * escape sequences: OSC 7 (file:// URI), OSC 9 (ConEmu CurrentDir), or
+ * OSC 1337 CurrentDir (iTerm2). Use ghostty_terminal_get() with
+ * GHOSTTY_TERMINAL_DATA_PWD inside the callback to read the new value.
+ *
+ * The terminal stores whatever bytes the shell emitted, without parsing.
+ * That means for OSC 7 the value is the raw URI (typically file://...);
+ * for OSC 9/OSC 1337 it is typically a bare path. You are
+ * responsible for decoding any URI scheme or host if it cares about them.
+ *
+ * The callback also fires when the shell clears the pwd (e.g. an empty
+ * OSC 7). In that case GHOSTTY_TERMINAL_DATA_PWD returns a zero-length
+ * string.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalPwdChangedFn)(GhosttyTerminal terminal,
+                                            void* userdata);
+
+/** @} */
+
+/** @name Replies
+ * @{
+ */
+
+/**
+ * Callback function type for write_pty.
+ *
+ * Called when the terminal needs to write data back to the pty, for
+ * example in response to a device status report, mode query, or VT-driven
+ * mode 2048 enable. The data is only valid for the duration of the call;
+ * you must copy it if it needs to persist.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @param data Pointer to the response bytes
+ * @param len Length of the response in bytes
+ *
+ * @ingroup effects
+ */
+typedef void (*GhosttyTerminalWritePtyFn)(GhosttyTerminal terminal,
+                                          void* userdata,
+                                          const uint8_t* data,
+                                          size_t len);
+
+/**
+ * Callback function type for XTVERSION.
+ *
+ * Called when the terminal receives an XTVERSION query (CSI > q).
+ * Return the version string (e.g. "myterm 1.0") as a GhosttyString.
+ * The memory must remain valid until the callback returns. Return a
+ * zero-length string to report the default "libghostty" version.
+ *
+ * @param terminal The terminal handle
+ * @param userdata The userdata pointer set via GHOSTTY_TERMINAL_OPT_USERDATA
+ * @return The version string to report
+ *
+ * @ingroup effects
+ */
+typedef GhosttyString (*GhosttyTerminalXtversionFn)(GhosttyTerminal terminal,
+                                                     void* userdata);
+
+/** @} */
+
+/** @} */
+
+/** @addtogroup terminal
+ *
+ * @{
+ */
+
+/**
+ * A terminal mode and boolean value used for mode configuration and queries.
+ *
+ * For GHOSTTY_TERMINAL_DATA_MODE, initialize `mode` before calling
+ * ghostty_terminal_get(). On success, `value` contains the current mode value.
+ *
+ * This struct has a frozen layout and will not gain fields in future versions.
+ *
+ * @ingroup terminal
+ */
+typedef struct {
+  /** Mode to configure or query. */
+  GhosttyMode mode;
+
+  /** Value to set, or the current value returned by a query. */
+  bool value;
+} GhosttyTerminalModeConfig;
+
+/**
+ * Terminal option identifiers.
+ *
+ * These values are used with ghostty_terminal_set() to configure
+ * terminal callbacks and associated state.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /**
+   * Not a real option. ghostty_terminal_set() returns GHOSTTY_INVALID_VALUE
+   * for it. Its value is 0, so a zeroed or uninitialized variable is never
+   * mistaken for a real option.
+   */
+  GHOSTTY_TERMINAL_OPT_INVALID = 0,
+
+  /**
+   * Opaque userdata pointer passed to all callbacks. NULL by default.
+   *
+   * Input type: void*
+   */
+  GHOSTTY_TERMINAL_OPT_USERDATA = 1,
+
+  /**
+   * Callback invoked when the terminal needs to write data back
+   * to the pty (e.g. in response to a DECRQM query, device status
+   * report, or VT-driven mode 2048 enable). Set to NULL to ignore such
+   * sequences.
+   *
+   * Input type: GhosttyTerminalWritePtyFn
+   */
+  GHOSTTY_TERMINAL_OPT_WRITE_PTY = 2,
+
+  /**
+   * Callback invoked when the terminal receives a BEL character
+   * (0x07). Set to NULL to ignore bell events.
+   *
+   * Input type: GhosttyTerminalBellFn
+   */
+  GHOSTTY_TERMINAL_OPT_BELL = 3,
+
+  /**
+   * Callback invoked when the terminal receives an ENQ character
+   * (0x05). Set to NULL to send no response.
+   *
+   * Input type: GhosttyTerminalEnquiryFn
+   */
+  GHOSTTY_TERMINAL_OPT_ENQUIRY = 4,
+
+  /**
+   * Callback invoked when the terminal receives an XTVERSION query
+   * (CSI > q). Set to NULL to report the default "libghostty" string.
+   *
+   * Input type: GhosttyTerminalXtversionFn
+   */
+  GHOSTTY_TERMINAL_OPT_XTVERSION = 5,
+
+  /**
+   * Callback invoked when the terminal title changes via escape
+   * sequences (e.g. OSC 0 or OSC 2). Set to NULL to ignore title
+   * change events.
+   *
+   * Input type: GhosttyTerminalTitleChangedFn
+   */
+  GHOSTTY_TERMINAL_OPT_TITLE_CHANGED = 6,
+
+  /**
+   * Callback invoked in response to XTWINOPS size queries
+   * (CSI 14/16/18/19 t). Set to NULL to silently ignore size queries.
+   *
+   * Input type: GhosttyTerminalSizeFn
+   */
+  GHOSTTY_TERMINAL_OPT_SIZE = 7,
+
+  /**
+   * Callback invoked in response to a color scheme device status
+   * report query (CSI ? 996 n). Return true and fill the out pointer
+   * to report the current scheme, or return false to silently ignore.
+   * Set to NULL to ignore color scheme queries.
+   *
+   * Input type: GhosttyTerminalColorSchemeFn
+   */
+  GHOSTTY_TERMINAL_OPT_COLOR_SCHEME = 8,
+
+  /**
+   * Callback invoked in response to a device attributes query
+   * (CSI c, CSI > c, or CSI = c). Return true and fill the out
+   * pointer with response data, or return false to answer with the
+   * library's default attributes.
+   *
+   * Set to NULL to answer with the library's default attributes (a VT220
+   * with ANSI color). The default replies are CSI ? 62 ; 22 c to CSI c,
+   * CSI > 1 ; 0 ; 0 c to CSI > c, and DCS ! | 00000000 ST to CSI = c.
+   *
+   * Input type: GhosttyTerminalDeviceAttributesFn
+   */
+  GHOSTTY_TERMINAL_OPT_DEVICE_ATTRIBUTES = 9,
+
+  /**
+   * Set the terminal title manually.
+   *
+   * The string data is copied into the terminal. A NULL value pointer
+   * clears the title (equivalent to setting an empty string).
+   *
+   * Input type: GhosttyString*
+   */
+  GHOSTTY_TERMINAL_OPT_TITLE = 10,
+
+  /**
+   * Set the terminal working directory manually.
+   *
+   * The string data is copied into the terminal. A NULL value pointer
+   * clears the pwd (equivalent to setting an empty string).
+   *
+   * Input type: GhosttyString*
+   */
+  GHOSTTY_TERMINAL_OPT_PWD = 11,
+
+  /**
+   * Set the default foreground color.
+   *
+   * A NULL value pointer clears the default (unset).
+   *
+   * Input type: GhosttyColorRgb*
+   */
+  GHOSTTY_TERMINAL_OPT_COLOR_FOREGROUND = 12,
+
+  /**
+   * Set the default background color.
+   *
+   * A NULL value pointer clears the default (unset).
+   *
+   * Input type: GhosttyColorRgb*
+   */
+  GHOSTTY_TERMINAL_OPT_COLOR_BACKGROUND = 13,
+
+  /**
+   * Set the default cursor color.
+   *
+   * A NULL value pointer clears the default (unset).
+   *
+   * Input type: GhosttyColorRgb*
+   */
+  GHOSTTY_TERMINAL_OPT_COLOR_CURSOR = 14,
+
+  /**
+   * Set the default 256-color palette.
+   *
+   * The value must point to an array of exactly 256 GhosttyColorRgb values.
+   * A NULL value pointer resets to the built-in default palette.
+   *
+   * Input type: GhosttyColorRgb[256]*
+   */
+  GHOSTTY_TERMINAL_OPT_COLOR_PALETTE = 15,
+
+  /**
+   * Set the Kitty image storage limit in bytes.
+   *
+   * Applied to all initialized screens (primary and alternate).
+   * A value of zero disables the Kitty graphics protocol entirely,
+   * deleting all stored images and placements. The default is 10 MB
+   * (10,000,000 bytes), and a NULL value pointer restores it. Values too
+   * large for the platform's address space are treated as the largest
+   * possible limit. ghostty_terminal_set() returns GHOSTTY_UNSUPPORTED
+   * for this option when Kitty graphics are disabled at build time.
+   *
+   * Input type: uint64_t*
+   */
+  GHOSTTY_TERMINAL_OPT_KITTY_IMAGE_STORAGE_LIMIT = 16,
+
+  /**
+   * Enable or disable Kitty image loading via the file medium.
+   *
+   * Disabled by default, and a NULL value pointer disables it again.
+   * ghostty_terminal_set() returns GHOSTTY_UNSUPPORTED for this option
+   * when Kitty graphics are disabled at build time.
+   *
+   * Input type: bool*
+   */
+  GHOSTTY_TERMINAL_OPT_KITTY_IMAGE_MEDIUM_FILE = 17,
+
+  /**
+   * Enable Kitty image loading via the temporary file medium, restricted to
+   * the provided directory. The string data is copied into the terminal.
+   *
+   * Disabled by default, and a NULL value pointer disables it again.
+   * ghostty_terminal_set() returns GHOSTTY_UNSUPPORTED for this option
+   * when Kitty graphics are disabled at build time.
+   *
+   * Input type: GhosttyString*
+   */
+  GHOSTTY_TERMINAL_OPT_KITTY_IMAGE_MEDIUM_TEMP_FILE = 18,
+
+  /**
+   * Enable or disable Kitty image loading via the shared memory medium.
+   *
+   * Disabled by default, and a NULL value pointer disables it again.
+   * ghostty_terminal_set() returns GHOSTTY_UNSUPPORTED for this option
+   * when Kitty graphics are disabled at build time.
+   *
+   * Input type: bool*
+   */
+  GHOSTTY_TERMINAL_OPT_KITTY_IMAGE_MEDIUM_SHARED_MEM = 19,
+
+  /**
+   * Set the maximum bytes the APC handler will buffer for all protocols.
+   * This prevents malicious input from causing unbounded memory allocation.
+   * A NULL value pointer removes all overrides, reverting to the built-in
+   * defaults.
+   *
+   * Input type: size_t*
+   */
+  GHOSTTY_TERMINAL_OPT_APC_MAX_BYTES = 20,
+
+  /**
+   * Set the maximum bytes the APC handler will buffer for Kitty graphics
+   * protocol data. A NULL value pointer removes the override, reverting
+   * to the built-in default.
+   *
+   * Input type: size_t*
+   */
+  GHOSTTY_TERMINAL_OPT_APC_MAX_BYTES_KITTY = 21,
+
+  /**
+   * Set the active screen selection.
+   *
+   * The value must point to a GhosttySelection whose grid references are
+   * valid for this terminal's active screen at the time of the call. The
+   * terminal copies the selection immediately and converts it to
+   * terminal-owned tracked state, so the GhosttySelection struct and its
+   * untracked grid references do not need to outlive this call.
+   *
+   * Passing NULL clears the active screen selection.
+   *
+   * Input type: GhosttySelection*
+   */
+  GHOSTTY_TERMINAL_OPT_SELECTION = 22,
+
+  /**
+   * Set the default cursor style used by DECSCUSR reset (CSI 0 q).
+   *
+   * A NULL value pointer resets to the built-in default block cursor.
+   *
+   * Input type: GhosttyCursorStyle*
+   */
+  GHOSTTY_TERMINAL_OPT_DEFAULT_CURSOR_STYLE = 23,
+
+  /**
+   * Set whether the default cursor should blink when reset by DECSCUSR
+   * (CSI 0 q).
+   *
+   * A NULL value pointer resets to the built-in default of not blinking.
+   *
+   * Input type: bool*
+   */
+  GHOSTTY_TERMINAL_OPT_DEFAULT_CURSOR_BLINK = 24,
+
+  /**
+   * Enable or disable Glyph Protocol APC handling.
+   *
+   * When disabled, Glyph Protocol APC sequences are ignored and no
+   * support/query/register/clear responses are emitted. Disabling also clears
+   * the terminal session's glyph glossary.
+   *
+   * Disabled by default, and a NULL value pointer disables it again. An
+   * application opts in because registered glyphs change what the terminal
+   * draws.
+   *
+   * Input type: bool*
+   */
+  GHOSTTY_TERMINAL_OPT_GLYPH_PROTOCOL = 25,
+
+  /**
+   * Callback invoked when the terminal pwd changes via escape
+   * sequences (OSC 7, OSC 9, or OSC 1337 CurrentDir). Set to NULL
+   * to ignore pwd change events.
+   *
+   * Input type: GhosttyTerminalPwdChangedFn
+   */
+  GHOSTTY_TERMINAL_OPT_PWD_CHANGED = 26,
+
+  /**
+   * Callback invoked when the running program performs a clipboard write.
+   * OSC 52, iTerm2 OSC 1337 Copy, and Kitty clipboard (OSC 5522) writes
+   * are normalized to an atomic set of decoded MIME representations. Set
+   * to NULL to ignore clipboard writes (Kitty clipboard writes are then
+   * refused with ENOSYS). Clipboard read requests are delivered to
+   * GHOSTTY_TERMINAL_OPT_CLIPBOARD_READ instead.
+   *
+   * Input type: GhosttyTerminalClipboardWriteFn
+   */
+  GHOSTTY_TERMINAL_OPT_CLIPBOARD_WRITE = 27,
+
+  /**
+   * Set the maximum scrollback allocation in bytes.
+   *
+   * This is an estimate. Internally, libghostty only prunes bytes up 
+   * to a "page"-granularity. A page is the minimum allocated unit of
+   * grid space within Ghostty. A page at the time of writing these docs
+   * is about 400KB, so the byte limit will be within this delta.
+   *
+   * This works alongside the line limit configuration. If both are set,
+   * the first-reached limit is used first. Both limits are dependent
+   * on external state (byte limit can be reached with less lines if
+   * more styles are used for example, line limit can be reached with
+   * a narrower terminal viewport). So, they are useful together.
+   *
+   * Lowering the limit immediately removes eligible complete historical
+   * pages. A value of zero disables scrollback and erases retained history.
+   *
+   * The default is 10,000 bytes. Because history is kept in whole pages,
+   * this is rounded up to one page in practice. Pass SIZE_MAX for no byte
+   * limit, or NULL to restore the default:
+   *
+   * @code{.c}
+   * size_t unlimited = SIZE_MAX;
+   * ghostty_terminal_set(terminal,
+   *     GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_BYTES, &unlimited);
+   *
+   * // Back to the default of 10,000 bytes.
+   * ghostty_terminal_set(terminal,
+   *     GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_BYTES, NULL);
+   * @endcode
+   *
+   * Input type: size_t*
+   */
+  GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_BYTES = 28,
+
+  /**
+   * Set the maximum number of physical lines retained in scrollback.
+   *
+   * This is an estimate. Internally, libghostty only prunes lines up 
+   * to a "page"-granularity. A page is the minimum allocated unit of
+   * grid space within Ghostty. As a result, the actual available scrollback
+   * lines will almost always be higher than configured. The magnitude 
+   * of the difference depends on the number of used styles, graphemes, etc.
+   * since the row-count in a page is dynamic based on that. In general,
+   * it ranges from dozens to a hundred or so lines.
+   *
+   * This works alongside the line limit configuration. If both are set,
+   * the first-reached limit is used first. Both limits are dependent
+   * on external state (byte limit can be reached with less lines if
+   * more styles are used for example, line limit can be reached with
+   * a narrower terminal viewport). So, they are useful together.
+   *
+   * Lowering the limit immediately removes eligible complete historical
+   * pages.
+   *
+   * There is no line limit by default. Pass SIZE_MAX or NULL to remove a
+   * line limit you set earlier.
+   *
+   * Input type: size_t*
+   */
+  GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_LINES = 29,
+
+  /**
+   * Callback invoked when the running program requests a desktop
+   * notification via OSC 9 or OSC 777. Set to NULL to ignore desktop
+   * notification requests.
+   *
+   * Input type: GhosttyTerminalDesktopNotificationFn
+   */
+  GHOSTTY_TERMINAL_OPT_DESKTOP_NOTIFICATION = 30,
+
+  /**
+   * Callback invoked when the running program reports progress via OSC 9;4.
+   * Set to NULL to ignore progress reports.
+   *
+   * Input type: GhosttyTerminalProgressReportFn
+   */
+  GHOSTTY_TERMINAL_OPT_PROGRESS_REPORT = 31,
+
+  /**
+   * Set the maximum number of replay-safe VT continuation bytes retained.
+   *
+   * Continuation bytes reconstruct an escape sequence or UTF-8 codepoint
+   * which was unfinished at the end of the most recent
+   * VT write call. They are used automatically by terminal snapshots and may
+   * also be exported directly with the continuation APIs.
+   *
+   * Tracking is disabled by default. A nonzero value enables tracking and
+   * sets its byte limit. Passing NULL or a pointer to zero disables tracking.
+   * Lowering the limit below an already-retained
+   * continuation, or enabling tracking while the parser is already
+   * unfinished, makes the current continuation unavailable because earlier
+   * bytes cannot be reconstructed. Tracking recovers automatically after a
+   * later write reaches the ground state or contains a fresh replay start.
+   *
+   * Input type: size_t*
+   */
+  GHOSTTY_TERMINAL_OPT_CONTINUATION_MAX_BYTES = 32,
+
+  /**
+   * Enable window title reports in response to CSI 21 t.
+   *
+   * This is disabled by default because a running program can set a title and
+   * query it back into the pty input stream, potentially injecting commands
+   * that execute after user interaction. Passing NULL or a pointer to false
+   * disables title reporting.
+   *
+   * Input type: bool*
+   */
+  GHOSTTY_TERMINAL_OPT_TITLE_REPORT = 33,
+
+  /**
+   * Set the reset default for a terminal mode.
+   *
+   * This unconditionally updates both the current value and the value restored
+   * by a terminal reset. RIS restores every mode, and DECSTR only a subset.
+   *
+   * Some recognized modes represent transitions or mirror additional terminal
+   * state and cannot safely be configured as reset defaults. Those modes return
+   * GHOSTTY_INVALID_VALUE. A NULL value pointer also returns
+   * GHOSTTY_INVALID_VALUE.
+   *
+   * Input type: GhosttyTerminalModeConfig*
+   */
+  GHOSTTY_TERMINAL_OPT_MODE_DEFAULT = 34,
+
+  /**
+   * Set the current value of a terminal mode.
+   *
+   * This does not change the value restored by a reset (RIS or DECSTR).
+   * A NULL value pointer or unknown mode returns GHOSTTY_INVALID_VALUE.
+   *
+   * Input type: GhosttyTerminalModeConfig*
+   */
+  GHOSTTY_TERMINAL_OPT_MODE = 35,
+
+  /**
+   * Callback for escape sequences that libghostty-vt does not implement.
+   * Set to NULL to stop receiving them.
+   *
+   * GHOSTTY_TERMINAL_OPT_UNKNOWN_MAX_BYTES must also be set, or the
+   * callback is never called. See @ref guide-custom-sequences-unknown for
+   * an example.
+   *
+   * Input type: GhosttyTerminalUnknownSequenceFn
+   */
+  GHOSTTY_TERMINAL_OPT_UNKNOWN_SEQUENCE = 36,
+
+  /**
+   * The most bytes of each unsupported sequence to keep and pass to the
+   * GHOSTTY_TERMINAL_OPT_UNKNOWN_SEQUENCE callback. The same limit applies
+   * to APC and OSC sequences.
+   *
+   * Zero, the default, turns unsupported sequence reporting off. A NULL
+   * value pointer also sets it to zero.
+   *
+   * A sequence longer than the limit is still reported. Its content holds
+   * the first bytes up to the limit, and `truncated` is true.
+   *
+   * Choose a limit that fits the largest sequence you expect. Unknown OSC
+   * sequences up to 2048 bytes are kept in a buffer the terminal already
+   * owns, so limits up to 2048 add no memory allocations for OSC. Larger
+   * limits allocate memory for each unknown OSC sequence. Unknown APC
+   * sequences are always kept in allocated memory.
+   *
+   * Input type: size_t*
+   */
+  GHOSTTY_TERMINAL_OPT_UNKNOWN_MAX_BYTES = 37,
+
+  /**
+   * Set the name of the terminfo entry this terminal runs as, reported
+   * in response to an XTGETTCAP query for "TN" (e.g. "xterm-256color").
+   *
+   * The string data is copied into the terminal. A NULL value pointer
+   * clears the name (equivalent to setting an empty string). A name
+   * longer than 128 bytes returns GHOSTTY_INVALID_VALUE.
+   *
+   * If this is unset then we don't report anything for an XTGETTCAP
+   * TN query, because we don't know what the embedding terminal around
+   * libghostty is advertising itself as.
+   *
+   * Input type: GhosttyString*
+   */
+  GHOSTTY_TERMINAL_OPT_TERMINFO_NAME = 38,
+
+  /**
+   * Callback invoked when the running program requests clipboard contents
+   * via OSC 52 with a "?" payload or a Kitty clipboard (OSC 5522) read. The
+   * read is synchronous and must be answered before the callback returns.
+   * Set to NULL (the default) to ignore OSC 52 read requests and refuse
+   * OSC 5522 reads with EPERM.
+   *
+   * Input type: GhosttyTerminalClipboardReadFn
+   */
+  GHOSTTY_TERMINAL_OPT_CLIPBOARD_READ = 39,
+
+  /**
+   * Set the maximum total decoded bytes a single Kitty clipboard protocol
+   * (OSC 5522) write transaction may accumulate. The limit is captured
+   * when a transaction begins; an in-flight transaction keeps the limit
+   * it started with.
+   *
+   * Data beyond the limit fails the whole transaction with EFBIG. The
+   * transaction is discarded, later write-related packets are ignored
+   * until a new write begins, and nothing reaches the clipboard write
+   * callback.
+   *
+   * Transactions are buffered in memory, so this limit bounds how much
+   * memory a single write can make the terminal allocate. Pass SIZE_MAX
+   * to remove the limit. A NULL value pointer reverts to the built-in
+   * default of 64MiB, the minimum required by the protocol.
+   *
+   * This limit doesn't apply to OSC 52 writes, which are bounded by the
+   * maximum length of an escape sequence instead.
+   *
+   * Input type: size_t*
+   */
+  GHOSTTY_TERMINAL_OPT_CLIPBOARD_WRITE_MAX_BYTES = 40,
+
+  /**
+   * Set whether a resize may pull rows out of scrollback back into the
+   * active area.
+   *
+   * When true, growing rows reveals scrollback if the cursor is on the
+   * bottom row, and a column reflow that needs fewer rows reveals
+   * scrollback as well. When false, growing rows always appends blank rows
+   * at the bottom and a column reflow keeps the top of the active area on
+   * the same content, so a line that is fully in scrollback stays there. A
+   * soft-wrapped line with at least one row still in the active area may
+   * still unwrap back into view.
+   *
+   * Set this to false when the pty keeps its own screen buffer without
+   * scrollback, since it cannot pull rows back and will otherwise disagree
+   * with the terminal about the screen contents after a resize. Windows
+   * ConPTY is the motivating case.
+   *
+   * This is preserved across a full reset (RIS).
+   *
+   * A NULL value pointer resets to the built-in default of true.
+   *
+   * Input type: bool*
+   */
+  GHOSTTY_TERMINAL_OPT_RESIZE_PULL_SCROLLBACK = 41,
+
+  /**
+   * Callback invoked when the running program asks the terminal to
+   * stop updating the screen and when it allows updates again. Today
+   * this is driven by synchronized output (mode 2026). Set to NULL to
+   * ignore these events.
+   *
+   * See @ref guide-rendering-holds for how to use this in a renderer.
+   *
+   * Input type: GhosttyTerminalRenderHoldFn
+   */
+  GHOSTTY_TERMINAL_OPT_RENDER_HOLD = 42,
+
+  /**
+   * Callback invoked when the shell reports a step of a command: a prompt
+   * starts, input starts, output starts, or the command ends. Set to NULL
+   * to ignore these events.
+   *
+   * Input type: GhosttyTerminalSemanticPromptFn
+   */
+  GHOSTTY_TERMINAL_OPT_SEMANTIC_PROMPT = 43,
+
+  /**
+   * Callback invoked after the running program performs a full reset
+   * (RIS, ESC c). Set to NULL to ignore resets.
+   *
+   * Input type: GhosttyTerminalResetFn
+   */
+  GHOSTTY_TERMINAL_OPT_RESET = 44,
+
+  /**
+   * Enable checksum reports in response to DECRQCRA (CSI Pi ; Pg ; Pt ; Pl ;
+   * Pb ; Pr * y).
+   *
+   * This is disabled by default because a running program can checksum the
+   * screen one cell at a time and so read back everything on it, including
+   * output from other programs. Passing NULL or a pointer to false disables
+   * checksum reporting.
+   *
+   * While this is disabled, XTCHECKSUM (CSI Ps # y), which changes how the
+   * checksum is calculated, is ignored as well.
+   *
+   * Input type: bool*
+   */
+  GHOSTTY_TERMINAL_OPT_XT_CHECKSUM_REPORT = 45,
+
+  /**
+   * Set how the DECRQCRA checksum is calculated after a reset (RIS or DECSTR).
+   * This also changes the current calculation.
+   *
+   * The value holds the same bits as XTCHECKSUM (CSI Ps # y) and xterm's
+   * checksumExtension resource, which a running program can still use to
+   * change the calculation until the next reset:
+   *
+   *   - 1: don't negate the result
+   *   - 2: don't add the video attributes of each cell
+   *   - 4: don't omit blanks
+   *   - 8: count cells that were never written to as spaces
+   *   - 16: use full codepoints instead of the DEC 8-bit values
+   *
+   * Zero, or passing NULL, is the calculation of a real DEC terminal.
+   * Values above 31 return GHOSTTY_INVALID_VALUE.
+   *
+   * Input type: uint8_t*
+   */
+  GHOSTTY_TERMINAL_OPT_XT_CHECKSUM_EXTENSION = 46,
+
+  /**
+   * Callback invoked when the running program sends a program status
+   * report via OSC 7501. Set to NULL to ignore these reports.
+   *
+   * Programs may ask whether the terminal supports the protocol by
+   * sending `OSC 7501 ; ?`. While this callback is set, the terminal
+   * answers through GHOSTTY_TERMINAL_OPT_WRITE_PTY with `?` followed by
+   * the states and kinds it accepts:
+   *
+   * @code
+   * program:  ESC ] 7501 ; ? ST
+   * terminal: ESC ] 7501 ; ?:states=idle,working,done,blocked,error:kinds=permission,question,auth ST
+   * @endcode
+   *
+   * While this callback is NULL, the query gets no reply, so a program
+   * that asks sees the protocol as unsupported. Asking is optional, so
+   * programs may send reports anyway. Those are dropped. Set a write_pty
+   * callback too, or programs never see the reply.
+   *
+   * Input type: GhosttyTerminalProgramStatusFn
+   */
+  GHOSTTY_TERMINAL_OPT_PROGRAM_STATUS = 47,
+
+  /**
+   * Callback invoked when the running program asks to resize the window,
+   * such as with CSI 8 ; rows ; columns t. Set to NULL to ignore resize
+   * requests.
+   *
+   * Input type: GhosttyTerminalResizeWindowFn
+   */
+  GHOSTTY_TERMINAL_OPT_RESIZE_WINDOW = 48,
+  GHOSTTY_TERMINAL_OPT_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalOption;
+
+/**
+ * Terminal data types.
+ *
+ * These values specify what type of data to extract from a terminal
+ * using `ghostty_terminal_get`.
+ *
+ * @ingroup terminal
+ */
+typedef enum GHOSTTY_ENUM_TYPED {
+  /** Invalid data type. Never results in any data extraction. */
+  GHOSTTY_TERMINAL_DATA_INVALID = 0,
+
+  /**
+   * Terminal width in cells.
+   *
+   * Output type: uint16_t *
+   */
+  GHOSTTY_TERMINAL_DATA_COLS = 1,
+
+  /**
+   * Terminal height in cells.
+   *
+   * Output type: uint16_t *
+   */
+  GHOSTTY_TERMINAL_DATA_ROWS = 2,
+
+  /**
+   * Cursor column position (0-indexed).
+   *
+   * Output type: uint16_t *
+   */
+  GHOSTTY_TERMINAL_DATA_CURSOR_X = 3,
+
+  /**
+   * Cursor row position within the active area (0-indexed).
+   *
+   * Output type: uint16_t *
+   */
+  GHOSTTY_TERMINAL_DATA_CURSOR_Y = 4,
+
+  /**
+   * Whether the cursor has a pending wrap (next print will soft-wrap).
+   *
+   * Output type: bool *
+   */
+  GHOSTTY_TERMINAL_DATA_CURSOR_PENDING_WRAP = 5,
+
+  /**
+   * The currently active screen.
+   *
+   * Output type: GhosttyTerminalScreen *
+   */
+  GHOSTTY_TERMINAL_DATA_ACTIVE_SCREEN = 6,
+
+  /**
+   * Whether the cursor is visible (DEC mode 25).
+   *
+   * Output type: bool *
+   */
+  GHOSTTY_TERMINAL_DATA_CURSOR_VISIBLE = 7,
+
+  /**
+   * Current Kitty keyboard protocol flags.
+   *
+   * Output type: GhosttyKittyKeyFlags * (uint8_t *)
+   */
+  GHOSTTY_TERMINAL_DATA_KITTY_KEYBOARD_FLAGS = 8,
+
+  /**
+   * Scrollbar state for the terminal viewport.
+   *
+   * This is amortized O(1): the total is maintained incrementally as
+   * the terminal is modified and the viewport offset is cached. The
+   * first read after the viewport moves to an arbitrary position that
+   * isn't an absolute row (e.g. scrolling to a selection) may cost
+   * O(pages) to compute the offset, after which it is cached again.
+   *
+   * There is intentionally no change notification for scroll state.
+   * Callers building scrollbars should poll this once per frame or
+   * per write batch and diff the result to detect changes; this is
+   * what Ghostty's own renderer does.
+   *
+   * Output type: GhosttyTerminalScrollbar *
+   */
+  GHOSTTY_TERMINAL_DATA_SCROLLBAR = 9,
+
+  /**
+   * The current SGR style of the cursor.
+   *
+   * This is the style that will be applied to newly printed characters, such
+   * as bold or a foreground color. It isn't the shape of the cursor. For that,
+   * see GhosttyCursorStyle.
+   *
+   * Output type: GhosttyStyle *
+   */
+  GHOSTTY_TERMINAL_DATA_CURSOR_SGR_STYLE = 10,
+
+  /**
+   * Whether any mouse tracking mode is active.
+   *
+   * Returns true if any of the mouse tracking modes (X10, normal, button,
+   * or any-event) are enabled.
+   *
+   * Output type: bool *
+   */
+  GHOSTTY_TERMINAL_DATA_MOUSE_TRACKING = 11,
+
+  /**
+   * The terminal title as set by escape sequences (e.g. OSC 0/2).
+   *
+   * Returns a borrowed string. The pointer is valid until the next mutating
+   * terminal call. An empty string (len=0) is returned when no title has been
+   * set.
+   *
+   * Output type: GhosttyString *
+   */
+  GHOSTTY_TERMINAL_DATA_TITLE = 12,
+
+  /**
+   * The terminal's current working directory as set by escape sequences
+   * (e.g. OSC 7).
+   *
+   * Returns a borrowed string. The pointer is valid until the next mutating
+   * terminal call. An empty string (len=0) is returned when no pwd has been
+   * set.
+   *
+   * Output type: GhosttyString *
+   */
+  GHOSTTY_TERMINAL_DATA_PWD = 13,
+
+  /**
+   * The total number of rows in the active screen including scrollback.
+   *
+   * Output type: size_t *
+   */
+  GHOSTTY_TERMINAL_DATA_TOTAL_ROWS = 14,
+
+  /**
+   * The number of scrollback rows (total rows minus viewport rows).
+   *
+   * Output type: size_t *
+   */
+  GHOSTTY_TERMINAL_DATA_SCROLLBACK_ROWS = 15,
+
+  /**
+   * The total width of the terminal in pixels.
+   *
+   * This is cols * cell_width_px as set by ghostty_terminal_resize().
+   *
+   * Output type: uint32_t *
+   */
+  GHOSTTY_TERMINAL_DATA_WIDTH_PX = 16,
+
+  /**
+   * The total height of the terminal in pixels.
+   *
+   * This is rows * cell_height_px as set by ghostty_terminal_resize().
+   *
+   * Output type: uint32_t *
+   */
+  GHOSTTY_TERMINAL_DATA_HEIGHT_PX = 17,
+
+  /**
+   * The effective foreground color (override or default).
+   *
+   * Returns GHOSTTY_NO_VALUE if no foreground color is set.
+   *
+   * Output type: GhosttyColorRgb *
+   */
+  GHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND = 18,
+
+  /**
+   * The effective background color (override or default).
+   *
+   * Returns GHOSTTY_NO_VALUE if no background color is set.
+   *
+   * Output type: GhosttyColorRgb *
+   */
+  GHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND = 19,
+
+  /**
+   * The effective cursor color (override or default).
+   *
+   * Returns GHOSTTY_NO_VALUE if no cursor color is set.
+   *
+   * Output type: GhosttyColorRgb *
+   */
+  GHOSTTY_TERMINAL_DATA_COLOR_CURSOR = 20,
+
+  /**
+   * The current 256-color palette.
+   *
+   * Output type: GhosttyColorRgb[256] *
+   */
+  GHOSTTY_TERMINAL_DATA_COLOR_PALETTE = 21,
+
+  /**
+   * The default foreground color (ignoring any OSC override).
+   *
+   * Returns GHOSTTY_NO_VALUE if no default foreground color is set.
+   *
+   * Output type: GhosttyColorRgb *
+   */
+  GHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND_DEFAULT = 22,
+
+  /**
+   * The default background color (ignoring any OSC override).
+   *
+   * Returns GHOSTTY_NO_VALUE if no default background color is set.
+   *
+   * Output type: GhosttyColorRgb *
+   */
+  GHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT = 23,
+
+  /**
+   * The default cursor color (ignoring any OSC override).
+   *
+   * Returns GHOSTTY_NO_VALUE if no default cursor color is set.
+   *
+   * Output type: GhosttyColorRgb *
+   */
+  GHOSTTY_TERMINAL_DATA_COLOR_CURSOR_DEFAULT = 24,
+
+  /**
+   * The default 256-color palette (ignoring any OSC overrides).
+   *
+   * Output type: GhosttyColorRgb[256] *
+   */
+  GHOSTTY_TERMINAL_DATA_COLOR_PALETTE_DEFAULT = 25,
+
+  /**
+   * The Kitty image storage limit in bytes for the active screen.
+   *
+   * A value of zero means the Kitty graphics protocol is disabled.
+   * ghostty_terminal_get() returns GHOSTTY_UNSUPPORTED for this data when
+   * Kitty graphics are disabled at build time.
+   *
+   * Output type: uint64_t *
+   */
+  GHOSTTY_TERMINAL_DATA_KITTY_IMAGE_STORAGE_LIMIT = 26,
+
+  /**
+   * Whether the file medium is enabled for Kitty image loading on the
+   * active screen.
+   *
+   * ghostty_terminal_get() returns GHOSTTY_UNSUPPORTED for this data when
+   * Kitty graphics are disabled at build time.
+   *
+   * Output type: bool *
+   */
+  GHOSTTY_TERMINAL_DATA_KITTY_IMAGE_MEDIUM_FILE = 27,
+
+  /**
+   * The directory allowed for Kitty image loading via the temporary file
+   * medium on the active screen. The string is empty when the medium is
+   * disabled.
+   *
+   * ghostty_terminal_get() returns GHOSTTY_UNSUPPORTED for this data when
+   * Kitty graphics are disabled at build time.
+   *
+   * Output type: GhosttyString *
+   */
+  GHOSTTY_TERMINAL_DATA_KITTY_IMAGE_MEDIUM_TEMP_FILE = 28,
+
+  /**
+   * Whether the shared memory medium is enabled for Kitty image loading
+   * on the active screen.
+   *
+   * ghostty_terminal_get() returns GHOSTTY_UNSUPPORTED for this data when
+   * Kitty graphics are disabled at build time.
+   *
+   * Output type: bool *
+   */
+  GHOSTTY_TERMINAL_DATA_KITTY_IMAGE_MEDIUM_SHARED_MEM = 29,
+
+  /**
+   * The Kitty graphics image storage for the active screen.
+   *
+   * Returns a borrowed pointer to the image storage. The pointer is valid
+   * until the next mutating terminal call (e.g. ghostty_terminal_vt_write()
+   * or ghostty_terminal_reset()).
+   *
+   * ghostty_terminal_get() returns GHOSTTY_UNSUPPORTED for this data when
+   * Kitty graphics are disabled at build time.
+   *
+   * Output type: GhosttyKittyGraphics *
+   */
+  GHOSTTY_TERMINAL_DATA_KITTY_GRAPHICS = 30,
+
+  /**
+   * The active screen's current selection.
+   *
+   * On success, writes an untracked snapshot of the terminal-owned selection
+   * to your GhosttySelection. The GhosttySelection struct is
+   * caller-owned and may be kept, but the grid references inside it are
+   * untracked borrowed references into the active screen. They are only valid
+   * until the next mutating terminal call, such as ghostty_terminal_set(),
+   * ghostty_terminal_vt_write(), ghostty_terminal_resize(), or
+   * ghostty_terminal_reset().
+   *
+   * Returns GHOSTTY_NO_VALUE when there is no active selection.
+   *
+   * Output type: GhosttySelection *
+   */
+  GHOSTTY_TERMINAL_DATA_SELECTION = 31,
+
+  /**
+   * Whether the viewport is currently pinned to the active area.
+   *
+   * This is true when the viewport is following the active terminal area,
+   * and false when the user has scrolled into history.
+   *
+   * Output type: bool *
+   */
+  GHOSTTY_TERMINAL_DATA_VIEWPORT_ACTIVE = 32,
+
+  /**
+   * Whether VT processing encountered a non-gracefully handled error that may
+   * have prevented a terminal-owned semantic update.
+   *
+   * Processing remains best-effort, and ghostty_terminal_reset() does not 
+   * clear it. Gracefully handled protocol failures, configured limits, 
+   * malformed or unsupported input, and failures limited to external effects 
+   * or query responses do not set it.
+   *
+   * This can't currently be unset. This is purely informational to consumers
+   * if there was some error that happened at some point during VT processing.
+   *
+   * Output type: bool *
+   */
+  GHOSTTY_TERMINAL_DATA_VT_PROCESSING_ERROR = 33,
+
+  /**
+   * The configured maximum scrollback allocation in bytes.
+   *
+   * This always reports the primary screen's configured value, including
+   * while an alternate screen is active. Returns GHOSTTY_NO_VALUE when the
+   * configured byte limit is unlimited.
+   *
+   * Output type: size_t *
+   */
+  GHOSTTY_TERMINAL_DATA_SCROLLBACK_MAX_BYTES = 34,
+
+  /**
+   * The configured maximum number of physical scrollback lines.
+   *
+   * This always reports the primary screen's configured value, including
+   * while an alternate screen is active. Returns GHOSTTY_NO_VALUE when the
+   * configured line limit is unlimited.
+   *
+   * Output type: size_t *
+   */
+  GHOSTTY_TERMINAL_DATA_SCROLLBACK_MAX_LINES = 35,
+
+  /**
+   * The configured maximum retained VT continuation size in bytes.
+   *
+   * A value of zero means continuation tracking is disabled. This reports the
+   * configured limit even when a current unfinished continuation is
+   * temporarily unavailable.
+   *
+   * Output type: size_t *
+   */
+  GHOSTTY_TERMINAL_DATA_CONTINUATION_MAX_BYTES = 36,
+
+  /**
+   * Get the current value of a terminal mode.
+   *
+   * You must initialize the `mode` field. On success, the `value` field
+   * is updated with the current value. A NULL pointer or unknown mode returns
+   * GHOSTTY_INVALID_VALUE.
+   *
+   * Input/output type: GhosttyTerminalModeConfig *
+   */
+  GHOSTTY_TERMINAL_DATA_MODE = 37,
+
+  /**
+   * Whether VT processing is at ground.
+   *
+   * Ground is when the stream isn't in the middle of any type of sequence:
+   * UTF-8, ESC, CSI, OSC, etc. It is the stateless point of the stream.
+   *
+   * This is useful to know because it is a point at which you can
+   * safely insert out-of-band VT sequences. For example, while reading
+   * from a pty if you want to make your own changes, you can wait until
+   * the pty input reaches ground, then write yours.
+   *
+   * Output type: bool *
+   */
+  GHOSTTY_TERMINAL_DATA_VT_GROUND = 38,
+
+  /**
+   * Whether the cursor is currently at a semantic shell prompt or input area.
+   *
+   * This depends on semantic prompt markers such as OSC 133. Returns false
+   * when semantic prompt information is unavailable or the alternate screen
+   * is active.
+   *
+   * Output type: bool *
+   */
+  GHOSTTY_TERMINAL_DATA_CURSOR_AT_PROMPT = 39,
+
+  /**
+   * The configured maximum decoded bytes per Kitty clipboard protocol
+   * (OSC 5522) write transaction. See
+   * GHOSTTY_TERMINAL_OPT_CLIPBOARD_WRITE_MAX_BYTES.
+   *
+   * Output type: size_t *
+   */
+  GHOSTTY_TERMINAL_DATA_CLIPBOARD_WRITE_MAX_BYTES = 40,
+
+  /**
+   * The mouse pointer shape requested by the application through OSC 22.
+   *
+   * Initially GHOSTTY_MOUSE_SHAPE_TEXT. Excludes host hover overrides.
+   *
+   * Output type: GhosttyMouseShape *
+   */
+  GHOSTTY_TERMINAL_DATA_MOUSE_SHAPE = 41,
+
+  /**
+   * How much memory the terminal holds. See GhosttyTerminalMemoryUsage
+   * for what each field means.
+   *
+   * Set the struct's `size` field before the call, for example with
+   * GHOSTTY_INIT_SIZED(). If `size` is too small, this returns
+   * GHOSTTY_INVALID_VALUE and leaves the struct unchanged.
+   *
+   * This never decompresses scrollback, but it does look at every page, so
+   * avoid reading it after every write.
+   *
+   * Output type: GhosttyTerminalMemoryUsage *
+   */
+  GHOSTTY_TERMINAL_DATA_MEMORY_USAGE = 42,
+  GHOSTTY_TERMINAL_DATA_MAX_VALUE = GHOSTTY_ENUM_MAX_VALUE,
+} GhosttyTerminalData;
+
+/** @name Lifecycle
+ * @{
+ */
+
+/**
+ * Create a new terminal instance.
+ *
+ * The terminal starts with various reasonable defaults e.g. around
+ * scrollback limits. Use ghostty_terminal_set() to change any options
+ * prior to using the terminal.
+ *
+ * @param allocator Pointer to allocator, or NULL to use the default allocator
+ * @param terminal Pointer to store the created terminal handle (NULL returns
+ *                 GHOSTTY_INVALID_VALUE)
+ * @param cols Terminal width in cells (must be greater than zero)
+ * @param rows Terminal height in cells (must be greater than zero)
+ * @return GHOSTTY_SUCCESS on success, or an error code on failure
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_new(const GhosttyAllocator* allocator,
+                                               GhosttyTerminal* terminal,
+                                               uint16_t cols,
+                                               uint16_t rows);
+
+/**
+ * Free a terminal instance.
+ *
+ * Releases all resources associated with the terminal. After this call,
+ * the terminal handle becomes invalid and must not be used.
+ *
+ * @param terminal The terminal handle to free (may be NULL)
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API void ghostty_terminal_free(GhosttyTerminal terminal);
+
+/**
+ * Perform a full reset of the terminal (RIS).
+ *
+ * Resets all terminal state back to its initial configuration, including
+ * modes, scrollback, scrolling region, and screen contents. The terminal
+ * dimensions are preserved.
+ *
+ * If synchronized output was enabled, the GHOSTTY_TERMINAL_OPT_RENDER_HOLD
+ * callback is invoked to report that the hold ended.
+ *
+ * @param terminal The terminal handle (may be NULL, in which case this is a no-op)
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API void ghostty_terminal_reset(GhosttyTerminal terminal);
+
+/**
+ * Resize the terminal to the given dimensions.
+ *
+ * Changes the number of columns and rows in the terminal. The primary
+ * screen will reflow content if wraparound mode is enabled; the alternate
+ * screen does not reflow. If the dimensions are unchanged, the grid is
+ * left as is, but everything below still applies.
+ *
+ * This also updates the terminal's pixel dimensions (used for image
+ * protocols and size reports), disables synchronized output mode (allowed
+ * by the spec so that resize results are shown immediately), and sends an
+ * in-band size report if mode 2048 is enabled.
+ *
+ * If synchronized output was enabled, the GHOSTTY_TERMINAL_OPT_RENDER_HOLD
+ * callback is invoked to report that the hold ended.
+ *
+ * @param terminal The terminal handle (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param cols New width in cells (must be greater than zero)
+ * @param rows New height in cells (must be greater than zero)
+ * @param cell_width_px Width of a single cell in pixels
+ * @param cell_height_px Height of a single cell in pixels
+ * @return GHOSTTY_SUCCESS on success, or an error code on failure
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_resize(GhosttyTerminal terminal,
+                                      uint16_t cols,
+                                      uint16_t rows,
+                                      uint32_t cell_width_px,
+                                      uint32_t cell_height_px);
+
+/** @} */
+
+/** @name Options
+ * @{
+ */
+
+/**
+ * Set an option on the terminal.
+ *
+ * Configures terminal callbacks and associated state such as the
+ * write_pty callback and userdata pointer. The value is passed
+ * directly for pointer types (callbacks, userdata) or as a pointer
+ * to the value for non-pointer types (e.g. GhosttyString*).
+ *
+ * Passing NULL for `value` restores the option's default, the same value
+ * a new terminal starts with. Each GhosttyTerminalOption value documents
+ * its default. Callbacks and the userdata pointer default to NULL, so
+ * passing NULL removes them. GHOSTTY_TERMINAL_OPT_MODE and
+ * GHOSTTY_TERMINAL_OPT_MODE_DEFAULT have no default to restore, so they
+ * return GHOSTTY_INVALID_VALUE for NULL.
+ *
+ * @code{.c}
+ * bool enabled = true;
+ * ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_GLYPH_PROTOCOL,
+ *                      &enabled);
+ *
+ * // Later, turn it back off by restoring the default.
+ * ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_GLYPH_PROTOCOL, NULL);
+ * @endcode
+ *
+ * Callbacks are invoked synchronously during VT writes. Callbacks must not
+ * call ghostty_terminal_vt_write() or
+ * ghostty_terminal_vt_write_until() on the same terminal. The terminal is
+ * not reentrant, and nothing checks for this or reports an error. The
+ * bytes go into the parser in the middle of the sequence that called you,
+ * so they can be lost or make that sequence run a second time. See
+ * @ref guide-effects-rules.
+ *
+ * @param terminal The terminal handle (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param option The option to set
+ * @param value Pointer to the value to set (type depends on the option),
+ *              or NULL to restore the option's default
+ * @return GHOSTTY_SUCCESS on success, GHOSTTY_INVALID_VALUE if `terminal`
+ *         is NULL or the value is invalid for the option,
+ *         GHOSTTY_OUT_OF_MEMORY if copying the value fails, or
+ *         GHOSTTY_UNSUPPORTED if `option` is not known to this version of
+ *         the library
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_set(GhosttyTerminal terminal,
+                                   GhosttyTerminalOption option,
+                                   const void* value);
+
+/** @} */
+
+/** @name Writing
+ * @{
+ */
+
+/**
+ * Write VT-encoded data to the terminal for processing.
+ *
+ * Feeds raw bytes through the terminal's VT stream parser, updating
+ * terminal state accordingly. By default, sequences that require output
+ * (queries, device status reports) are silently ignored. Use
+ * ghostty_terminal_set() with GHOSTTY_TERMINAL_OPT_WRITE_PTY to install
+ * a callback that receives response data.
+ *
+ * This never fails. Any erroneous input or errors in processing the
+ * input are logged internally but do not cause this function to fail
+ * because this input is assumed to be untrusted and from an external
+ * source; so the primary goal is to keep the terminal state consistent and 
+ * not allow malformed input to corrupt or crash.
+ *
+ * @param terminal The terminal handle (NULL does nothing)
+ * @param data Pointer to the data to write (NULL does nothing)
+ * @param len Length of the data in bytes
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API void ghostty_terminal_vt_write(GhosttyTerminal terminal,
+                                const uint8_t* data,
+                                size_t len);
+
+/**
+ * Write VT-encoded data to the terminal, stopping right after the first
+ * byte that reaches one of the requested boundaries.
+ *
+ * This works like ghostty_terminal_vt_write(), but it can pause at points
+ * you care about. It tells you exactly where a control string starts or
+ * ends, using the same parse that updates the terminal. For example, a
+ * program that sits between a shell and a terminal can use it to:
+ *
+ * - Find the exact bytes of each APC, DCS or OSC string, such as a Kitty
+ *   graphics command, a tmux control mode message or a clipboard write,
+ *   so it can forward, rewrite or drop that string.
+ * - Wait until the stream is at ground before inserting its own
+ *   sequences, so it never splits a sequence from the program.
+ *
+ * Pass the boundaries to stop at as GhosttyTerminalBoundary flags. The
+ * call consumes input up to and including the first byte that reaches one
+ * of them, and reports that point in `out`. The terminal only processes
+ * the consumed bytes, and callbacks only run for those bytes. Pass the
+ * remaining bytes in your next call.
+ *
+ * Every byte you pass is eventually consumed in order, so the terminal
+ * ends up in the same state as if you had called
+ * ghostty_terminal_vt_write() with all of it.
+ *
+ * See @ref guide-custom-sequences-write-until for how to find string
+ * content, the cases that need care, and waiting for ground.
+ *
+ * @param terminal The terminal handle (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param data Pointer to the data to write, or NULL when len is zero
+ * @param len Length of the data in bytes
+ * @param boundaries GhosttyTerminalBoundary flags to stop at. Must be
+ *                   nonzero and contain only defined flags.
+ * @param[out] out Where the call stopped. NULL returns GHOSTTY_INVALID_VALUE. Its `size`
+ *                 must be set with GHOSTTY_INIT_SIZED().
+ * @return GHOSTTY_SUCCESS if a boundary was reached.
+ *         GHOSTTY_NO_VALUE if all input was consumed without reaching a
+ *         boundary. In that case `out->consumed` is `len` and
+ *         `out->reached` is 0.
+ *         GHOSTTY_INVALID_VALUE if an argument is invalid. No input is
+ *         consumed.
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_vt_write_until(
+    GhosttyTerminal terminal,
+    const uint8_t* data,
+    size_t len,
+    uint32_t boundaries,
+    GhosttyTerminalWriteStop* out);
+
+/**
+ * Write the terminal's replay-safe VT continuation to a callback writer.
+ *
+ * The continuation is the exact byte suffix needed to reconstruct unfinished
+ * VT parser or UTF-8 decoder state in an equivalent terminal. It is empty
+ * when the stream is at ground. The callback is invoked synchronously and
+ * may be called more than once. It must not call terminal APIs with the same
+ * terminal handle.
+ *
+ * Continuation tracking must have been enabled by setting
+ * GHOSTTY_TERMINAL_OPT_CONTINUATION_MAX_BYTES to a nonzero value before the
+ * input that produced the continuation was written.
+ *
+ * You must serialize this operation with both VT write functions and
+ * all other access to the same terminal.
+ *
+ * @param terminal Terminal to read from (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param writer Destination writer whose write callback must not be NULL
+ * @return GHOSTTY_SUCCESS on success, GHOSTTY_IO_ERROR if the callback rejects
+ *         a write, GHOSTTY_LIMIT_EXCEEDED if output accounting overflows, or
+ *         GHOSTTY_INVALID_VALUE if an argument is invalid, tracking is
+ *         disabled, or the current continuation is unavailable
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_continuation_write(
+    GhosttyTerminal terminal,
+    GhosttyWriter writer);
+
+/**
+ * Copy the terminal's replay-safe VT continuation into a caller buffer.
+ *
+ * If @p buf is too small, this returns GHOSTTY_OUT_OF_SPACE and sets
+ * @p out_written to the size needed. To get the size first, pass NULL for
+ * @p buf and 0 for @p buf_len. When no escape sequence or UTF-8 character
+ * is left unfinished, the continuation is empty and needs no space, so this
+ * returns GHOSTTY_SUCCESS with @p out_written set to 0, even for a size
+ * query.
+ *
+ * Continuation tracking must have been enabled by setting
+ * GHOSTTY_TERMINAL_OPT_CONTINUATION_MAX_BYTES to a nonzero value before the
+ * input that produced the continuation was written.
+ *
+ * You must serialize this operation with all other access to the same
+ * terminal.
+ *
+ * @param terminal Terminal to read from (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param buf Buffer to write the continuation into. May be NULL if
+ *            @p buf_len is 0.
+ * @param buf_len Size of @p buf in bytes
+ * @param[out] out_written The number of bytes written, or the size needed
+ *             if the result is GHOSTTY_OUT_OF_SPACE. NULL returns GHOSTTY_INVALID_VALUE.
+ * @return GHOSTTY_SUCCESS on success, GHOSTTY_OUT_OF_SPACE if the
+ *         continuation does not fit in @p buf, or GHOSTTY_INVALID_VALUE if an
+ *         argument is invalid, tracking is disabled, or the current
+ *         continuation is unavailable
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_continuation_buf(
+    GhosttyTerminal terminal,
+    uint8_t* buf,
+    size_t buf_len,
+    size_t* out_written);
+
+/**
+ * Return an allocated copy of the terminal's replay-safe VT continuation.
+ *
+ * The returned bytes are allocated with allocator, or the default allocator
+ * when allocator is NULL. You must release them with ghostty_free(),
+ * passing the same allocator and returned length. An empty continuation is a
+ * successful result with *out_ptr set to NULL and *out_len set to zero,
+ * which can also be passed to ghostty_free().
+ * Continuation tracking must have been enabled by setting
+ * GHOSTTY_TERMINAL_OPT_CONTINUATION_MAX_BYTES to a nonzero value before the
+ * input that produced the continuation was written.
+ *
+ * You must serialize this operation with all other access to the same
+ * terminal.
+ *
+ * @param terminal Terminal to read from (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param allocator Allocator for the output, or NULL for the default allocator
+ * @param[out] out_ptr Allocated continuation bytes (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param[out] out_len Number of continuation bytes (NULL returns GHOSTTY_INVALID_VALUE)
+ * @return GHOSTTY_SUCCESS on success, GHOSTTY_OUT_OF_MEMORY on allocation
+ *         failure, or GHOSTTY_INVALID_VALUE if an argument is invalid,
+ *         tracking is disabled, or the current continuation is unavailable
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_continuation_alloc(
+    GhosttyTerminal terminal,
+    const GhosttyAllocator* allocator,
+    uint8_t** out_ptr,
+    size_t* out_len);
+
+/** @} */
+
+/** @name Scrolling
+ * @{
+ */
+
+/**
+ * Scroll the terminal viewport.
+ *
+ * Scrolls the terminal's viewport according to the given behavior.
+ * When using GHOSTTY_TERMINAL_SCROLL_VIEWPORT_DELTA, set the delta field in
+ * the value union to specify the number of rows to scroll (negative
+ * for up, positive for down). When using GHOSTTY_TERMINAL_SCROLL_VIEWPORT_ROW,
+ * set the row field to the absolute row offset from the top of the
+ * scrollable area (the same row space as the offset field of
+ * GhosttyTerminalScrollbar). When using
+ * GHOSTTY_TERMINAL_SCROLL_VIEWPORT_DELTA_PROMPT, set delta_prompt to the
+ * signed number of prompts to move. See
+ * GHOSTTY_TERMINAL_SCROLL_VIEWPORT_DELTA_PROMPT for the navigation behavior. For other behaviors, the value is ignored.
+ *
+ * @code{.c}
+ * GhosttyTerminalScrollViewport behavior = {
+ *   .tag = GHOSTTY_TERMINAL_SCROLL_VIEWPORT_DELTA,
+ *   .value = { .delta = -5 },
+ * };
+ * ghostty_terminal_scroll_viewport(terminal, behavior); // up 5 rows
+ * @endcode
+ *
+ * @param terminal The terminal handle (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param behavior The scroll behavior as a tagged union
+ * @return GHOSTTY_SUCCESS on success, or GHOSTTY_INVALID_VALUE if
+ *         `terminal` is NULL or `behavior.tag` is not a
+ *         GhosttyTerminalScrollViewportTag value known to this version of
+ *         the library. The viewport does not move on failure.
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_scroll_viewport(
+    GhosttyTerminal terminal,
+    GhosttyTerminalScrollViewport behavior);
+
+/** @} */
+
+/** @name Compression
+ * @{
+ */
+
+/**
+ * Return the current compression activity token.
+ *
+ * The token is opaque and only equality comparisons are meaningful. An
+ * embedding application should cache it and restart its compression idle
+ * delay whenever the value changes. The value may wrap and changes in either
+ * direction have the same meaning.
+ *
+ * This function only observes terminal state. It does not perform or schedule
+ * compression.
+ *
+ * @param terminal The terminal handle (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param[out] out_activity Receives the current activity token
+ * @return GHOSTTY_SUCCESS on success, or GHOSTTY_INVALID_VALUE if an argument
+ *         is NULL
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_compression_activity(
+    GhosttyTerminal terminal,
+    uint64_t* out_activity);
+
+/**
+ * Compress eligible terminal scrollback.
+ *
+ * Incremental mode performs bounded work suitable for an idle callback. A
+ * pending result means the application should invoke another step while the
+ * terminal remains idle. A complete result means no continuation is needed
+ * until ghostty_terminal_compression_activity() changes. Full mode performs
+ * one synchronous scan and can stall on large scrollback buffers.
+ *
+ * Compression is opportunistic. Complete means the pass has finished, not
+ * that every page was compressed: pages may be unprofitable or encounter an
+ * allocation or reclamation failure. Compression changes only the terminal's
+ * storage representation and never its logical contents or scrollback limit.
+ * Accessing compressed history restores it transparently.
+ *
+ * This function is not thread-safe with other operations on the same
+ * terminal. You must serialize it with writes, rendering, searches,
+ * and other terminal access.
+ *
+ * @param terminal The terminal handle (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param mode The amount of compression work to perform
+ * @param[out] out_result Receives the compression scheduling result
+ * @return GHOSTTY_SUCCESS on success, or GHOSTTY_INVALID_VALUE if an argument
+ *         or mode is invalid
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_compress(
+    GhosttyTerminal terminal,
+    GhosttyTerminalCompressionMode mode,
+    GhosttyTerminalCompressionResult* out_result);
+
+/** @} */
+
+/** @name Data
+ * @{
+ */
+
+/**
+ * Get data from a terminal instance.
+ *
+ * Extracts typed data from the given terminal based on the specified
+ * data type. The output pointer must be of the appropriate type for the
+ * requested data kind. Valid data types and output types are documented
+ * in the `GhosttyTerminalData` enum.
+ *
+ * @param terminal The terminal handle (may be NULL)
+ * @param data The type of data to extract
+ * @param out Pointer to store the extracted data (type depends on data parameter)
+ * @return GHOSTTY_SUCCESS on success, GHOSTTY_INVALID_VALUE if the terminal is
+ *         NULL or `data` is GHOSTTY_TERMINAL_DATA_INVALID, or
+ *         GHOSTTY_UNSUPPORTED if `data` is not known to this version of the
+ *         library
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_get(GhosttyTerminal terminal,
+                                    GhosttyTerminalData data,
+                                    void *out);
+
+/**
+ * Get multiple data fields from a terminal in a single call.
+ *
+ * Use this when each call into the library is expensive, for example from
+ * WebAssembly or from another language through its foreign function
+ * interface. It reads every key in one call. From C in the same process it
+ * costs the same as calling ghostty_terminal_get() once per key, so use
+ * whichever reads better.
+ *
+ * Each element in the keys array specifies a data kind, and the
+ * corresponding element in the values array receives the result.
+ * The type of each values[i] pointer must match the output type
+ * documented for keys[i].
+ *
+ * Processing stops at the first error; on success out_written
+ * is set to count, on error it is set to the index of the
+ * failing key (i.e. the number of values successfully written).
+ *
+ * @param terminal The terminal handle (may be NULL)
+ * @param count Number of key/value pairs
+ * @param keys Array of data kinds to query
+ * @param values Array of output pointers (types must match each key's
+ *               documented output type)
+ * @param[out] out_written On return, receives the number of values
+ *             successfully written (may be NULL)
+ * @return GHOSTTY_SUCCESS if every key succeeds. Otherwise the result of the
+ *         first key that failed, for example GHOSTTY_UNSUPPORTED for a key
+ *         that is not known to this version of the library.
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_get_multi(GhosttyTerminal terminal,
+                                    size_t count,
+                                    const GhosttyTerminalData* keys,
+                                    void** values,
+                                    size_t* out_written);
+
+/** @} */
+
+/** @name Grid Access
+ * @{
+ */
+
+/**
+ * Resolve a point in the terminal grid to a grid reference.
+ *
+ * Resolves the given point (which can be in active, viewport, screen,
+ * or history coordinates) to a grid reference for that location. Use
+ * ghostty_grid_ref_cell() and ghostty_grid_ref_row() to extract the cell
+ * and row.
+ *
+ * Lookups using the `active` and `viewport` tags are fast. The `screen`
+ * and `history` tags may require traversing the full scrollback page list
+ * to resolve the y coordinate, so they can be expensive for large
+ * scrollback buffers.
+ *
+ * This function isn't meant to be used as the core of render loop. It
+ * isn't built to sustain the framerates needed for rendering large screens.
+ * Use the render state API for that. This API is instead meant for less
+ * strictly performance-sensitive use cases.
+ *
+ * @param terminal The terminal handle (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param point The point specifying which cell to look up
+ * @param[out] out_ref On success, set to the grid reference at the given point (may be NULL)
+ * @return GHOSTTY_SUCCESS on success, GHOSTTY_INVALID_VALUE if the terminal
+ *         is NULL or the point is out of bounds
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_grid_ref(GhosttyTerminal terminal,
+                                        GhosttyPoint point,
+                                        GhosttyGridRef *out_ref);
+
+/**
+ * Create an owned tracked grid reference for a terminal point.
+ *
+ * This is the tracked variant of ghostty_terminal_grid_ref(). The returned
+ * handle follows the referenced cell as the terminal's page list is modified:
+ * scrolling, pruning, resize/reflow, and other page-list operations update the
+ * tracked reference automatically.
+ *
+ * The reference is attached to the terminal screen/page-list that is active at
+ * creation time.
+ *
+ * If the point is outside the requested coordinate space, this returns
+ * GHOSTTY_INVALID_VALUE and writes NULL to out_ref.
+ *
+ * The returned handle must be freed with ghostty_tracked_grid_ref_free(). If
+ * the terminal is freed first, the handle remains valid only for
+ * tracked-grid-ref APIs: it reports no value and can still be freed.
+ *
+ * @param terminal Terminal instance.
+ * @param point Point to track.
+ * @param[out] out_ref On success, receives the tracked reference handle.
+ * @return GHOSTTY_SUCCESS on success, GHOSTTY_INVALID_VALUE if terminal,
+ *         point, or out_ref is invalid, or GHOSTTY_OUT_OF_MEMORY if allocation
+ *         fails.
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_grid_ref_track(
+    GhosttyTerminal terminal,
+    GhosttyPoint point,
+    GhosttyTrackedGridRef *out_ref);
+
+/**
+ * Convert a grid reference back to a point in the given coordinate system.
+ *
+ * This is the inverse of ghostty_terminal_grid_ref(): given a grid reference,
+ * it returns the x/y coordinates in the requested coordinate system (active,
+ * viewport, screen, or history).
+ *
+ * The grid reference must have been obtained from the same terminal instance.
+ * Like all grid references, it is only valid until the next mutating terminal
+ * call.
+ *
+ * Not every grid reference is representable in every coordinate system. For
+ * example, a cell in scrollback history cannot be expressed in active
+ * coordinates, and a cell that has scrolled off the visible area cannot be
+ * expressed in viewport coordinates. In these cases, the function returns
+ * GHOSTTY_NO_VALUE.
+ *
+ * @param terminal The terminal handle (NULL returns GHOSTTY_INVALID_VALUE)
+ * @param ref Pointer to the grid reference to convert (NULL returns
+ *            GHOSTTY_INVALID_VALUE)
+ * @param tag The target coordinate system
+ * @param[out] out On success, set to the coordinate in the requested system (may be NULL)
+ * @return GHOSTTY_SUCCESS on success, GHOSTTY_INVALID_VALUE if the terminal
+ *         or ref is NULL/invalid, GHOSTTY_NO_VALUE if the ref falls outside
+ *         the requested coordinate system
+ *
+ * @ingroup terminal
+ */
+GHOSTTY_API GhosttyResult ghostty_terminal_point_from_grid_ref(
+    GhosttyTerminal terminal,
+    const GhosttyGridRef *ref,
+    GhosttyPointTag tag,
+    GhosttyPointCoordinate *out);
+
+/** @} */
+
+/** @} */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* GHOSTTY_VT_TERMINAL_H */

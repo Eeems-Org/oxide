@@ -14,6 +14,7 @@ SUBDIRS = \
     settings-manager \
     sketchpad \
     system-service \
+    terminal \
     task-switcher \
     update-desktop-database \
     xdg-desktop-icon \
@@ -33,6 +34,7 @@ process-manager.depends =
 screenshot-viewer.depends = system-service
 settings-manager.depends = system-service
 sketchpad.depends = system-service
+terminal.depends = system-service
 system-service.depends =
 task-switcher.depends = system-service
 update-desktop-database.depends = system-service

@@ -1,0 +1,284 @@
+const std = @import("std");
+const lib = @import("../lib.zig");
+const CAllocator = lib.alloc.Allocator;
+const osc = @import("../osc.zig");
+const Result = @import("result.zig").Result;
+
+const log = std.log.scoped(.osc);
+
+/// C: GhosttyOscParser
+pub const Parser = ?*osc.Parser;
+
+/// C: GhosttyOscCommand
+pub const Command = ?*osc.Command;
+
+/// C: GhosttyOscCommandType
+pub const CommandType = osc.Command.Key;
+
+/// C: GhosttyOscTerminator
+pub const Terminator = osc.Terminator.C;
+
+pub fn new(
+    alloc_: ?*const CAllocator,
+    result_: ?*Parser,
+) callconv(lib.calling_conv) Result {
+    const result = result_ orelse return .invalid_value;
+    const alloc = lib.alloc.default(alloc_);
+    const ptr = alloc.create(osc.Parser) catch
+        return .out_of_memory;
+    ptr.* = .init(alloc);
+    result.* = ptr;
+    return .success;
+}
+
+pub fn free(parser_: Parser) callconv(lib.calling_conv) void {
+    // C-built parsers always have an associated allocator.
+    const parser = parser_ orelse return;
+    const alloc = parser.alloc.?;
+    parser.deinit();
+    alloc.destroy(parser);
+}
+
+pub fn reset(parser_: Parser) callconv(lib.calling_conv) void {
+    const parser = parser_ orelse return;
+    parser.reset();
+}
+
+pub fn next(parser_: Parser, byte: u8) callconv(lib.calling_conv) void {
+    const parser = parser_ orelse return;
+    parser.next(byte);
+}
+
+pub fn end(parser_: Parser, terminator: u8) callconv(lib.calling_conv) Command {
+    const parser = parser_ orelse return null;
+    return parser.end(terminator);
+}
+
+/// C: GhosttyOscOption
+pub const Option = enum(c_int) {
+    invalid = 0,
+    unknown_max_bytes = 1,
+    _,
+
+    /// The type that a `set` value points to.
+    pub fn InType(comptime self: Option) type {
+        return switch (self) {
+            .unknown_max_bytes => usize,
+            .invalid, _ => void,
+        };
+    }
+};
+
+pub fn set(
+    parser_: Parser,
+    option: Option,
+    value: ?*const anyopaque,
+) callconv(lib.calling_conv) Result {
+    switch (option) {
+        .unknown_max_bytes => {
+            const parser = parser_ orelse return .invalid_value;
+            const ptr: ?*const Option.unknown_max_bytes.InType() = @ptrCast(@alignCast(value));
+            parser.unknown_max_bytes = if (ptr) |v| v.* else 0;
+        },
+        .invalid => return .invalid_value,
+        _ => return .unsupported,
+    }
+
+    return .success;
+}
+
+pub fn commandType(command_: Command) callconv(lib.calling_conv) CommandType {
+    const command = command_ orelse return .invalid;
+    return command.*;
+}
+
+/// C: GhosttyOscCommandData
+pub const CommandData = enum(c_int) {
+    invalid = 0,
+    change_window_title_str = 1,
+    unknown_content = 2,
+    unknown_truncated = 3,
+    unknown_terminator = 4,
+
+    _,
+
+    /// Output type expected for querying the data of the given kind.
+    pub fn OutType(comptime self: CommandData) type {
+        return switch (self) {
+            .invalid => void,
+            .change_window_title_str => lib.String,
+            .unknown_content => lib.String,
+            .unknown_truncated => bool,
+            .unknown_terminator => Terminator,
+            _ => void,
+        };
+    }
+};
+
+pub fn commandData(
+    command_: Command,
+    data: CommandData,
+    out: ?*anyopaque,
+) callconv(lib.calling_conv) Result {
+    return switch (data) {
+        .invalid => .invalid_value,
+        _ => .unsupported,
+        inline else => |comptime_data| commandDataTyped(
+            command_,
+            comptime_data,
+            @ptrCast(@alignCast(out orelse return .invalid_value)),
+        ),
+    };
+}
+
+fn commandDataTyped(
+    command_: Command,
+    comptime data: CommandData,
+    out: *data.OutType(),
+) Result {
+    const command = command_ orelse return .invalid_value;
+    switch (data) {
+        .invalid => return .invalid_value,
+        .change_window_title_str => switch (command.*) {
+            .change_window_title => |v| out.* = .init(@as([]const u8, v)),
+            else => return .no_value,
+        },
+        .unknown_content => switch (command.*) {
+            .unknown => |v| out.* = .init(v.content),
+            else => return .no_value,
+        },
+        .unknown_truncated => switch (command.*) {
+            .unknown => |v| out.* = v.truncated,
+            else => return .no_value,
+        },
+        .unknown_terminator => switch (command.*) {
+            .unknown => |v| out.* = v.terminator.cval(),
+            else => return .no_value,
+        },
+        _ => comptime unreachable,
+    }
+
+    return .success;
+}
+
+test "alloc" {
+    const testing = std.testing;
+    var p: Parser = undefined;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &p,
+    ));
+    free(p);
+}
+
+test "command type null" {
+    const testing = std.testing;
+    try testing.expectEqual(.invalid, commandType(null));
+}
+
+test "command data null" {
+    const testing = std.testing;
+    var title: lib.String = undefined;
+    try testing.expectEqual(Result.invalid_value, commandData(null, .change_window_title_str, @ptrCast(&title)));
+}
+
+test "command data result codes" {
+    const testing = std.testing;
+    var p: Parser = undefined;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &p,
+    ));
+    defer free(p);
+
+    for ("0;a") |ch| next(p, ch);
+    const cmd = end(p, 0x07);
+    try testing.expectEqual(.change_window_title, commandType(cmd));
+
+    var title: lib.String = undefined;
+    var truncated: bool = false;
+    var terminator: osc.Terminator.C = .st;
+    const unknown_key: CommandData = @fromBackingInt(@intCast(9999));
+    const cases = [_]struct { CommandData, ?*anyopaque, Result }{
+        .{ .change_window_title_str, null, .invalid_value },
+        .{ .invalid, @ptrCast(&title), .invalid_value },
+        .{ unknown_key, @ptrCast(&title), .unsupported },
+        .{ unknown_key, null, .unsupported },
+        .{ .unknown_content, @ptrCast(&title), .no_value },
+        .{ .unknown_truncated, @ptrCast(&truncated), .no_value },
+        .{ .unknown_terminator, @ptrCast(&terminator), .no_value },
+        .{ .change_window_title_str, @ptrCast(&title), .success },
+    };
+    for (cases) |case| {
+        try testing.expectEqual(case[2], commandData(cmd, case[0], case[1]));
+    }
+}
+
+test "change window title" {
+    const testing = std.testing;
+    var p: Parser = undefined;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &p,
+    ));
+    defer free(p);
+
+    // Parse it
+    next(p, '0');
+    next(p, ';');
+    next(p, 'a');
+    const cmd = end(p, 0);
+    try testing.expectEqual(.change_window_title, commandType(cmd));
+
+    // Extract the title
+    var title: lib.String = undefined;
+    try testing.expectEqual(Result.success, commandData(cmd, .change_window_title_str, @ptrCast(&title)));
+    try testing.expectEqualStrings("a", title.ptr[0..title.len]);
+}
+
+test "unknown" {
+    const testing = std.testing;
+    var p: Parser = undefined;
+    try testing.expectEqual(Result.success, new(
+        &lib.alloc.test_allocator,
+        &p,
+    ));
+    defer free(p);
+
+    const max_bytes: usize = 8;
+    try testing.expectEqual(Result.success, set(
+        p,
+        .unknown_max_bytes,
+        @ptrCast(&max_bytes),
+    ));
+
+    // Parse it
+    for ("7400;x") |ch| next(p, ch);
+    const cmd = end(p, 0x07);
+    try testing.expectEqual(.unknown, commandType(cmd));
+
+    var content: lib.String = undefined;
+    try testing.expectEqual(Result.success, commandData(cmd, .unknown_content, @ptrCast(&content)));
+    try testing.expectEqualStrings("7400;x", content.ptr[0..content.len]);
+
+    var truncated: bool = true;
+    try testing.expectEqual(Result.success, commandData(cmd, .unknown_truncated, @ptrCast(&truncated)));
+    try testing.expect(!truncated);
+
+    var terminator: osc.Terminator.C = .st;
+    try testing.expectEqual(Result.success, commandData(cmd, .unknown_terminator, @ptrCast(&terminator)));
+    try testing.expectEqual(osc.Terminator.C.bel, terminator);
+
+    // Other commands can't read unknown data.
+    reset(p);
+    for ("0;a") |ch| next(p, ch);
+    const title_cmd = end(p, 0x07);
+    try testing.expectEqual(.change_window_title, commandType(title_cmd));
+    try testing.expectEqual(Result.no_value, commandData(title_cmd, .unknown_content, @ptrCast(&content)));
+
+    // A NULL value disables capture again.
+    try testing.expectEqual(Result.success, set(p, .unknown_max_bytes, null));
+    reset(p);
+    for ("7400;x") |ch| next(p, ch);
+    try testing.expectEqual(.invalid, commandType(end(p, 0x07)));
+}

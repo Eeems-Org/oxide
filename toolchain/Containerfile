@@ -5,10 +5,19 @@ FROM eeems/remarkable-toolchain:${VERSION}-${DEVICE}
 ARG ENVIRONMENT_SETUP
 ENV ENVIRONMENT_SETUP=${ENVIRONMENT_SETUP}
 
+ARG ZIG_TARGET=arm-linux-gnueabihf
+ENV ZIG_TARGET=$ZIG_TARGET
+ARG ZIG_VERSION=0.17.0
 RUN <<EOT
   set -e
   apt-get update
   apt-get install -y --no-install-recommends clang-format
+  curl -fsSL -o /tmp/zig.tar.xz \
+    https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz
+  tar -xf /tmp/zig.tar.xz -C /opt
+  ln -s /opt/zig-x86_64-linux-${ZIG_VERSION}/zig /usr/local/bin/zig
   apt-get clean
-  rm -rf /var/lib/apt/lists/*
+  rm -rf \
+    /var/lib/apt/lists/* \
+    /tmp/zig.tar.xz
 EOT
