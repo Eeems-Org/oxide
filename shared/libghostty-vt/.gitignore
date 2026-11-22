@@ -1,2 +1,3 @@
 !src/src/build/
 !src/src/**/build/
+!src/dist/
