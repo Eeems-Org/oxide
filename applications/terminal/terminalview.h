@@ -1,7 +1,23 @@
 #ifndef TERMINALVIEW_H
 #define TERMINALVIEW_H
 
+#include <QImage>
+#include <QPainter>
 #include <QQuickPaintedItem>
+#include <QRegion>
+#include <QSocketNotifier>
+#include <QTimer>
+#include <atomic>
+#include <ghostty/vt.h>
+#include <libblight/clock.h>
+#include <mutex>
+#include <string>
+#include <vector>
+
+struct CachedCell {
+  GhosttyStyle style = {};
+  std::string text;
+};
 
 class TerminalView : public QQuickPaintedItem {
   Q_OBJECT
@@ -30,6 +46,37 @@ private:
   void updateSize();
   void openPty();
   QByteArray keyToBytes(QKeyEvent* event);
+  void renderDirtyCells();
+  void renderRowToPainter(
+    QPainter& painter,
+    GhosttyRenderStateRowIterator rowIter,
+    GhosttyRenderStateRowCells cells,
+    uint16_t y,
+    const GhosttyColorRgb& fg,
+    const GhosttyColorRgb& bg,
+    qreal charWidth,
+    qreal charHeight
+  );
+  void renderCellToPainter(
+    QPainter& painter,
+    int x,
+    int y,
+    const GhosttyStyle& style,
+    const std::string& text,
+    const GhosttyColorRgb& fg,
+    const GhosttyColorRgb& bg,
+    qreal charWidth,
+    qreal charHeight
+  );
+  GhosttyColorRgb paletteIndexToRgb(uint8_t index);
+  void renderCellAtPosition(
+    QPainter& painter,
+    int x,
+    int y,
+    const GhosttyColorRgb& fg,
+    const GhosttyColorRgb& bg
+  );
+  void applyPending();
 
   QString m_title;
   void* m_terminal = nullptr;
@@ -46,6 +93,17 @@ private:
   int m_masterFd = -1;
   int m_child = -1;
   class QSocketNotifier* m_notifier = nullptr;
+  class QSocketNotifier* m_notifierException = nullptr;
+
+  QImage m_drawn;
+  QRegion m_pending;
+  std::vector<CachedCell> m_cellCache;
+  std::atomic<bool> m_drawing{false};
+  std::mutex m_timerMutex;
+  Blight::ClockWatch m_lastPaint;
+  QTimer* m_paintTimer = nullptr;
+  int m_lastCursorX = -1;
+  int m_lastCursorY = -1;
 };
 
 #endif
