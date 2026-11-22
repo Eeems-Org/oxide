@@ -11,6 +11,8 @@ PRE_TARGETDEPS += $$OUT_PWD/lib/libghostty-vt.so*
 ghostty_vt_build.target = $$OUT_PWD/lib/libghostty-vt.so*
 ghostty_vt_build.commands = \
     cd $$PWD/src && \
+    ZIG_GLOBAL_CACHE_DIR=/tmp/oxide-zig-global-cache \
+    ZIG_LOCAL_CACHE_DIR=/tmp/oxide-zig-cache \
     zig build \
         -Demit-lib-vt \
         -Dtarget=$$ZIG_TARGET \
