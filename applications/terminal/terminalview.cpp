@@ -715,15 +715,18 @@ TerminalView::applyPending() {
   windowPainter.drawImage(m_drawn.rect(), m_drawn);
   windowPainter.end();
   qDebug() << "repaint" << m_pending;
-  Oxide::QML::repaint(
-    w,
-    m_pending.boundingRect(),
-    Blight::WaveformMode::UI,
-    Blight::ContentType::Color,
-    Blight::UpdateMode::PartialUpdate,
-    false
-  );
+  QRegion pending = m_pending;
   m_pending = QRegion();
+  for (const QRect& rect : pending) {
+    Oxide::QML::repaint(
+      w,
+      rect,
+      Blight::WaveformMode::UI,
+      Blight::ContentType::Color,
+      Blight::UpdateMode::PartialUpdate,
+      false
+    );
+  }
 }
 
 void
