@@ -113,7 +113,7 @@ jobs:
         run: make package-${{ matrix.arch }}
         env:
           VBUILD_KEY_NAME: oxide
-        timeout-minutes: 15
+        timeout-minutes: 20
       - name: Save packages
         uses: actions/upload-artifact@v7
         with:
