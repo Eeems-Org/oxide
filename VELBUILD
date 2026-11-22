@@ -51,7 +51,13 @@ build() {
     set -e
     cd "$srcdir"
     . "$ENVIRONMENT_SETUP"
+    mkdir /var/tmp/src
+    rsync -a . /var/tmp/src
+    cd /var/tmp/src
     make FEATURES=sentry release
+    rsync -a . "$srcdir"
+    cd "$srcdir"
+    rm -f "$f" /var/tmp/.p$$
     find . -type d -name .zig-cache | sort -r | xargs -r rm -r
 }
 
