@@ -108,24 +108,9 @@ jobs:
           echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           echo "REV=" >> $GITHUB_ENV
       - name: Build packages
-        run: |
-          set -e
-          echo "Starting podman service..."
-          sudo mkdir -p /run/user/"$(id -u)"/podman
-          socketdir=/run/user/"$(id -u)"/podman
-          sudo chown "$(id -u):$(id -g)" "$socketdir"
-          podman system service --time 0 unix://"$socketdir/podman.sock" &
-          tries=0
-          while [ ! -S "$socketdir/podman.sock" ] && [ $tries -lt 60 ];do
-            tries=$(( tries + 1 ))
-            sleep 0.1
-          done
-          make package-${{ matrix.arch }}
-          echo "Stopping podman service..."
-          kill $(jobs -p) || true
+        run: make package-${{ matrix.arch }}
         env:
           VBUILD_KEY_NAME: oxide
-          VBUILD_DRIVER: podman
         timeout-minutes: 15
       - name: Save packages
         uses: actions/upload-artifact@v7
