@@ -31,8 +31,9 @@ Unstable builds can be found at <https://apk.eeems.codes>
 ### Binaries
 
  1. Install the [reMarkable toolchain](https://remarkable.guide/devel/toolchains.html#official-toolchain) for your device/version
- 2. Run `make release` or `make FEATURES=sentry release`
- 3. The built files can be found in the `release/` folder
+ 2. Install zig 0.17.0
+ 3. Run `make release` or `make FEATURES=sentry release`
+ 4. The built files can be found in the `release/` folder
  
  Another option is to use `make build-rm1`, `make build-rm2`, `make build-rmpp`, `make build-rmppm`, or `make build-rmppure` to use podman to build for a specific device.
 

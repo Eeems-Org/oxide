@@ -11,7 +11,7 @@ PRE_TARGETDEPS += $$OUT_PWD/lib/libghostty-vt.so*
 ghostty_vt_build.target = $$OUT_PWD/lib/libghostty-vt.so*
 ghostty_vt_build.commands = \
     cd $$PWD/src && \
-    strace -f zig build \
+    zig build \
         -Demit-lib-vt \
         -Dtarget=$$ZIG_TARGET \
         -Doptimize=ReleaseFast \

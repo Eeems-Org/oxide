@@ -49,8 +49,6 @@ image() {
 
 build() {
     set -e
-    apt-get update
-    apt-get install -y --no-install-recommends strace
     cd "$srcdir"
     . "$ENVIRONMENT_SETUP"
     make FEATURES=sentry release
