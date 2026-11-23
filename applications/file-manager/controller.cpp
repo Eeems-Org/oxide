@@ -57,23 +57,32 @@ Controller::loadDirectory() {
     emit entriesChanged();
     return;
   }
-  QFileInfoList list = dir.entryInfoList(
-    QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden,
-    QDir::DirsFirst | QDir::Name | QDir::IgnoreCase
-  );
-  for (const QFileInfo& info : list) {
-    QVariantMap item;
-    item["name"] = info.fileName();
-    item["path"] = info.absoluteFilePath();
-    item["isDir"] = info.isDir();
-    item["size"] = info.size();
-    item["modified"] = info.lastModified().toString(Qt::ISODate);
-    item["hidden"] = info.isHidden();
-    m_entries.append(item);
+  for (const QFileInfo& info : dir.entryInfoList(
+         QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden,
+         QDir::DirsFirst | QDir::Name | QDir::IgnoreCase
+       )) {
+    m_entries.append(
+      QVariantMap{
+        {"name",     info.fileName()                          },
+        {"path",     info.absoluteFilePath()                  },
+        {"isDir",    info.isDir()                             },
+        {"size",     info.size()                              },
+        {"modified", info.lastModified().toString(Qt::ISODate)},
+        {"hidden",   info.isHidden()                          }
+    }
+    );
+  }
+  emit statusChanged();
+  emit entriesChanged();
+}
+
+void
+Controller::clearStatus() {
+  if (m_status.isEmpty()) {
+    return;
   }
   m_status.clear();
   emit statusChanged();
-  emit entriesChanged();
 }
 
 void
@@ -93,6 +102,7 @@ Controller::openPath(const QString& path) {
     emit statusChanged();
     return;
   }
+  clearStatus();
   m_currentPath = info.absoluteFilePath();
   emit currentPathChanged();
   loadDirectory();
@@ -125,11 +135,8 @@ Controller::createFolder(const QString& name) {
   }
   setBusy(true);
   QDir dir(m_currentPath);
-  if (dir.mkdir(name)) {
-    m_status = "Created folder: " + name;
-  } else {
-    m_status = "Could not create folder: " + name;
-  }
+  m_status = QString(dir.mkdir(name) ? "Created" : "Could not create") +
+             " folder: " + name;
   emit statusChanged();
   loadDirectory();
   setBusy(false);
@@ -159,11 +166,9 @@ Controller::renamePath(const QString& oldPath, const QString& newName) {
   }
   setBusy(true);
   QDir dir;
-  if (dir.rename(oldPath, newPath)) {
-    m_status = "Renamed to: " + newName;
-  } else {
-    m_status = "Could not rename: " + oldPath;
-  }
+  m_status =
+    QString(dir.rename(oldPath, newPath) ? "Renamed to" : "Could not rename") +
+    ": " + newName;
   emit statusChanged();
   loadDirectory();
   setBusy(false);
@@ -175,15 +180,9 @@ Controller::removePaths(const QStringList& paths) {
   QStringList errors;
   for (const QString& path : paths) {
     QFileInfo info(path);
-    if (info.isDir()) {
-      QDir dir(path);
-      if (!dir.removeRecursively()) {
-        errors.append(path);
-      }
-    } else {
-      if (!QFile::remove(path)) {
-        errors.append(path);
-      }
+    if (!((info.isDir() && !info.isSymLink()) ? QDir(path).removeRecursively()
+                                              : QFile::remove(path))) {
+      errors.append(path);
     }
   }
   if (errors.isEmpty()) {
@@ -199,6 +198,22 @@ Controller::removePaths(const QStringList& paths) {
 bool
 Controller::copyRecursive(const QString& source, const QString& destination) {
   QFileInfo srcInfo(source);
+  QFileInfo destInfo(destination);
+  if (srcInfo.exists() && destInfo.exists()) {
+    QString src = srcInfo.canonicalFilePath();
+    QString dst = destInfo.canonicalFilePath();
+    if (!src.isEmpty() && !dst.isEmpty() && src == dst) {
+      return true;
+    }
+  }
+
+  if (srcInfo.isSymLink()) {
+    QString target = srcInfo.symLinkTarget();
+    if (QFile::exists(destination)) {
+      QFile::remove(destination);
+    }
+    return QFile::link(target, destination);
+  }
   if (srcInfo.isDir()) {
     QDir destDir(destination);
     if (!destDir.mkpath(".")) {
@@ -206,7 +221,8 @@ Controller::copyRecursive(const QString& source, const QString& destination) {
     }
     QDir srcDir(source);
     QFileInfoList entries = srcDir.entryInfoList(
-      QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden
+      QDir::NoFilter | QDir::NoDotAndDotDot,
+      QDir::DirsFirst | QDir::Name | QDir::IgnoreCase
     );
     for (const QFileInfo& entry : entries) {
       QString srcPath = entry.absoluteFilePath();
@@ -217,10 +233,17 @@ Controller::copyRecursive(const QString& source, const QString& destination) {
     }
     return true;
   }
+  QString tempDest = destination + ".tmp";
+  if (QFile::exists(tempDest)) {
+    QFile::remove(tempDest);
+  }
+  if (!QFile::copy(source, tempDest)) {
+    return false;
+  }
   if (QFile::exists(destination)) {
     QFile::remove(destination);
   }
-  return QFile::copy(source, destination);
+  return QFile::rename(tempDest, destination);
 }
 
 void
@@ -230,6 +253,18 @@ Controller::copyPaths(const QStringList& paths, const QString& destination) {
     m_status = "Destination is not a directory: " + destination;
     emit statusChanged();
     return;
+  }
+  QString destCanon = destInfo.canonicalFilePath();
+  for (const QString& path : paths) {
+    QFileInfo srcInfo(path);
+    QString srcCanon = srcInfo.canonicalFilePath();
+    if (!srcCanon.isEmpty() && !destCanon.isEmpty()) {
+      if (destCanon == srcCanon || destCanon.startsWith(srcCanon + "/")) {
+        m_status = "Cannot copy: destination is inside source";
+        emit statusChanged();
+        return;
+      }
+    }
   }
   setBusy(true);
   QStringList errors;
@@ -260,6 +295,18 @@ Controller::movePaths(const QStringList& paths, const QString& destination) {
     emit statusChanged();
     return;
   }
+  QString dst = destInfo.canonicalFilePath();
+  for (const QString& path : paths) {
+    QFileInfo srcInfo(path);
+    QString src = srcInfo.canonicalFilePath();
+    if (!src.isEmpty() && !dst.isEmpty()) {
+      if (dst == src || dst.startsWith(src + "/")) {
+        m_status = "Cannot move: destination is inside source";
+        emit statusChanged();
+        return;
+      }
+    }
+  }
   setBusy(true);
   QStringList errors;
   for (const QString& path : paths) {
@@ -273,10 +320,10 @@ Controller::movePaths(const QStringList& paths, const QString& destination) {
     if (!dir.rename(path, target)) {
       if (copyRecursive(path, target)) {
         QFileInfo srcInfo(path);
-        if (srcInfo.isDir()) {
-          QDir(path).removeRecursively();
-        } else {
-          QFile::remove(path);
+        if (!(srcInfo.isDir() && !srcInfo.isSymLink()
+                ? QDir(path).removeRecursively()
+                : QFile::remove(path))) {
+          errors.append(path + " (copy succeeded but source remove failed)");
         }
       } else {
         errors.append(path);
@@ -300,5 +347,5 @@ Controller::openFile(const QString& path) {
     openPath(path);
     return;
   }
-  QProcess::startDetached("/home/root/.vellum/bin/xdg-open", QStringList{path});
+  QProcess::startDetached("/home/root/.vellum/bin/xdg-open", {path});
 }

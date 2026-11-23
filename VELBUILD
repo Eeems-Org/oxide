@@ -13,6 +13,7 @@ lockscreen_hook
 launcherctl
 launcherctl-oxide:launcherctl_oxide
 libghostty-vt:libghostty_vt
+libghostty-vt-dev:libghostty_vt_dev
 '
 pkgname=oxide
 pkgver="~VERSION~"

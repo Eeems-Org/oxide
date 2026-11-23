@@ -30,8 +30,8 @@ main(int argc, char* argv[]) {
   app.setOrganizationName("Eeems");
   app.setOrganizationDomain(OXIDE_SERVICE);
   app.setApplicationName("defile");
-  app.setApplicationDisplayName("Files");
   app.setApplicationVersion(APP_VERSION);
+
   Controller controller(&app);
   QQmlApplicationEngine engine;
   registerQML(&engine);

@@ -11,6 +11,11 @@ OxideWindow {
     title: "Files"
     backgroundColor: "white"
 
+    Connections {
+        target: controller
+        onCurrentPathChanged: listView.selectedPath = ""
+        onEntriesChanged: listView.selectedPath = ""
+    }
 
     initialItem: Item {
         anchors.fill: parent

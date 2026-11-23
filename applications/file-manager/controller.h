@@ -44,6 +44,7 @@ signals:
 
 private:
   void loadDirectory();
+  void clearStatus();
   void setBusy(bool busy);
   bool copyRecursive(const QString& source, const QString& destination);
 

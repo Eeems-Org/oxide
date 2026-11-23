@@ -25,6 +25,7 @@ namespace Oxide {
             setpriority(PRIO_PROCESS, gettid(), 5);
             break;
           case QThread::InheritPriority:
+            break;
           case QThread::NormalPriority:
             setpriority(PRIO_PROCESS, gettid(), 0);
             break;

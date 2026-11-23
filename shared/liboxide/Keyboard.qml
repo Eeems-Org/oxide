@@ -13,7 +13,18 @@ Item {
             return false
         }
         if (!item.hasOwnProperty("text") || !item.hasOwnProperty("readOnly")) {
-            return false
+            if (!item.hasOwnProperty("inputMethodHints") &&
+                !item.hasOwnProperty("inputMethodComposing") &&
+                !item.hasOwnProperty("contentType") &&
+                !item.hasOwnProperty("acceptRichText") &&
+                !item.hasOwnProperty("textDocument") &&
+                !item.hasOwnProperty("cursorPosition") &&
+                !item.hasOwnProperty("selectionStart") &&
+                !item.hasOwnProperty("selectionEnd") &&
+                !item.hasOwnProperty("validator") &&
+                !item.hasOwnProperty("inputMask")) {
+                return false
+            }
         }
         if (item.hasOwnProperty("readOnly") && item.readOnly) {
             return false
