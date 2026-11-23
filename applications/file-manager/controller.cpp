@@ -5,12 +5,15 @@
 #include <QFileInfo>
 #include <QFileInfoList>
 #include <QProcess>
-#include <QStringList>
 #include <QTemporaryFile>
+#include <QThread>
+#include <liboxide/threading.h>
 
 Controller::Controller(QObject* parent)
   : QObject(parent)
-  , m_currentPath("/home/root") {
+  , m_currentPath("/home/root")
+  , m_workerThread(new QThread(this)) {
+  m_workerThread->start();
   loadDirectory();
 }
 
@@ -27,25 +30,6 @@ Controller::entries() const {
 QString
 Controller::status() const {
   return m_status;
-}
-
-bool
-Controller::busy() const {
-  return m_busy;
-}
-
-QString
-Controller::homePath() const {
-  return "/home/root";
-}
-
-void
-Controller::setBusy(bool busy) {
-  if (m_busy == busy) {
-    return;
-  }
-  m_busy = busy;
-  emit busyChanged();
 }
 
 void
@@ -89,7 +73,7 @@ Controller::clearStatus() {
 void
 Controller::openPath(const QString& path) {
   if (path.isEmpty()) {
-    openPath(homePath());
+    openPath("/home/root");
     return;
   }
   QFileInfo info(path);
@@ -119,7 +103,7 @@ Controller::goUp() {
 
 void
 Controller::goHome() {
-  openPath(homePath());
+  openPath("/home/root");
 }
 
 void
@@ -134,13 +118,23 @@ Controller::createFolder(const QString& name) {
     emit statusChanged();
     return;
   }
-  setBusy(true);
-  QDir dir(m_currentPath);
-  m_status = QString(dir.mkdir(name) ? "Created" : "Could not create") +
-             " folder: " + name;
-  emit statusChanged();
-  loadDirectory();
-  setBusy(false);
+  if (m_busy) {
+    return;
+  }
+  m_busy = true;
+  Oxide::runLater(m_workerThread, [this, name]() {
+    QString status =
+      QString(
+        QDir(m_currentPath).mkdir(name) ? "Created" : "Could not create"
+      ) +
+      " folder: " + name;
+    Oxide::dispatchToMainThread([this, status]() {
+      m_status = status;
+      emit statusChanged();
+      loadDirectory();
+      m_busy = false;
+    });
+  });
 }
 
 void
@@ -165,35 +159,53 @@ Controller::renamePath(const QString& oldPath, const QString& newName) {
     emit statusChanged();
     return;
   }
-  setBusy(true);
-  QDir dir;
-  m_status =
-    QString(dir.rename(oldPath, newPath) ? "Renamed to" : "Could not rename") +
-    ": " + newName;
-  emit statusChanged();
-  loadDirectory();
-  setBusy(false);
+  if (m_busy) {
+    return;
+  }
+  m_busy = true;
+  Oxide::runLater(m_workerThread, [this, oldPath, newPath, newName]() {
+    QString status =
+      QString(
+        QFile::rename(oldPath, newPath) ? "Renamed to" : "Could not rename"
+      ) +
+      ": " + newName;
+    Oxide::dispatchToMainThread([this, status]() {
+      m_status = status;
+      emit statusChanged();
+      loadDirectory();
+      m_busy = false;
+    });
+  });
 }
 
 void
 Controller::removePaths(const QStringList& paths) {
-  setBusy(true);
-  QStringList errors;
-  for (const QString& path : paths) {
-    QFileInfo info(path);
-    if (!((info.isDir() && !info.isSymLink()) ? QDir(path).removeRecursively()
-                                              : QFile::remove(path))) {
-      errors.append(path);
+  if (m_busy) {
+    return;
+  }
+  m_busy = true;
+  Oxide::runLater(m_workerThread, [this, paths]() {
+    QStringList errors;
+    for (const QString& path : paths) {
+      QFileInfo info(path);
+      if (!((info.isDir() && !info.isSymLink()) ? QDir(path).removeRecursively()
+                                                : QFile::remove(path))) {
+        errors.append(path);
+      }
     }
-  }
-  if (errors.isEmpty()) {
-    m_status = "Deleted selected items";
-  } else {
-    m_status = "Could not delete: " + errors.join(", ");
-  }
-  emit statusChanged();
-  loadDirectory();
-  setBusy(false);
+    QString status;
+    if (errors.isEmpty()) {
+      status = "Deleted selected items";
+    } else {
+      status = "Could not delete: " + errors.join(", ");
+    }
+    Oxide::dispatchToMainThread([this, status]() {
+      m_status = status;
+      emit statusChanged();
+      loadDirectory();
+      m_busy = false;
+    });
+  });
 }
 
 bool
@@ -235,7 +247,6 @@ Controller::copyRecursive(const QString& source, const QString& destination) {
     }
     return true;
   }
-  // Use QTemporaryFile for unique temp file in destination directory
   QDir destDir = destInfo.dir();
   QTemporaryFile tempFile;
   tempFile.setAutoRemove(false);
@@ -264,37 +275,46 @@ Controller::copyPaths(const QStringList& paths, const QString& destination) {
     emit statusChanged();
     return;
   }
-  QString destCanon = destInfo.canonicalFilePath();
+  QString dst = destInfo.canonicalFilePath();
   for (const QString& path : paths) {
     QFileInfo srcInfo(path);
-    QString srcCanon = srcInfo.canonicalFilePath();
-    if (!srcCanon.isEmpty() && !destCanon.isEmpty()) {
-      if (destCanon == srcCanon || destCanon.startsWith(srcCanon + "/")) {
+    QString src = srcInfo.canonicalFilePath();
+    if (!src.isEmpty() && !dst.isEmpty()) {
+      if (dst == src || dst.startsWith(src + "/")) {
         m_status = "Cannot copy: destination is inside source";
         emit statusChanged();
         return;
       }
     }
   }
-  setBusy(true);
-  QStringList errors;
-  for (const QString& path : paths) {
-    QFileInfo info(path);
-    QString target = destination + "/" + info.fileName();
-    if (!copyRecursive(path, target)) {
-      errors.append(path);
+  if (m_busy) {
+    return;
+  }
+  m_busy = true;
+  Oxide::runLater(m_workerThread, [this, paths, destination]() {
+    QStringList errors;
+    for (const QString& path : paths) {
+      QFileInfo info(path);
+      QString target = destination + "/" + info.fileName();
+      if (!copyRecursive(path, target)) {
+        errors.append(path);
+      }
     }
-  }
-  if (errors.isEmpty()) {
-    m_status = "Copied selected items";
-  } else {
-    m_status = "Could not copy: " + errors.join(", ");
-  }
-  emit statusChanged();
-  if (m_currentPath == destination) {
-    loadDirectory();
-  }
-  setBusy(false);
+    QString status;
+    if (errors.isEmpty()) {
+      status = "Copied selected items";
+    } else {
+      status = "Could not copy: " + errors.join(", ");
+    }
+    Oxide::dispatchToMainThread([this, status, destination]() {
+      m_status = status;
+      emit statusChanged();
+      if (m_currentPath == destination) {
+        loadDirectory();
+      }
+      m_busy = false;
+    });
+  });
 }
 
 void
@@ -317,37 +337,46 @@ Controller::movePaths(const QStringList& paths, const QString& destination) {
       }
     }
   }
-  setBusy(true);
-  QStringList errors;
-  for (const QString& path : paths) {
-    QFileInfo info(path);
-    QString target = destination + "/" + info.fileName();
-    if (QFile::exists(target)) {
-      errors.append(path);
-      continue;
-    }
-    QDir dir;
-    if (!dir.rename(path, target)) {
-      if (copyRecursive(path, target)) {
-        QFileInfo srcInfo(path);
-        if (!(srcInfo.isDir() && !srcInfo.isSymLink()
-                ? QDir(path).removeRecursively()
-                : QFile::remove(path))) {
-          errors.append(path + " (copy succeeded but source remove failed)");
-        }
-      } else {
+  if (m_busy) {
+    return;
+  }
+  m_busy = true;
+  Oxide::runLater(m_workerThread, [this, paths, destination]() {
+    QStringList errors;
+    for (const QString& path : paths) {
+      QFileInfo info(path);
+      QString target = destination + "/" + info.fileName();
+      if (QFile::exists(target)) {
         errors.append(path);
+        continue;
+      }
+      QDir dir;
+      if (!dir.rename(path, target)) {
+        if (copyRecursive(path, target)) {
+          QFileInfo srcInfo(path);
+          if (!(srcInfo.isDir() && !srcInfo.isSymLink()
+                  ? QDir(path).removeRecursively()
+                  : QFile::remove(path))) {
+            errors.append(path + " (copy succeeded but source remove failed)");
+          }
+        } else {
+          errors.append(path);
+        }
       }
     }
-  }
-  if (errors.isEmpty()) {
-    m_status = "Moved selected items";
-  } else {
-    m_status = "Could not move: " + errors.join(", ");
-  }
-  emit statusChanged();
-  loadDirectory();
-  setBusy(false);
+    QString status;
+    if (errors.isEmpty()) {
+      status = "Moved selected items";
+    } else {
+      status = "Could not move: " + errors.join(", ");
+    }
+    Oxide::dispatchToMainThread([this, status]() {
+      m_status = status;
+      emit statusChanged();
+      loadDirectory();
+      m_busy = false;
+    });
+  });
 }
 
 void
@@ -357,5 +386,5 @@ Controller::openFile(const QString& path) {
     openPath(path);
     return;
   }
-  QProcess::startDetached("/home/root/.vellum/bin/xdg-open", {path});
+  QProcess::startDetached("xdg-open", {path});
 }

@@ -5,14 +5,13 @@
 #include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
+#include <atomic>
 
 class Controller : public QObject {
   Q_OBJECT
   Q_PROPERTY(QString currentPath READ currentPath NOTIFY currentPathChanged)
   Q_PROPERTY(QVariantList entries READ entries NOTIFY entriesChanged)
   Q_PROPERTY(QString status READ status NOTIFY statusChanged)
-  Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
-  Q_PROPERTY(QString homePath READ homePath CONSTANT)
 
 public:
   explicit Controller(QObject* parent = nullptr);
@@ -20,8 +19,6 @@ public:
   QString currentPath() const;
   QVariantList entries() const;
   QString status() const;
-  bool busy() const;
-  QString homePath() const;
 
   Q_INVOKABLE void openPath(const QString& path);
   Q_INVOKABLE void goUp();
@@ -40,7 +37,6 @@ signals:
   void currentPathChanged();
   void entriesChanged();
   void statusChanged();
-  void busyChanged();
 
 private:
   void loadDirectory();
@@ -51,5 +47,6 @@ private:
   QString m_currentPath;
   QVariantList m_entries;
   QString m_status;
-  bool m_busy = false;
+  std::atomic<bool> m_busy{false};
+  QThread* m_workerThread = nullptr;
 };

@@ -248,6 +248,7 @@ OxideWindow {
             Text {
                 Layout.fillWidth: true
                 Layout.margins: 4
+                visible: !!controller.status.length
                 font: window.page.font
                 text: controller.status
                 color: "#333333"
