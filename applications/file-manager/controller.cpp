@@ -6,6 +6,7 @@
 #include <QFileInfoList>
 #include <QProcess>
 #include <QStringList>
+#include <QTemporaryFile>
 
 Controller::Controller(QObject* parent)
   : QObject(parent)
@@ -221,7 +222,8 @@ Controller::copyRecursive(const QString& source, const QString& destination) {
     }
     QDir srcDir(source);
     QFileInfoList entries = srcDir.entryInfoList(
-      QDir::NoFilter | QDir::NoDotAndDotDot,
+      QDir::Files | QDir::Dirs | QDir::Hidden | QDir::System |
+        QDir::NoDotAndDotDot,
       QDir::DirsFirst | QDir::Name | QDir::IgnoreCase
     );
     for (const QFileInfo& entry : entries) {
@@ -233,11 +235,19 @@ Controller::copyRecursive(const QString& source, const QString& destination) {
     }
     return true;
   }
-  QString tempDest = destination + ".tmp";
-  if (QFile::exists(tempDest)) {
-    QFile::remove(tempDest);
+  // Use QTemporaryFile for unique temp file in destination directory
+  QDir destDir = destInfo.dir();
+  QTemporaryFile tempFile;
+  tempFile.setAutoRemove(false);
+  tempFile.setFileTemplate(destDir.filePath("XXXXXX"));
+  if (!tempFile.open()) {
+    return false;
   }
+  QString tempDest = tempFile.fileName();
+  tempFile.close();
+
   if (!QFile::copy(source, tempDest)) {
+    QFile::remove(tempDest);
     return false;
   }
   if (QFile::exists(destination)) {

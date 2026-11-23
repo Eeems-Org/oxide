@@ -8,9 +8,12 @@ Item {
     id: keyboard
     clip: true
     property var activeFocusItem: Window.window ? Window.window.activeFocusItem : null
-    function isTextInput(item) {
+function isTextInput(item) {
         if (!item) {
             return false
+        }
+        if (item.hasOwnProperty("inputMethodVisible") && item.inputMethodVisible) {
+            return true
         }
         if (!item.hasOwnProperty("text") || !item.hasOwnProperty("readOnly")) {
             if (!item.hasOwnProperty("inputMethodHints") &&

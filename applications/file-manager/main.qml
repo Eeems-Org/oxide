@@ -215,12 +215,11 @@ OxideWindow {
                             anchors.fill: parent
                             onClicked: {
                                 listView.selectedPath = modelData.path
-                                if (modelData.isDir) {
-                                    controller.openPath(modelData.path)
-                                }
                             }
                             onDoubleClicked: {
-                                if (!modelData.isDir) {
+                                if (modelData.isDir) {
+                                    controller.openPath(modelData.path)
+                                } else {
                                     controller.openFile(modelData.path)
                                 }
                             }

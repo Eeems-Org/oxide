@@ -22,6 +22,7 @@ struct CachedCell {
 class TerminalView : public QQuickPaintedItem {
   Q_OBJECT
   Q_PROPERTY(QString title READ title NOTIFY titleChanged)
+  Q_PROPERTY(bool inputMethodVisible READ inputMethodVisible CONSTANT)
 public:
   explicit TerminalView(QQuickItem* parent = nullptr);
   ~TerminalView() override;
@@ -29,6 +30,7 @@ public:
   void paint(QPainter* painter) override;
 
   QString title() const { return m_title; }
+  bool inputMethodVisible() const;
   Q_INVOKABLE void setTitle(const QString& title);
 
   Q_INVOKABLE void sendText(const QString& text);
