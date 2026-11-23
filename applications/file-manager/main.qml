@@ -10,17 +10,19 @@ OxideWindow {
     visible: true
     title: "Files"
     backgroundColor: "white"
+    color: "black"
 
     Connections {
         target: controller
-        onCurrentPathChanged: listView.selectedPath = ""
-        onEntriesChanged: listView.selectedPath = ""
+        function onCurrentPathChanged() { listView.selectedPath = "" }
+        function onEntriesChanged() { listView.selectedPath = "" }
     }
 
     initialItem: Item {
         anchors.fill: parent
 
         ColumnLayout {
+            id: rootLayout
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
@@ -118,59 +120,127 @@ OxideWindow {
                 elide: Text.ElideMiddle
             }
 
-            ListView {
-                id: listView
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                clip: true
-                currentIndex: -1
-                property string selectedPath: ""
-                model: controller.entries
-                delegate: Rectangle {
-                    width: listView.width
-                    height: 80
-                    color: "transparent"
-                    border.width: listView.selectedPath === modelData.path ? 1 : 0
-                    border.color: "black"
+                spacing: 0
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        spacing: 8
-
-                        Text {
-                            text: modelData.isDir ? "[D]" : "[F]"
-                            font.bold: true
+                OxideButton {
+                    text: "▲"
+                    visible: listView.currentIndex > 0
+                    Layout.fillWidth: true
+                    color: window.color
+                    backgroundColor: window.backgroundColor
+                    borderColor: window.backgroundColor
+                    onClicked: {
+                        listView.currentIndex = listView.currentIndex - listView.pageSize();
+                        if (listView.currentIndex < 0) {
+                            listView.currentIndex = 0;
+                            listView.positionViewAtBeginning();
+                        } else {
+                            listView.positionViewAtIndex(listView.currentIndex, ListView.Beginning);
                         }
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
+                    }
+                }
+                ListView {
+                    id: listView
+                    objectName: "fileListView"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    currentIndex: 0
+                    property string selectedPath: ""
+                    model: controller.entries
+                    snapMode: ListView.SnapOneItem
+                    interactive: false
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollIndicator.vertical: ScrollIndicator {
+                        id: scrollbar
+                        width: 10
+                        contentItem: Rectangle {
+                            color: "black"
+                            implicitWidth: 6
+                            implicitHeight: 100
+                        }
+                        background: Rectangle {
+                            color: "white"
+                            border.color: "black"
+                            border.width: 1
+                            implicitWidth: 6
+                            implicitHeight: 100
+                        }
+                    }
+                    function pageHeight() {
+                        var item = contentItem.children[0];
+                        if (!item) {
+                            return 1;
+                        }
+                        return height / item.height;
+                    }
+                    function pageSize() { return Math.floor(pageHeight()); }
+                    delegate: Rectangle {
+                        width: listView.width - scrollbar.width
+                        height: 80
+                        color: "transparent"
+                        border.width: listView.selectedPath === modelData.path ? 1 : 0
+                        border.color: "black"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            spacing: 8
+
                             Text {
-                                text: modelData.name
-                                font: window.page.font
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
+                                text: modelData.isDir ? "[D]" : "[F]"
+                                font.bold: true
                             }
-                            Text {
-                                text: modelData.isDir ? "Folder" : (modelData.size + " bytes")
-                                font.pixelSize: 16
-                                color: "black"
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                Text {
+                                    text: modelData.name
+                                    font: window.page.font
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                Text {
+                                    text: modelData.isDir ? "Directory" : (modelData.size + " bytes")
+                                    font.pixelSize: 16
+                                    color: "black"
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                listView.selectedPath = modelData.path
+                                if (modelData.isDir) {
+                                    controller.openPath(modelData.path)
+                                }
+                            }
+                            onDoubleClicked: {
+                                if (!modelData.isDir) {
+                                    controller.openFile(modelData.path)
+                                }
                             }
                         }
                     }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            listView.selectedPath = modelData.path
-                            if (modelData.isDir) {
-                                controller.openPath(modelData.path)
-                            }
-                        }
-                        onDoubleClicked: {
-                            if (!modelData.isDir) {
-                                controller.openFile(modelData.path)
-                            }
+                }
+                OxideButton {
+                    text: "▼"
+                    visible: listView.currentIndex < listView.count - 1
+                    Layout.fillWidth: true
+                    color: window.color
+                    backgroundColor: window.backgroundColor
+                    borderColor: window.backgroundColor
+                    onClicked: {
+                        listView.currentIndex = listView.currentIndex + listView.pageSize();
+                        if (listView.currentIndex >= listView.count) {
+                            listView.currentIndex = listView.count - 1;
+                            listView.positionViewAtEnd();
+                        } else {
+                            listView.positionViewAtIndex(listView.currentIndex, ListView.Beginning);
                         }
                     }
                 }
@@ -186,6 +256,13 @@ OxideWindow {
             }
         }
 
+        Keyboard {
+            id: keyboard
+            anchors.bottom: parent.bottom
+            width: parent.width
+            z: 20
+            onVisibleChanged: if (visible && listView.currentIndex >= 0) Qt.callLater(listView.positionViewAtIndex, listView.currentIndex, ListView.Contain)
+        }
         Rectangle {
             id: dialog
             anchors.fill: parent
@@ -251,14 +328,6 @@ OxideWindow {
                     }
                 }
             }
-        }
-
-        Keyboard {
-            id: keyboard
-            anchors.bottom: parent.bottom
-            width: parent.width
-            z: 20
-            onVisibleChanged: if (visible && listView.currentIndex >= 0) Qt.callLater(listView.positionViewAtIndex, listView.currentIndex, ListView.Contain)
         }
     }
 }
