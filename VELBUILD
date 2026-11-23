@@ -622,6 +622,7 @@ libghostty_vt_dev() {
     "
     package() {
         cd "$srcdir"/release
+        mkdir -p "$subpkgdir"/home/root/.vellum/include
         cp -ar home/root/.vellum/include/ghostty \
             "$subpkgdir"/home/root/.vellum/include/
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/lib/pkgconfig \
