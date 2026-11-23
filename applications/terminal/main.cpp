@@ -4,7 +4,6 @@
 #include <liboxide/oxideqml.h>
 #include <liboxide/sentry.h>
 
-#include "keyboardhandler.h"
 #include "terminalview.h"
 
 #include <QGuiApplication>
@@ -31,7 +30,6 @@ main(int argc, char* argv[]) {
   app.setApplicationVersion(APP_VERSION);
 
   qmlRegisterType<TerminalView>("Terminal", 1, 0, "TerminalView");
-  qmlRegisterType<KeyboardHandler>("KeyboardHandler", 1, 0, "KeyboardHandler");
 
   QQmlApplicationEngine engine;
   registerQML(&engine);

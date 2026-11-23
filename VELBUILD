@@ -291,6 +291,13 @@ oxide_extra() {
             home/root/.vellum/bin/wither
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
             home/root/.local/share/applications/codes.eeems.wither.oxide
+        # File manager
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/defile
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
+            home/root/.local/share/applications/codes.eeems.defile.oxide
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
+            home/root/.local/share/icons/oxide/48x48/apps/defile.png
     }
 }
 
@@ -623,5 +630,7 @@ libghostty_vt_dev() {
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/lib/cmake/ghostty-vt \
             home/root/.vellum/lib/cmake/ghostty-vt/ghostty-vt-config.cmake \
             home/root/.vellum/lib/cmake/ghostty-vt/ghostty-vt-config-version.cmake
+        install -Dm644 "$srcdir/shared/libghostty-vt/src/LICENSE" \
+            "$subpkgdir/home/root/.vellum/licenses/libghostty-vt-dev/LICENSE"
     }
 }

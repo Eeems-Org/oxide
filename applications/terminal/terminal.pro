@@ -11,12 +11,10 @@ CONFIG(release, debug|release){
 
 SOURCES += \
         main.cpp \
-        terminalview.cpp \
-        keyboardhandler.cpp
+        terminalview.cpp
 
 HEADERS += \
-        terminalview.h \
-        keyboardhandler.h
+        terminalview.h
 
 TARGET = wither
 include(../../qmake/common.pri)
