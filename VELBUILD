@@ -626,8 +626,7 @@ libghostty_vt_dev() {
         cp -ar home/root/.vellum/include/ghostty \
             "$subpkgdir"/home/root/.vellum/include/
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/lib/pkgconfig \
-            home/root/.vellum/lib/pkgconfig/libghostty-vt.pc \
-            home/root/.vellum/lib/pkgconfig/libghostty-vt-static.pc
+            home/root/.vellum/lib/pkgconfig/libghostty-vt.pc
         mkdir -p "$subpkgdir"/home/root/.vellum/lib/cmake/ghostty-vt
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/lib/cmake/ghostty-vt \
             home/root/.vellum/lib/cmake/ghostty-vt/ghostty-vt-config.cmake \
