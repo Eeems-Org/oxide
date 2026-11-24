@@ -2,6 +2,9 @@
 
 #include "debug.h"
 
+#include <sys/resource.h>
+#include <unistd.h>
+
 namespace Oxide {
   void startThreadWithPriority(QThread* thread, QThread::Priority priority) {
     O_DEBUG(thread << "Starting thread");
@@ -13,26 +16,27 @@ namespace Oxide {
       [priority] {
         switch (priority) {
           case QThread::IdlePriority:
-            nice(19); // 19 is the max
+            setpriority(PRIO_PROCESS, gettid(), 19); // 19 is the max
             break;
           case QThread::LowestPriority:
-            nice(10);
+            setpriority(PRIO_PROCESS, gettid(), 10);
             break;
           case QThread::LowPriority:
-            nice(5);
+            setpriority(PRIO_PROCESS, gettid(), 5);
             break;
           case QThread::InheritPriority:
+            break;
           case QThread::NormalPriority:
-            nice(0);
+            setpriority(PRIO_PROCESS, gettid(), 0);
             break;
           case QThread::HighPriority:
-            nice(-5);
+            setpriority(PRIO_PROCESS, gettid(), -5);
             break;
           case QThread::HighestPriority:
-            nice(-10);
+            setpriority(PRIO_PROCESS, gettid(), -10);
             break;
           case QThread::TimeCriticalPriority:
-            nice(-20);
+            setpriority(PRIO_PROCESS, gettid(), -20);
             break;
         }
       },

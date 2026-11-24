@@ -14,6 +14,7 @@
 #include <mutex>
 
 #include <QBrush>
+#include <QChar>
 #include <QFileSystemWatcher>
 #include <QImage>
 #include <QObject>
@@ -279,6 +280,106 @@ namespace Oxide {
       std::mutex m_timerMutex;
       void applyPending();
     };
+    /*!
+     * \brief On-screen keyboard handler shared by applications
+     *
+     * Posts key events to the active focus objects in the application.
+     *
+     * Example:
+     * ```qml
+     * import "qrc://codes.eeems.oxide"
+     * import codes.eeems.oxide 3.0
+     *
+     * Item {
+     *   Keyboard {
+     *     anchors.bottom: parent.bottom
+     *   }
+     * }
+     * ```
+     */
+    class LIBOXIDE_EXPORT KeyboardHandler : public QObject {
+      Q_OBJECT
+      Q_PROPERTY(
+        bool keyboardAttached READ keyboardAttached NOTIFY
+          keyboardAttachedChanged
+      )
+      Q_PROPERTY(QQuickItem* root READ root WRITE setRoot NOTIFY rootChanged)
+
+    public:
+      /*!
+       * \brief Create a new keyboard handler
+       * \param parent Parent object
+       */
+      explicit KeyboardHandler(QObject* parent = nullptr);
+
+      /*!
+       * \brief Get the root item used to find focus targets
+       * \return The root item
+       * \sa setRoot(QQuickItem* root), rootChanged()
+       */
+      QQuickItem* root() const;
+      /*!
+       * \brief Set the root item used to find focus targets
+       * \param root The root item
+       * \sa root(), rootChanged()
+       */
+      void setRoot(QQuickItem* root);
+
+      /*!
+       * \brief Check if a physical keyboard is attached
+       * \return True if a physical keyboard is attached
+       * \sa keyboardAttachedChanged(bool)
+       */
+      bool keyboardAttached() const;
+
+      /*!
+       * \brief Post a character key press to active focus objects
+       * \param character Character to send
+       * \param modifier Keyboard modifiers to apply
+       */
+      Q_INVOKABLE void
+      charPress(const QChar& character, const Qt::KeyboardModifiers& modifier);
+      /*!
+       * \brief Post a key press to active focus objects
+       * \param key Key to send
+       * \param modifier Keyboard modifiers to apply
+       * \param text Text to send with the key
+       */
+      Q_INVOKABLE void keyPress(
+        const Qt::Key& key,
+        const Qt::KeyboardModifiers& modifier,
+        const QString& text
+      );
+      /*!
+       * \brief Post a string of text to active focus objects
+       * \param text Text to send
+       * \param modifier Keyboard modifiers to apply
+       */
+      Q_INVOKABLE void
+      stringPress(const QString& text, const Qt::KeyboardModifiers& modifier);
+
+      /*!
+       * \brief Get the active focus items under the root
+       * \return List of focus items
+       */
+      QList<QQuickItem*> focusObjects();
+
+    signals:
+      /*!
+       * \brief Emitted when physical keyboard attachment changes
+       * \param attached True if a physical keyboard is attached
+       */
+      void keyboardAttachedChanged(bool attached);
+      /*!
+       * \brief Emitted when the root item changes
+       */
+      void rootChanged();
+
+    private:
+      QQuickItem* m_root = nullptr;
+      bool m_keyboardAttached = false;
+    };
+
     /*!
      * \brief Get the display server buffer that represents a surface for a
      * QWindow

@@ -234,6 +234,11 @@ TerminalView::setTitle(const QString& title) {
   }
 }
 
+bool
+TerminalView::inputMethodVisible() const {
+  return true;
+}
+
 void
 TerminalView::renderDirtyCells() {
   if (!m_terminal || !m_renderState || m_drawn.isNull()) {

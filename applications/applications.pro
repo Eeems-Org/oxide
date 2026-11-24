@@ -4,6 +4,7 @@ SUBDIRS = \
     desktop-file-edit \
     desktop-file-install \
     desktop-file-validate \
+    file-manager \
     gio \
     inject_evdev \
     launcher \
@@ -50,5 +51,6 @@ desktop-file-install.depends =
 inject_evdev.depends =
 display-server.depends = system-service
 fbinfo.depends =
+file-manager.depends = system-service
 xclip.depends = system-service
 INSTALLS += $$SUBDIRS

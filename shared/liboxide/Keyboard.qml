@@ -1,12 +1,49 @@
 import QtQuick 2.9
+import QtQuick.Window 2.15
 import QtQuick.Layouts 1.0
-import KeyboardHandler 1.0
+import codes.eeems.oxide 3.0
 import "."
 
 Item {
     id: keyboard
     clip: true
-    visible: !handler.keyboardAttached
+    property var activeFocusItem: Window.window ? Window.window.activeFocusItem : null
+function isTextInput(item) {
+        if (!item) {
+            return false
+        }
+        if (item.hasOwnProperty("inputMethodVisible") && item.inputMethodVisible) {
+            return true
+        }
+        if (!item.hasOwnProperty("text") || !item.hasOwnProperty("readOnly")) {
+            if (!item.hasOwnProperty("inputMethodHints") &&
+                !item.hasOwnProperty("inputMethodComposing") &&
+                !item.hasOwnProperty("contentType") &&
+                !item.hasOwnProperty("acceptRichText") &&
+                !item.hasOwnProperty("textDocument") &&
+                !item.hasOwnProperty("cursorPosition") &&
+                !item.hasOwnProperty("selectionStart") &&
+                !item.hasOwnProperty("selectionEnd") &&
+                !item.hasOwnProperty("validator") &&
+                !item.hasOwnProperty("inputMask")) {
+                return false
+            }
+        }
+        if (item.hasOwnProperty("readOnly") && item.readOnly) {
+            return false
+        }
+        if (item.hasOwnProperty("enabled") && !item.enabled) {
+            return false
+        }
+        if (item.hasOwnProperty("visible") && !item.visible) {
+            return false
+        }
+        if (item.hasOwnProperty("activeFocus") && !item.activeFocus) {
+            return false
+        }
+        return true
+    }
+    visible: !handler.keyboardAttached && isTextInput(activeFocusItem)
     property bool hasCaps: false
     property bool hasShift: false
     property bool hasAlt: false
