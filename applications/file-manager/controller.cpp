@@ -12,9 +12,18 @@
 Controller::Controller(QObject* parent)
   : QObject(parent)
   , m_currentPath("/home/root")
-  , m_workerThread(new QThread(this)) {
+  , m_workerThread(new QThread()) {
+  m_workerThread->moveToThread(m_workerThread);
   m_workerThread->start();
   loadDirectory();
+}
+
+Controller::~Controller() {
+  if (m_workerThread) {
+    m_workerThread->quit();
+    m_workerThread->wait();
+    delete m_workerThread;
+  }
 }
 
 QString
@@ -122,11 +131,10 @@ Controller::createFolder(const QString& name) {
     return;
   }
   m_busy = true;
-  Oxide::runLater(m_workerThread, [this, name]() {
+  QString path = m_currentPath;
+  Oxide::runLater(m_workerThread, [this, name, path]() {
     QString status =
-      QString(
-        QDir(m_currentPath).mkdir(name) ? "Created" : "Could not create"
-      ) +
+      QString(QDir(path).mkdir(name) ? "Created" : "Could not create") +
       " folder: " + name;
     Oxide::dispatchToMainThread([this, status]() {
       m_status = status;
@@ -221,7 +229,7 @@ Controller::copyRecursive(const QString& source, const QString& destination) {
   }
 
   if (srcInfo.isSymLink()) {
-    QString target = srcInfo.symLinkTarget();
+    QString target = srcInfo.readSymLink();
     if (QFile::exists(destination)) {
       QFile::remove(destination);
     }

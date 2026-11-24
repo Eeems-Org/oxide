@@ -31,7 +31,7 @@ target.depends = ghostty_vt_build
 target.path = $$LIB_INSTALL_PATH/
 INSTALLS += target
 
-pkgconfig.files = $$OUT_PWD/lib/pkgconfig/*
+pkgconfig.files = $$OUT_PWD/lib/pkgconfig/libghostty-vt.pc
 pkgconfig.depends = ghostty_vt_build
 pkgconfig.path = $$LIB_INSTALL_PATH/pkgconfig
 INSTALLS += pkgconfig

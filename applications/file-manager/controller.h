@@ -15,6 +15,7 @@ class Controller : public QObject {
 
 public:
   explicit Controller(QObject* parent = nullptr);
+  ~Controller();
 
   QString currentPath() const;
   QVariantList entries() const;
