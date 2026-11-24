@@ -85,5 +85,9 @@
     <method name="previousApplication">
       <arg type="b" direction="out"/>
     </method>
+    <method name="applicationsForMimeType">
+      <arg type="ao" direction="out"/>
+      <arg name="mimeType" type="s" direction="in"/>
+    </method>
   </interface>
 </node>

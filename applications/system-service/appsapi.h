@@ -95,6 +95,9 @@ public:
   void connectSignals(Application* app, int signal);
   void disconnectSignals(Application* app, int signal);
   Q_INVOKABLE bool previousApplication();
+  Q_INVOKABLE QList<QDBusObjectPath> applicationsForMimeType(
+    const QString& mimeType
+  );
   bool previousApplicationNoSecurityCheck();
   void forceRecordPreviousApplication();
   void recordPreviousApplication();

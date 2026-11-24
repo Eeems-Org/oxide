@@ -349,6 +349,10 @@ oxide_utils() {
             home/root/.vellum/bin/xdg-settings
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/xdg-icon-resource
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/xdg-mime
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/chooser
     }
     triggers='
     /home/root/.local/share/applications

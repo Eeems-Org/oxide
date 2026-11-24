@@ -3,6 +3,8 @@
 #include <sys/stat.h>
 
 #include <QCommandLineParser>
+#include <QFileInfo>
+#include <QMimeDatabase>
 #include <QUrlQuery>
 #include <QUuid>
 #include <string>
@@ -10,6 +12,60 @@
 using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
 using namespace codes::eeems::oxide1;
+
+int
+launchAppByPath(
+  const QDBusObjectPath& appPath,
+  const QStringList& launchArgs = {}
+) {
+  auto bus = QDBusConnection::systemBus();
+  General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+  QDBusObjectPath path = api.requestAPI("apps");
+  if (path.path() == "/") {
+    qDebug() << "Unable to get apps API";
+    return EXIT_FAILURE;
+  }
+  Apps apps(OXIDE_SERVICE, path.path(), bus);
+  Application app(OXIDE_SERVICE, appPath.path(), bus);
+  if (!app.forking()) {
+    app.launchWithArgs(launchArgs).waitForFinished();
+    return EXIT_SUCCESS;
+  }
+  // Register a transient background clone and launch it
+  QVariantMap properties = {
+    {"name",             QUuid::createUuid().toString(QUuid::Id128)},
+    {"bin",              app.bin()                                 },
+    {"displayName",      app.displayName()                         },
+    {"description",      app.description()                         },
+    {"type",             (int)ApplicationType::Background          },
+    {"icon",             app.icon()                                },
+    {"workingDirectory", app.workingDirectory()                    },
+    {"user",             app.user()                                },
+    {"group",            app.group()                               },
+    {"environment",      app.environment()                         },
+    {"permissions",      app.permissions()                         },
+    {"directories",      app.directories()                         },
+    {"onPause",          app.onPause()                             },
+    {"onResume",         app.onResume()                            },
+    {"onStop",           app.onStop()                              }
+  };
+  QStringList flags = app.flags();
+  if (!flags.contains("transient")) {
+    flags.prepend("transient");
+  }
+  flags.removeAll("forking");
+  properties["flags"] = flags;
+  QDBusObjectPath clonePath = apps.registerApplication(properties);
+  if (clonePath.path() == "/") {
+    qDebug() << "Failed to register transient instance of"
+             << app.name().toStdString().c_str();
+    return EXIT_FAILURE;
+  }
+  Application(OXIDE_SERVICE, clonePath.path(), bus)
+    .launchWithArgs(launchArgs)
+    .waitForFinished();
+  return EXIT_SUCCESS;
+}
 
 int
 launchOxideApp(const QString& name, const QStringList& launchArgs = {}) {
@@ -26,51 +82,34 @@ launchOxideApp(const QString& name, const QStringList& launchArgs = {}) {
     qDebug() << "Application does not exist:" << name.toStdString().c_str();
     return EXIT_FAILURE;
   }
-  Application app(OXIDE_SERVICE, path.path(), bus);
-  if (!app.forking()) {
-    if (launchArgs.isEmpty()) {
-      app.launch().waitForFinished();
-    } else {
-      app.launchWithArgs(launchArgs).waitForFinished();
-    }
-    return EXIT_SUCCESS;
-  }
-  // Register a transient background clone and launch it
-  QVariantMap properties;
-  properties["name"] = QUuid::createUuid().toString(QUuid::Id128);
-  properties["bin"] = app.bin();
-  properties["displayName"] = app.displayName();
-  properties["description"] = app.description();
-  properties["type"] = (int)ApplicationType::Background;
-  properties["icon"] = app.icon();
-  properties["workingDirectory"] = app.workingDirectory();
-  properties["user"] = app.user();
-  properties["group"] = app.group();
-  properties["environment"] = app.environment();
-  properties["permissions"] = app.permissions();
-  properties["directories"] = app.directories();
-  properties["onPause"] = app.onPause();
-  properties["onResume"] = app.onResume();
-  properties["onStop"] = app.onStop();
-  QStringList cloneFlags = app.flags();
-  if (!cloneFlags.contains("transient")) {
-    cloneFlags.prepend("transient");
-  }
-  cloneFlags.removeAll("forking");
-  properties["flags"] = cloneFlags;
-  QDBusObjectPath clonePath = apps.registerApplication(properties);
-  if (clonePath.path() == "/") {
-    qDebug() << "Failed to register transient instance of"
-             << name.toStdString().c_str();
+  return launchAppByPath(path, launchArgs);
+}
+
+int
+openFileWithMime(const QString& filePath) {
+  auto bus = QDBusConnection::systemBus();
+  General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+  QDBusObjectPath path = api.requestAPI("apps");
+  if (path.path() == "/") {
+    qDebug() << "Unable to get apps API";
     return EXIT_FAILURE;
   }
-  Application clone(OXIDE_SERVICE, clonePath.path(), bus);
-  if (launchArgs.isEmpty()) {
-    clone.launch().waitForFinished();
-  } else {
-    clone.launchWithArgs(launchArgs).waitForFinished();
+  Apps apps(OXIDE_SERVICE, path.path(), bus);
+  QString mimeType =
+    QMimeDatabase().mimeTypeForFile(QFileInfo(filePath)).name();
+  QDBusObjectPath defaultApp = apps.defaultApplication(mimeType);
+  if (defaultApp.path() != "/") {
+    return launchAppByPath(defaultApp, {filePath});
   }
-  return EXIT_SUCCESS;
+  QList<QDBusObjectPath> candidates = apps.applicationsForMimeType(mimeType);
+  if (candidates.size() == 1) {
+    return launchAppByPath(candidates.first(), {filePath});
+  }
+  if (candidates.size() == 0) {
+    qDebug() << "No application found for MIME type:" << mimeType;
+    return EXIT_FAILURE;
+  }
+  return launchOxideApp("codes.eeems.chooser", {mimeType, filePath});
 }
 
 int
@@ -100,9 +139,7 @@ main(int argc, char* argv[]) {
   if (url.isLocalFile()) {
     QFileInfo info(url.path());
     if (info.suffix() != "oxide") {
-      qDebug() << "The extension is not supported:"
-               << path.toStdString().c_str();
-      return EXIT_FAILURE;
+      return openFileWithMime(url.path());
     }
     if (
       info.absoluteDir().path() != OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY

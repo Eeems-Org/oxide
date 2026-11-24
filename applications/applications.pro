@@ -27,8 +27,10 @@ SUBDIRS = \
     xdg-desktop-icon \
     xdg-desktop-menu \
     xdg-icon-resource \
+    xdg-mime \
     xdg-open \
-    xdg-settings
+    xdg-settings \
+    chooser
 
 desktop-file-edit.depends =
 desktop-file-install.depends =
@@ -55,7 +57,9 @@ xdg-desktop-icon.depends = system-service
 xdg-desktop-menu.depends = system-service
 xdg-icon-resource.depends = system-service
 file-manager.depends = system-service
+xdg-mime.depends = system-service
 xdg-open.depends = system-service
 xdg-settings.depends = system-service
+chooser.depends = system-service
 
 INSTALLS += $$SUBDIRS

@@ -347,6 +347,7 @@ namespace Oxide::Applications {
       }
     } else
       shouldExit isFile("workingDirectory", ErrorLevel::Error, false);
+    shouldExit isArray("mimeTypes", ErrorLevel::Warning, false);
     shouldExit isString("displayName", false);
     shouldExit isString("description", false);
     shouldExit if (isString("user", false)) {
@@ -537,6 +538,15 @@ namespace Oxide::Applications {
         envMap.insert(key, environment[key].toString());
       }
       properties.insert("environment", envMap);
+    }
+    if (app.contains("mimeTypes")) {
+      QStringList mimeTypes;
+      for (auto mime : app["mimeTypes"].toArray()) {
+        if (mime.isString()) {
+          mimeTypes.append(mime.toString());
+        }
+      }
+      properties.insert("mimeTypes", mimeTypes);
     }
     return properties;
   }

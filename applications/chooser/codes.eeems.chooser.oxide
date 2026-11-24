@@ -1,0 +1,8 @@
+{
+    "displayName": "Open With Chooser",
+    "description": "Choose an application to open a file",
+    "bin": "/home/root/.vellum/bin/chooser",
+    "type": "foreground",
+    "flags": ["hidden", "nopreload"],
+    "permissions": ["apps"]
+}

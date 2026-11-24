@@ -845,6 +845,24 @@ AppsAPI::getDefaultApplication(const QString& type) {
   return getApplication(path);
 }
 
+QList<QDBusObjectPath>
+AppsAPI::applicationsForMimeType(const QString& mimeType) {
+  QList<QDBusObjectPath> result;
+  if (!hasPermission("apps")) {
+    return result;
+  }
+  for (auto app : applications) {
+    auto config = app->getConfig();
+    if (config.contains("mimeTypes")) {
+      QStringList mimeTypes = config["mimeTypes"].toStringList();
+      if (mimeTypes.contains(mimeType)) {
+        result.append(QDBusObjectPath(getPath(app->name())));
+      }
+    }
+  }
+  return result;
+}
+
 void
 AppsAPI::setDefaultApplication(
   const QString& type,
