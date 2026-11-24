@@ -30,7 +30,7 @@
  * \def OXIDE_VERSION
  * \brief Version of Tarnish and liboxide
  */
-#define OXIDE_VERSION "3.3"
+#define OXIDE_VERSION "3.4"
 /*!
  * \def OXIDE_INTERFACE_VERSION
  * \brief Version of Tarnish and liboxide for dbus
