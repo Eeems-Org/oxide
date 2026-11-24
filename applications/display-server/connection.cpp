@@ -648,7 +648,7 @@ Connection::readSocket() {
             }
           }
         }
-        unsigned int ack_size = ack_size =
+        unsigned int ack_size =
           list.size() * sizeof(decltype(list)::value_type);
         Blight::data_t ack_data = (Blight::data_t)malloc(ack_size);
         memcpy(ack_data, list.data(), ack_size);
@@ -743,17 +743,6 @@ Connection::readSocket() {
       case Blight::MessageType::Focus: {
         C_DEBUG("Focus requested");
         dbusInterface->setFocus(dbusInterface->getConnection(this));
-        break;
-      }
-      case Blight::MessageType::GhostControl: {
-        C_DEBUG("GhostControl requested");
-#ifdef EPAPER
-        EPFramebuffer::instance()->ghostControl(
-          static_cast<EPFramebuffer::GhostControlMode>(
-            Blight::scalar_cast<Blight::GhostControlMode>(message).value()
-          )
-        );
-#endif
         break;
       }
       case Blight::MessageType::GhostControl: {

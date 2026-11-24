@@ -196,7 +196,8 @@ $(BUILD)/package/oxide.tar.gz: $(OBJ) $(BUILD)/package
 	tar \
 		--exclude='$(CURDIR)/.git' \
 		--exclude='$(CURDIR)/dist' \
-		--exclude='$(CURDIR)/shared/libghostty-vt/src/.zig-cache' \
+		--exclude='shared/libghostty-vt/src/.zig-cache' \
+		--exclude='shared/libghostty-vt/src/zig-pkg' \
 		--exclude='$(BUILD)' \
 		--exclude='$(DIST)' \
 		-czvf $(BUILD)/package/oxide.tar.gz \
