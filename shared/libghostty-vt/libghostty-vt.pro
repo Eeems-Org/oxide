@@ -15,6 +15,11 @@ ghostty_vt_build.commands = \
         -Demit-lib-vt \
         -Dtarget=$$ZIG_TARGET \
         -Doptimize=ReleaseFast \
+        --prefix $$ROOT_INSTALL_PATH && \
+    zig build install \
+        -Demit-lib-vt \
+        -Dtarget=$$ZIG_TARGET \
+        -Doptimize=ReleaseFast \
         --prefix $$OUT_PWD && \
     rm -f $$OUT_PWD/lib/libghostty-vt.a
 QMAKE_EXTRA_TARGETS += ghostty_vt_build

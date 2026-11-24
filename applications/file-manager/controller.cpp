@@ -254,13 +254,19 @@ Controller::copyRecursive(const QString& source, const QString& destination) {
   if (!tempFile.open()) {
     return false;
   }
+
+  QFile srcFile(source);
+  if (
+    !srcFile.open(QIODevice::ReadOnly) || !srcFile.copy(tempFile.fileName()) ||
+    !tempFile.flush()
+  ) {
+    tempFile.remove();
+    return false;
+  }
+
   QString tempDest = tempFile.fileName();
   tempFile.close();
 
-  if (!QFile::copy(source, tempDest)) {
-    QFile::remove(tempDest);
-    return false;
-  }
   if (QFile::exists(destination)) {
     QFile::remove(destination);
   }

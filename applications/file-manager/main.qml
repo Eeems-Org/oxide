@@ -118,6 +118,7 @@ OxideWindow {
                 font: window.page.font
                 text: controller.currentPath
                 elide: Text.ElideMiddle
+                textFormat: Text.PlainText
             }
 
             ColumnLayout {
@@ -202,6 +203,7 @@ OxideWindow {
                                     font: window.page.font
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
+                                    textFormat: Text.PlainText
                                 }
                                 Text {
                                     text: modelData.isDir ? "Directory" : (modelData.size + " bytes")
@@ -305,6 +307,7 @@ OxideWindow {
                         text: listView.selectedPath
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
+                        textFormat: Text.PlainText
                     }
 
                     RowLayout {
