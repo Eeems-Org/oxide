@@ -41,6 +41,8 @@ class Notification;
   "/home/root/.vellum/bin:/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:"     \
   "/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
+#include <QPointer>
+
 class ApplicationProcess : public QProcess {
   Q_OBJECT
 
@@ -203,7 +205,7 @@ private slots:
 private:
   QVariantMap m_config;
   QString m_path;
-  ApplicationProcess* m_process;
+  QPointer<ApplicationProcess> m_process;
   bool m_backgrounded;
   QByteArray* m_screenCapture = nullptr;
   QElapsedTimer timer;

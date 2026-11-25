@@ -37,7 +37,7 @@ Application::launchWithArgs(const QStringList& args) {
 }
 void
 Application::launchNoSecurityCheck(const QStringList& args) {
-  if (m_process->processId()) {
+  if (processId()) {
     resumeNoSecurityCheck();
   } else {
     if (sharedSettings.applicationUsage()) {
@@ -162,8 +162,7 @@ Application::pause(bool startIfNone) {
 void
 Application::pauseNoSecurityCheck(bool startIfNone) {
   if (
-    !m_process->processId() || stateNoSecurityCheck() == Paused ||
-    type() == Background
+    !processId() || stateNoSecurityCheck() == Paused || type() == Background
   ) {
     return;
   }
@@ -198,8 +197,7 @@ Application::pauseNoSecurityCheck(bool startIfNone) {
 void
 Application::interruptApplication() {
   if (
-    !m_process->processId() || stateNoSecurityCheck() == Paused ||
-    type() == Background
+    !processId() || stateNoSecurityCheck() == Paused || type() == Background
   ) {
     return;
   }
@@ -237,7 +235,7 @@ Application::interruptApplication() {
             case Backgroundable:
               O_INFO("Waiting for SIGUSR2 ack");
               appsAPI->connectSignals(this, 2);
-              kill(-m_process->processId(), SIGUSR2);
+              signal(SIGUSR2);
               timer.restart();
               delayUpTo(1000);
               if (guard.isNull()) {
@@ -248,7 +246,7 @@ Application::interruptApplication() {
                 O_INFO("Application crashed while pausing");
               } else if (timer.isValid()) {
                 O_INFO("Application took too long to background" << name());
-                kill(-m_process->processId(), SIGSTOP);
+                signal(SIGSTOP);
                 waitForPause();
                 startSpan("stopped", "Application is stopped");
               } else {
@@ -259,7 +257,7 @@ Application::interruptApplication() {
               break;
             case Foreground:
             default:
-              kill(-m_process->processId(), SIGSTOP);
+              signal(SIGSTOP);
               waitForPause();
               startSpan("stopped", "Application is stopped");
           }
@@ -279,21 +277,29 @@ Application::waitForPause() {
   if (stateNoSecurityCheck() == Paused) {
     return;
   }
+  int processId = this->processId();
+  if (!processId) {
+    return;
+  }
   siginfo_t info;
-  waitid(P_PID, m_process->processId(), &info, WSTOPPED);
+  waitid(P_PID, processId, &info, WSTOPPED);
 }
 void
 Application::waitForResume() {
   if (stateNoSecurityCheck() != Paused) {
     return;
   }
+  int processId = this->processId();
+  if (!processId) {
+    return;
+  }
   siginfo_t info;
-  waitid(P_PID, m_process->processId(), &info, WCONTINUED);
+  waitid(P_PID, processId, &info, WCONTINUED);
 }
 
 QString
 Application::id() {
-  return QString("connection/%1").arg(m_process->processId());
+  return QString("connection/%1").arg(processId());
 }
 
 void
@@ -315,7 +321,7 @@ Application::resume() {
 void
 Application::resumeNoSecurityCheck() {
   if (
-    !m_process->processId() || stateNoSecurityCheck() == InForeground ||
+    !processId() || stateNoSecurityCheck() == InForeground ||
     (type() == Background && stateNoSecurityCheck() == InBackground)
   ) {
     O_DEBUG("Can't Resume" << path() << "Already running!");
@@ -352,7 +358,7 @@ Application::resumeNoSecurityCheck() {
 void
 Application::uninterruptApplication() {
   if (
-    !m_process->processId() || stateNoSecurityCheck() == InForeground ||
+    !processId() || stateNoSecurityCheck() == InForeground ||
     (type() == Background && stateNoSecurityCheck() == InBackground)
   ) {
     return;
@@ -398,11 +404,11 @@ Application::uninterruptApplication() {
             case Background:
             case Backgroundable: {
               if (stateNoSecurityCheck() == Paused) {
-                kill(-m_process->processId(), SIGCONT);
+                signal(SIGCONT);
               }
               O_INFO("Waiting for SIGUSR1 ack");
               appsAPI->connectSignals(this, 1);
-              kill(-m_process->processId(), SIGUSR1);
+              signal(SIGUSR1);
               QPointer<Application> guard(this);
               delayUpTo(1000);
               if (guard.isNull()) {
@@ -426,7 +432,7 @@ Application::uninterruptApplication() {
             }
             case Foreground:
             default:
-              kill(-m_process->processId(), SIGCONT);
+              signal(SIGCONT);
               startSpan("foreground", "Application is in the foreground");
           }
           auto compositor = getCompositorDBus();
@@ -469,9 +475,7 @@ Application::stopNoSecurityCheck() {
           O_INFO("exit code: " << QProcess::execute(onStop(), QStringList()));
         });
       }
-      getCompositorDBus()->lower(
-        QString("connection/%1").arg(m_process->processId())
-      );
+      getCompositorDBus()->lower(QString("connection/%1").arg(processId()));
       Application* pausedApplication = nullptr;
       if (state == Paused) {
         Oxide::Sentry::sentry_span(
@@ -492,19 +496,19 @@ Application::stopNoSecurityCheck() {
                 }
               }
             }
-            kill(-m_process->processId(), SIGCONT);
+            signal(SIGCONT);
           }
         );
       }
       Oxide::Sentry::sentry_span(t, "stop", "Stop application", [this]() {
-        kill(-m_process->processId(), SIGTERM);
+        signal(SIGTERM);
         // Try to wait for the application to stop normally before
         // killing it
         int tries = 0;
-        while (this->stateNoSecurityCheck() != Inactive) {
+        while (this->stateNoSecurityCheck() != Inactive && m_process) {
           m_process->waitForFinished(100);
           if (++tries == 5) {
-            kill(-m_process->processId(), SIGKILL);
+            signal(SIGKILL);
             break;
           }
         }
@@ -532,8 +536,9 @@ Application::stopNoSecurityCheck() {
 
 void
 Application::signal(int signal) {
-  if (m_process->processId()) {
-    kill(-m_process->processId(), signal);
+  int processId = this->processId();
+  if (processId) {
+    kill(-processId, signal);
   }
 }
 
@@ -561,10 +566,13 @@ Application::unregisterNoSecurityCheck() {
 
 int
 Application::stateNoSecurityCheck() {
+  if (!m_process) {
+    return Inactive;
+  }
   switch (m_process->state()) {
     case QProcess::Starting:
     case QProcess::Running: {
-      QFile stat("/proc/" + QString::number(m_process->processId()) + "/stat");
+      QFile stat("/proc/" + QString::number(processId()) + "/stat");
       if (stat.open(QIODevice::ReadOnly)) {
         auto status = stat.readLine().split(' ');
         stat.close();
@@ -691,7 +699,7 @@ Application::started() {
     QElapsedTimer waitTimer;
     waitTimer.start();
     auto compositor = getCompositorDBus();
-    auto identifier = QString("connection/%1").arg(m_process->processId());
+    auto identifier = QString("connection/%1").arg(processId());
     while (true) {
       QDBusReply<bool> reply = compositor->connectionExists(identifier);
       if (
@@ -724,9 +732,7 @@ Application::started() {
 void
 Application::finished(int exitCode) {
   O_INFO("Application" << name() << "exit code" << exitCode);
-  getCompositorDBus()->lower(
-    QString("connection/%1").arg(m_process->processId())
-  );
+  getCompositorDBus()->lower(QString("connection/%1").arg(processId()));
   if (
     exitCode != EXIT_SUCCESS && exitCode != SIGINT && exitCode != SIGTERM &&
     exitCode != SIGKILL && exitCode != 128 + EXIT_SUCCESS &&
@@ -764,8 +770,7 @@ Application::readyReadStandardError() {
     *p_stderr << error.toStdString().c_str();
     p_stderr->flush();
   } else {
-    QString prefix =
-      "[" + name() + " " + QString::number(m_process->processId()) + "]";
+    QString prefix = "[" + name() + " " + QString::number(processId()) + "]";
     for (QString line :
          error.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)) {
       if (!line.isEmpty()) {
@@ -787,8 +792,7 @@ Application::readyReadStandardOutput() {
     *p_stdout << output.toStdString().c_str();
     p_stdout->flush();
   } else {
-    QString prefix =
-      ("[" + name() + " " + QString::number(m_process->processId()) + "]");
+    QString prefix = ("[" + name() + " " + QString::number(processId()) + "]");
     for (QString line :
          output.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)) {
       if (!line.isEmpty()) {
@@ -957,7 +961,7 @@ Application::startSpan(std::string operation, std::string description) {
 
 void
 Application::waitForFinished() {
-  if (m_process->processId()) {
+  if (processId() && m_process) {
     m_process->waitForFinished();
   }
 }
@@ -1058,7 +1062,10 @@ Application::name() {
 }
 int
 Application::processId() {
-  return m_process->processId();
+  if (!m_process) {
+    return 0;
+  }
+  return processId();
 }
 QStringList
 Application::permissions() {
