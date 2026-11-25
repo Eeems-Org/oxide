@@ -1314,9 +1314,7 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
     static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
       RTLD_NEXT,
       "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControl"
-      "Mo"
-      "de"
-      "E"
+      "ModeE"
     ));
     if (!func) {
       _CRIT(
