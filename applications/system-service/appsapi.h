@@ -13,6 +13,8 @@
 #include <QTimer>
 #include <QUuid>
 
+#include <QReadWriteLock>
+
 #include "apibase.h"
 #include "application.h"
 
@@ -133,6 +135,7 @@ private:
   bool m_stopping;
   bool m_starting;
   bool m_enabled;
+  QReadWriteLock m_appsLock{QReadWriteLock::Recursive};
   QMap<QString, Application*> applications;
   QStringList previousApplications;
   QSettings settings;

@@ -135,6 +135,7 @@ AppsAPI::startup() {
 void
 AppsAPI::setEnabled(bool enabled) {
   O_INFO("Apps API" << enabled);
+  QReadLocker locker(&m_appsLock);
   for (auto app : applications) {
     if (enabled) {
       app->registerPath();
@@ -183,8 +184,11 @@ AppsAPI::registerApplicationNoSecurityCheck(QVariantMap properties) {
     );
     return QDBusObjectPath("/");
   }
-  if (applications.contains(name)) {
-    return applications[name]->qPath();
+  {
+    QReadLocker locker(&m_appsLock);
+    if (applications.contains(name)) {
+      return applications[name]->qPath();
+    }
   }
   QDBusObjectPath path;
   Oxide::Sentry::sentry_transaction(
@@ -196,7 +200,10 @@ AppsAPI::registerApplicationNoSecurityCheck(QVariantMap properties) {
       auto app = new Application(path, reinterpret_cast<QObject*>(this));
       auto displayName = properties.value("displayName", name).toString();
       app->setConfig(properties);
-      applications.insert(name, app);
+      {
+        QWriteLocker locker(&m_appsLock);
+        applications.insert(name, app);
+      }
       app->registerPath();
       emit applicationRegistered(path);
     }
@@ -296,6 +303,7 @@ AppsAPI::getApplications() {
   if (!hasPermission("apps")) {
     return result;
   }
+  QReadLocker locker(&m_appsLock);
   for (auto app : applications) {
     result.insert(app->name(), QVariant::fromValue(app->qPath()));
   }
@@ -312,6 +320,7 @@ AppsAPI::currentApplication() {
 
 QDBusObjectPath
 AppsAPI::currentApplicationNoSecurityCheck() {
+  QReadLocker locker(&m_appsLock);
   for (auto app : applications) {
     if (app->stateNoSecurityCheck() == Application::InForeground) {
       return app->qPath();
@@ -331,6 +340,7 @@ AppsAPI::runningApplications() {
 QVariantMap
 AppsAPI::runningApplicationsNoSecurityCheck() {
   QVariantMap result;
+  QReadLocker locker(&m_appsLock);
   for (auto app : applications) {
     auto state = app->stateNoSecurityCheck();
     if (
@@ -348,6 +358,7 @@ AppsAPI::pausedApplications() {
   if (!hasPermission("apps")) {
     return result;
   }
+  QReadLocker locker(&m_appsLock);
   for (auto app : applications) {
     auto state = app->stateNoSecurityCheck();
     if (state == Application::Paused) {
@@ -365,18 +376,30 @@ AppsAPI::unregisterApplication(Application* app) {
     [this, app](Oxide::Sentry::Transaction* t) {
       Q_UNUSED(t);
       auto name = app->name();
-      if (applications.contains(name)) {
-        applications.remove(name);
-        emit applicationUnregistered(app->qPath());
-        app->deleteLater();
+      {
+        QReadLocker locker(&m_appsLock);
+        if (!applications.contains(name)) {
+          return;
+        }
       }
+      {
+        QWriteLocker locker(&m_appsLock);
+        applications.remove(name);
+      }
+      emit applicationUnregistered(app->qPath());
+      app->deleteLater();
     }
   );
 }
 
 void
 AppsAPI::pauseAll() {
-  for (auto app : applications) {
+  QList<Application*> apps;
+  {
+    QReadLocker locker(&m_appsLock);
+    apps = applications.values();
+  }
+  for (auto app : apps) {
     app->pauseNoSecurityCheck(false);
   }
 }
@@ -386,26 +409,18 @@ AppsAPI::resumeIfNone() {
   if (m_stopping || m_starting) {
     return;
   }
-  for (auto app : applications) {
-    if (app->stateNoSecurityCheck() == Application::InForeground) {
-      return;
+  {
+    QReadLocker locker(&m_appsLock);
+    for (auto app : applications) {
+      if (app->stateNoSecurityCheck() == Application::InForeground) {
+        return;
+      }
     }
-  }
-  if (previousApplicationNoSecurityCheck()) {
-    return;
   }
   auto app = getDefaultApplication();
-  if (app == nullptr) {
-    if (applications.isEmpty()) {
-      O_WARNING("No applications found");
-      notificationAPI->errorNotification(_noApplicationsMessage);
-      return;
-    }
-    app = applications.first();
+  if (app != nullptr) {
+    app->launchNoSecurityCheck();
   }
-  app->launchNoSecurityCheck();
-  m_starting = true;
-  ensureForegroundApp();
 }
 
 Application*
@@ -413,6 +428,7 @@ AppsAPI::getApplication(QDBusObjectPath path) {
   if (path.path() == "/") {
     return nullptr;
   }
+  QReadLocker locker(&m_appsLock);
   for (auto app : applications) {
     if (app->path() == path.path()) {
       return app;
@@ -431,6 +447,7 @@ AppsAPI::getApplicationPath(const QString& name) {
   if (!hasPermission("apps")) {
     return QDBusObjectPath("/");
   }
+  QReadLocker locker(&m_appsLock);
   auto app = getApplication(name);
   if (app == nullptr) {
     return QDBusObjectPath("/");
@@ -440,6 +457,7 @@ AppsAPI::getApplicationPath(const QString& name) {
 
 Application*
 AppsAPI::getApplication(const QString& name) {
+  QReadLocker locker(&m_appsLock);
   if (applications.contains(name)) {
     return applications[name];
   }
@@ -805,7 +823,7 @@ AppsAPI::openSettings(const QString& category) {
     {"onResume",         app->onResume()                           },
     {"onStop",           app->onStop()                             }
   };
-  QStringList flags = app.flags();
+  QStringList flags = app->flags();
   if (!flags.contains("transient")) {
     flags.prepend("transient");
   }
@@ -852,6 +870,7 @@ AppsAPI::applicationsForMimeType(const QString& mimeType) {
   if (!hasPermission("apps")) {
     return result;
   }
+  QReadLocker locker(&m_appsLock);
   for (auto app : applications) {
     auto config = app->getConfig();
     if (config.contains("mimeTypes")) {
@@ -885,6 +904,7 @@ AppsAPI::getPath(QString name) {
 
 void
 AppsAPI::writeApplications() {
+  QReadLocker locker(&m_appsLock);
   auto apps = applications.values();
   int size = apps.size();
   settings.beginWriteArray("applications", size);
