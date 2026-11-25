@@ -10,6 +10,7 @@
 #include "dbus.h"
 #include "debug.h"
 #include "devicesettings.h"
+#include "ipc.h"
 #include "json.h"
 #include "liboxide_global.h"
 #include "meta.h"

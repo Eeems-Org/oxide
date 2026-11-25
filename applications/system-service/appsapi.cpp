@@ -788,28 +788,29 @@ AppsAPI::openSettings(const QString& category) {
     app->launchNoSecurityCheck(args);
     return;
   }
-  QVariantMap properties;
-  properties["name"] = QUuid::createUuid().toString(QUuid::Id128);
-  properties["bin"] = app->bin();
-  properties["displayName"] = app->displayName();
-  properties["description"] = app->description();
-  properties["type"] = app->type();
-  properties["icon"] = app->icon();
-  properties["workingDirectory"] = app->workingDirectory();
-  properties["user"] = app->user();
-  properties["group"] = app->group();
-  properties["environment"] = app->environment();
-  properties["permissions"] = app->permissions();
-  properties["directories"] = app->directories();
-  properties["onPause"] = app->onPause();
-  properties["onResume"] = app->onResume();
-  properties["onStop"] = app->onStop();
-  QStringList cloneFlags = app->flags();
-  if (!cloneFlags.contains("transient")) {
-    cloneFlags.prepend("transient");
+  QVariantMap properties = {
+    {"name",             QUuid::createUuid().toString(QUuid::Id128)},
+    {"bin",              app->bin()                                },
+    {"displayName",      app->displayName()                        },
+    {"description",      app->description()                        },
+    {"type",             app->type()                               },
+    {"icon",             app->icon()                               },
+    {"workingDirectory", app->workingDirectory()                   },
+    {"user",             app->user()                               },
+    {"group",            app->group()                              },
+    {"environment",      app->environment()                        },
+    {"permissions",      app->permissions()                        },
+    {"directories",      app->directories()                        },
+    {"onPause",          app->onPause()                            },
+    {"onResume",         app->onResume()                           },
+    {"onStop",           app->onStop()                             }
+  };
+  QStringList flags = app.flags();
+  if (!flags.contains("transient")) {
+    flags.prepend("transient");
   }
-  cloneFlags.removeAll("forking");
-  properties["flags"] = cloneFlags;
+  flags.removeAll("forking");
+  properties["flags"] = flags;
   QDBusObjectPath clonePath = registerApplicationNoSecurityCheck(properties);
   if (clonePath.path() == "/") {
     O_WARNING("Failed to register transient settings instance");

@@ -15,6 +15,7 @@ SOURCES += \
     main.cpp \
     test_Debug.cpp \
     test_Event_Device.cpp \
+    test_Ipc.cpp \
     test_Json.cpp \
     test_Threading.cpp
 
@@ -30,5 +31,6 @@ HEADERS += \
     autotest.h \
     test_Debug.h \
     test_Event_Device.h \
+    test_Ipc.h \
     test_Json.h \
     test_Threading.h

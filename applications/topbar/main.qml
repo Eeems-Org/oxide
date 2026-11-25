@@ -58,7 +58,7 @@ OxideWindow {
                 anchors.fill: parent
                 enabled: controller.enabled
                 onClicked: {
-                    console.log("clocked clicked")
+                    console.log("clock clicked")
                     // TODO open calendar app
                 }
             }

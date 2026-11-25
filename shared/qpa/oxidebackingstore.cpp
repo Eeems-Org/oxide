@@ -42,7 +42,7 @@ OxideBackingStore::flush(
   const QRegion& region,
   const QPoint& offset
 ) {
-  Q_UNUSED(offset);
+  Q_UNUSED(window);
   if (mBuffer == nullptr || region.isEmpty()) {
     return;
   }

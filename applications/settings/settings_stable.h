@@ -4,8 +4,6 @@
 #include <signal.h>
 
 #include <QGuiApplication>
-#include <QLocalServer>
-#include <QLocalSocket>
 #include <QQmlApplicationEngine>
 #include <QtPlugin>
 #include <QtQuick>
