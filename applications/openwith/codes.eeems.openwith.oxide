@@ -1,7 +1,7 @@
 {
     "displayName": "Open With Chooser",
     "description": "Choose an application to open a file",
-    "bin": "/home/root/.vellum/bin/chooser",
+    "bin": "/home/root/.vellum/share/oxide/libexec/codes.eeems.openwith",
     "type": "foreground",
     "flags": ["hidden", "nopreload"],
     "permissions": ["apps"]

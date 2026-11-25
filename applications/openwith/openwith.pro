@@ -9,9 +9,9 @@ SOURCES += \
 
 HEADERS +=
 
-TARGET = chooser
+TARGET = codes.eeems.openwith
 include(../../qmake/common.pri)
-target.path = $$BIN_INSTALL_PATH
+target.path = $$ROOT_INSTALL_PATH/share/oxide/libexec
 INSTALLS += target
 
 include(../../qmake/liboxide.pri)

@@ -1,8 +1,12 @@
 #ifndef APPLISTMODEL_H
 #define APPLISTMODEL_H
 
+#include <algorithm>
+
 #include <QAbstractListModel>
 #include <QFile>
+#include <QMap>
+#include <QSet>
 #include <QVariant>
 
 #include "appitem.h"
@@ -62,6 +66,7 @@ public:
   ) {
     auto bus = QDBusConnection::systemBus();
     QList<AppItem*> newItems;
+    QSet<QString> visibleNames;
     for (auto it = registered.constBegin(); it != registered.constEnd(); ++it) {
       auto name = it.key();
       auto path = it.value().value<QDBusObjectPath>().path();
@@ -69,6 +74,7 @@ public:
       if (app.hidden() || app.transient()) {
         continue;
       }
+      visibleNames.insert(name);
       auto displayName = app.displayName();
       if (displayName.isEmpty()) {
         displayName = name;
@@ -105,11 +111,33 @@ public:
       endInsertRows();
     }
     for (int i = apps.size() - 1; i >= 0; --i) {
-      if (!registered.contains(apps[i]->property("name").toString())) {
-        beginRemoveRows(QModelIndex(), i, i);
-        apps.takeAt(i)->deleteLater();
-        endRemoveRows();
+      if (visibleNames.contains(apps[i]->property("name").toString())) {
+        continue;
       }
+      beginRemoveRows(QModelIndex(), i, i);
+      apps.takeAt(i)->deleteLater();
+      endRemoveRows();
+    }
+    QList<AppItem*> ordered = apps;
+    std::stable_sort(
+      ordered.begin(), ordered.end(), [](AppItem* a, AppItem* b) {
+        return a->property("displayName").toString() <
+               b->property("displayName").toString();
+      }
+    );
+    QMap<AppItem*, int> orderedIndex;
+    for (int i = 0; i < ordered.length(); ++i) {
+      orderedIndex.insert(ordered[i], i);
+    }
+    for (auto item : apps) {
+      auto newIdx = orderedIndex.value(item);
+      auto curIdx = apps.indexOf(item);
+      if (newIdx == curIdx) {
+        continue;
+      }
+      beginMoveRows(QModelIndex(), curIdx, curIdx, QModelIndex(), newIdx);
+      apps.move(curIdx, newIdx);
+      endMoveRows();
     }
   }
 

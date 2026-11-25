@@ -1,8 +1,0 @@
-{
-    "displayName": "Terminal",
-    "description": "A terminal emulator using libghostty",
-    "icon": "oxide:wither-48",
-    "bin": "/home/root/.vellum/bin/wither",
-    "flags": ["nopreload"],
-    "type": "foreground"
-}

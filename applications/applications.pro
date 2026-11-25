@@ -21,6 +21,7 @@ SUBDIRS = \
     system-service \
     task-switcher \
     terminal \
+    textviewer \
     topbar \
     update-desktop-database \
     xclip \
@@ -30,7 +31,7 @@ SUBDIRS = \
     xdg-mime \
     xdg-open \
     xdg-settings \
-    chooser
+    openwith
 
 desktop-file-edit.depends =
 desktop-file-install.depends =
@@ -60,6 +61,7 @@ file-manager.depends = system-service
 xdg-mime.depends = system-service
 xdg-open.depends = system-service
 xdg-settings.depends = system-service
-chooser.depends = system-service
+openwith.depends = system-service
+textviewer.depends =
 
 INSTALLS += $$SUBDIRS

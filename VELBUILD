@@ -107,6 +107,9 @@ package() {
         home/root/.local/share/applications/codes.eeems.settings.oxide
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
         home/root/.local/share/icons/oxide/48x48/apps/settings.png
+    # "Open with" application
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/share/oxide/libexec \
+        home/root/.vellum/share/oxide/libexec/codes.eeems.openwith
     # Keyd configuration
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
         home/root/.config/keyd/oxide.conf
@@ -309,6 +312,11 @@ oxide_extra() {
             home/root/.local/share/applications/codes.eeems.defile.oxide
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
             home/root/.local/share/icons/oxide/48x48/apps/defile.png
+        # Text viewer
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/oxide/libexec \
+            home/root/.vellum/share/oxide/libexec/codes.eeems.text
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
+            home/root/.local/share/applications/codes.eeems.text.oxide
     }
 }
 
@@ -351,8 +359,6 @@ oxide_utils() {
             home/root/.vellum/bin/xdg-icon-resource
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/xdg-mime
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
-            home/root/.vellum/bin/chooser
     }
     triggers='
     /home/root/.local/share/applications

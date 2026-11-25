@@ -1,9 +1,0 @@
-{
-    "displayName": "Files",
-    "description": "Browse and manage files",
-    "bin": "/home/root/.vellum/bin/defile",
-    "icon": "oxide:defile-48",
-    "type": "foreground",
-    "permissions": [],
-    "flags": ["nopreload"]
-}

@@ -16,10 +16,10 @@ using namespace codes::eeems::oxide1;
 int
 main(int argc, char* argv[]) {
   QCoreApplication app(argc, argv);
-  sentry_init("chooser", argv);
+  sentry_init("openwith", argv);
   app.setOrganizationName("Eeems");
   app.setOrganizationDomain(OXIDE_SERVICE);
-  app.setApplicationName("chooser");
+  app.setApplicationName("openwith");
   app.setApplicationVersion(APP_VERSION);
 
   QCommandLineParser parser;

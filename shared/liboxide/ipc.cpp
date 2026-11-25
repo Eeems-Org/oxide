@@ -59,6 +59,9 @@ namespace Oxide {
       );
       releaseLock(m_lockFd, m_lockPath.toUtf8().constData());
       m_lockFd = -1;
+      auto server = m_server;
+      m_server = nullptr;
+      delete server;
       return false;
     }
 

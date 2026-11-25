@@ -9,9 +9,6 @@ CONFIG(release, debug|release){
     CONFIG += qtquickcompiler
 }
 
-SOURCES += \
-        main.cpp
-
 TARGET = codes.eeems.settings
 include(../../qmake/common.pri)
 target.path = $$ROOT_INSTALL_PATH/share/oxide/libexec
@@ -24,6 +21,9 @@ INSTALLS += applications
 icons.path = $$ICONS_INSTALL_PATH
 icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/settings.png
 INSTALLS += icons
+
+SOURCES += \
+    main.cpp
 
 HEADERS += \
     controller.h \

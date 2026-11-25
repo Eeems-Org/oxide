@@ -231,8 +231,9 @@ namespace Oxide {
     auto& entry = notifiers[idx];
     if (entry.notifier != nullptr) {
       entry.notifier->disconnect();
-      delete entry.notifier;
+      auto* notifier = entry.notifier;
       entry.notifier = nullptr;
+      delete notifier;
     }
     if (entry.fd >= 0) {
       ::close(entry.fd);
