@@ -447,7 +447,6 @@ AppsAPI::getApplicationPath(const QString& name) {
   if (!hasPermission("apps")) {
     return QDBusObjectPath("/");
   }
-  QReadLocker locker(&m_appsLock);
   auto app = getApplication(name);
   if (app == nullptr) {
     return QDBusObjectPath("/");
@@ -904,8 +903,11 @@ AppsAPI::getPath(QString name) {
 
 void
 AppsAPI::writeApplications() {
-  QReadLocker locker(&m_appsLock);
-  auto apps = applications.values();
+  QList<Application*> apps;
+  {
+    QReadLocker locker(&m_appsLock);
+    apps = applications.values();
+  }
   int size = apps.size();
   settings.beginWriteArray("applications", size);
   for (int i = 0; i < size; ++i) {
