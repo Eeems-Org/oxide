@@ -55,6 +55,7 @@ Application::launchNoSecurityCheck(const QStringList& args) {
       "Launch Application",
       "launch",
       [this, args](Oxide::Sentry::Transaction* t) {
+        QPointer<Application> guard(this);
 #ifdef SENTRY
         if (t != nullptr) {
           sentry_transaction_set_tag(
@@ -65,7 +66,13 @@ Application::launchNoSecurityCheck(const QStringList& args) {
         Q_UNUSED(t);
 #endif
         appsAPI->recordPreviousApplication();
+        if (guard.isNull()) {
+          return;
+        }
         O_INFO("Launching " << path());
+        if (guard.isNull()) {
+          return;
+        }
         appsAPI->pauseAll();
         if (!flags().contains("noannounce")) {
           m_notification = notificationAPI->add(
@@ -167,10 +174,11 @@ Application::pauseNoSecurityCheck(bool startIfNone) {
     return;
   }
   O_INFO("Pausing " << path());
+  QPointer<Application> guard(this);
   Oxide::Sentry::sentry_transaction(
     "Pause Application",
     "pause",
-    [this, startIfNone](Oxide::Sentry::Transaction* t) {
+    [this, startIfNone, guard](Oxide::Sentry::Transaction* t) {
 #ifdef SENTRY
       if (t != nullptr) {
         sentry_transaction_set_tag(
@@ -180,7 +188,6 @@ Application::pauseNoSecurityCheck(bool startIfNone) {
 #else
       Q_UNUSED(t);
 #endif
-      QPointer<Application> guard(this);
       interruptApplication();
       if (guard.isNull()) {
         return;
@@ -192,6 +199,9 @@ Application::pauseNoSecurityCheck(bool startIfNone) {
       emit appsAPI->applicationPaused(qPath());
     }
   );
+  if (guard.isNull()) {
+    return;
+  }
   O_INFO("Paused " << path());
 }
 void
@@ -327,8 +337,11 @@ Application::resumeNoSecurityCheck() {
     O_DEBUG("Can't Resume" << path() << "Already running!");
     return;
   }
+  QPointer<Application> guard(this);
   Oxide::Sentry::sentry_transaction(
-    "Resume Application", "resume", [this](Oxide::Sentry::Transaction* t) {
+    "Resume Application",
+    "resume",
+    [this, guard](Oxide::Sentry::Transaction* t) {
 #ifdef SENTRY
       if (t != nullptr) {
         sentry_transaction_set_tag(
@@ -336,16 +349,14 @@ Application::resumeNoSecurityCheck() {
         );
       }
 #else
-        Q_UNUSED(t);
+      Q_UNUSED(t);
 #endif
       appsAPI->recordPreviousApplication();
       auto p = path();
       O_INFO("Resuming " << p);
       appsAPI->pauseAll();
-      QPointer<Application> guard(this);
       uninterruptApplication();
       if (guard.isNull()) {
-        O_INFO("Application deleted during resume " << p);
         return;
       }
       waitForResume();
@@ -353,6 +364,9 @@ Application::resumeNoSecurityCheck() {
       emit appsAPI->applicationResumed(qPath());
     }
   );
+  if (guard.isNull()) {
+    return;
+  }
   O_INFO("Resumed " << path());
 }
 void
@@ -1062,10 +1076,7 @@ Application::name() {
 }
 int
 Application::processId() {
-  if (!m_process) {
-    return 0;
-  }
-  return m_process->processId();
+  return m_process != nullptr ? m_process->processId() : 0;
 }
 QStringList
 Application::permissions() {

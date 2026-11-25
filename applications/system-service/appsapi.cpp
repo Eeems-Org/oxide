@@ -394,12 +394,15 @@ AppsAPI::unregisterApplication(Application* app) {
 
 void
 AppsAPI::pauseAll() {
-  QList<Application*> apps;
+  QList<QPointer<Application>> apps;
   {
     QReadLocker locker(&m_appsLock);
     apps = applications.values();
   }
-  for (auto app : apps) {
+  for (QPointer<Application> app : apps) {
+    if (app.isNull()) {
+      continue;
+    }
     app->pauseNoSecurityCheck(false);
   }
 }
@@ -903,11 +906,8 @@ AppsAPI::getPath(QString name) {
 
 void
 AppsAPI::writeApplications() {
-  QList<Application*> apps;
-  {
-    QReadLocker locker(&m_appsLock);
-    apps = applications.values();
-  }
+  QReadLocker locker(&m_appsLock);
+  auto apps = applications.values();
   int size = apps.size();
   settings.beginWriteArray("applications", size);
   for (int i = 0; i < size; ++i) {
@@ -950,6 +950,9 @@ AppsAPI::readApplications() {
       Application* app;
       {
         QReadLocker locker(&m_appsLock);
+        if (!applications.contains(name)) {
+          continue;
+        }
         app = applications[name];
       }
       if (!names.contains(name) && !app->systemApp() && !app->transient()) {
@@ -1029,12 +1032,15 @@ AppsAPI::readApplications() {
     apps.insert(name, app);
   }
   // Unregister any system applications that no longer exist on disk.
-  QList<Application*> _apps;
+  QList<QPointer<Application>> _apps;
   {
     QReadLocker locker(&m_appsLock);
     _apps = applications.values();
   }
   for (auto application : _apps) {
+    if (application.isNull()) {
+      continue;
+    }
     auto name = application->name();
     if (!apps.contains(name) && application->systemApp()) {
       O_WARNING(name << "Is no longer found on disk");

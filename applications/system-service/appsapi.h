@@ -136,7 +136,7 @@ private:
   bool m_starting;
   bool m_enabled;
   QReadWriteLock m_appsLock{QReadWriteLock::Recursive};
-  QMap<QString, Application*> applications;
+  QMap<QString, QPointer<Application>> applications;
   QStringList previousApplications;
   QSettings settings;
   bool m_sleeping;
