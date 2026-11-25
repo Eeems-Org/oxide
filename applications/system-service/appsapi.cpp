@@ -941,8 +941,17 @@ AppsAPI::readApplications() {
       names << settings.value("name").toString();
     }
     settings.endArray();
-    for (auto name : applications.keys()) {
-      auto app = applications[name];
+    QStringList keys;
+    {
+      QReadLocker locker(&m_appsLock);
+      keys = applications.keys();
+    }
+    for (auto name : keys) {
+      Application* app;
+      {
+        QReadLocker locker(&m_appsLock);
+        app = applications[name];
+      }
       if (!names.contains(name) && !app->systemApp() && !app->transient()) {
         app->unregisterNoSecurityCheck();
       }
@@ -987,10 +996,17 @@ AppsAPI::readApplications() {
     if (settings.contains("group")) {
       properties.insert("group", settings.value("group", "").toString());
     }
-    if (applications.contains(name)) {
+    Application* application = nullptr;
+    {
+      QReadLocker locker(&m_appsLock);
+      if (applications.contains(name)) {
+        application = applications[name];
+      }
+    }
+    if (application != nullptr) {
       O_DEBUG("Updating " << name);
       O_DEBUG(properties);
-      applications[name]->setConfig(properties);
+      application->setConfig(properties);
     } else {
       O_INFO(name);
       O_DEBUG(properties);
@@ -1013,7 +1029,12 @@ AppsAPI::readApplications() {
     apps.insert(name, app);
   }
   // Unregister any system applications that no longer exist on disk.
-  for (auto application : applications.values()) {
+  QList<Application*> _apps;
+  {
+    QReadLocker locker(&m_appsLock);
+    _apps = applications.values();
+  }
+  for (auto application : _apps) {
     auto name = application->name();
     if (!apps.contains(name) && application->systemApp()) {
       O_WARNING(name << "Is no longer found on disk");
@@ -1036,7 +1057,14 @@ AppsAPI::readApplications() {
     flags.prepend("system");
     app["flags"] = flags;
     auto properties = registrationToMap(app);
-    if (applications.contains(name)) {
+    Application* application = nullptr;
+    {
+      QReadLocker locker(&m_appsLock);
+      if (applications.contains(name)) {
+        application = applications[name];
+      }
+    }
+    if (application != nullptr) {
       O_DEBUG("Updating " << name);
       O_DEBUG(properties);
       applications[name]->setConfig(properties);

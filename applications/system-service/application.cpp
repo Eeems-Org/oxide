@@ -1065,7 +1065,7 @@ Application::processId() {
   if (!m_process) {
     return 0;
   }
-  return processId();
+  return m_process->processId();
 }
 QStringList
 Application::permissions() {
