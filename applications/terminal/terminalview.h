@@ -47,7 +47,9 @@ private:
   void updateSize();
   void openPty();
   QByteArray keyToBytes(QKeyEvent* event);
+  void render();
   void renderDirtyCells();
+  void renderCursor();
   void renderRowToPainter(
     QPainter& painter,
     GhosttyRenderStateRowIterator rowIter,
@@ -78,6 +80,7 @@ private:
     const GhosttyColorRgb& bg
   );
   void applyPending();
+  void renderAllCells();
 
   QString m_title;
   void* m_terminal = nullptr;
