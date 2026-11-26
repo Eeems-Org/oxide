@@ -640,7 +640,15 @@ namespace Oxide::Applications {
       O_WARNING("Empty registration object.");
       return false;
     }
-    if (!_validateRegistration(name, app, true).isEmpty()) {
+    auto errors = _validateRegistration(name, app, true);
+    if (
+      std::any_of(
+        errors.constBegin(), errors.constEnd(), [](const ValidationError& e) {
+          return e.level == ErrorLevel::Error ||
+                 e.level == ErrorLevel::Critical;
+        }
+      )
+    ) {
       O_WARNING("Validation failed.");
       return false;
     }
