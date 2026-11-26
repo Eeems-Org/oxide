@@ -307,6 +307,8 @@ oxide_extra() {
             home/root/.vellum/bin/wither
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
             home/root/.local/share/applications/codes.eeems.wither.oxide
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
+            home/root/.local/share/icons/oxide/48x48/apps/wither.png
         # File manager
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/defile
