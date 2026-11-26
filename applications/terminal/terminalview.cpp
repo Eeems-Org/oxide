@@ -22,6 +22,7 @@
 #include <libblight.h>
 #include <libblight/clock.h>
 #include <libblight/connection.h>
+#include <liboxide/debug.h>
 #include <liboxide/oxideqml.h>
 
 TerminalView::TerminalView(QQuickItem* parent)
@@ -295,7 +296,7 @@ TerminalView::renderAllCells() {
     y++;
   }
   m_pending +=
-    QRectF(0, 0, m_cols * m_charWidth, m_rows * m_charHeight).toRect();
+    QRectF(0, 0, m_cols * m_charWidth, m_rows * m_charHeight).toAlignedRect();
   m_rowIter = rowIter;
   m_cells = cells;
   ghostty_render_state_clean(renderState);
@@ -390,7 +391,7 @@ TerminalView::renderDirtyCells() {
             QRectF(
               cx * m_charWidth, y * m_charHeight, m_charWidth, m_charHeight
             )
-              .toRect();
+              .toAlignedRect();
           changedCells++;
         }
       }
@@ -454,7 +455,7 @@ TerminalView::renderCursor() {
                          m_charWidth,
                          m_charHeight
           )
-                         .toRect();
+                         .toAlignedRect();
         }
         if (cursorVisible) {
           painter.fillRect(
@@ -467,7 +468,7 @@ TerminalView::renderCursor() {
             QRectF(
               cx * m_charWidth, cy * m_charHeight, m_charWidth, m_charHeight
             )
-              .toRect();
+              .toAlignedRect();
         }
         m_lastCursorX = static_cast<int>(cx);
         m_lastCursorY = static_cast<int>(cy);
@@ -481,7 +482,7 @@ TerminalView::renderCursor() {
                      m_charWidth,
                      m_charHeight
       )
-                     .toRect();
+                     .toAlignedRect();
       m_lastCursorX = -1;
       m_lastCursorY = -1;
     }
@@ -494,7 +495,7 @@ TerminalView::renderCursor() {
                    m_charWidth,
                    m_charHeight
     )
-                   .toRect();
+                   .toAlignedRect();
     m_lastCursorX = -1;
     m_lastCursorY = -1;
   }
