@@ -751,17 +751,10 @@ TerminalView::applyPending() {
   painter.setTransform(sceneTransform, true);
   painter.drawImage(sourceRect, m_drawn, sourceRect);
 
-  qreal scaleX = width() / qreal(m_drawn.width());
-  qreal scaleY = height() / qreal(m_drawn.height());
   for (const QRect& rect : pending) {
     Oxide::QML::repaint(
       window,
-      sceneTransform.mapRect(QRectF(
-        rect.x() * scaleX,
-        rect.y() * scaleY,
-        rect.width() * scaleX,
-        rect.height() * scaleY
-      )),
+      sceneTransform.mapRect(QRectF(rect)),
       Blight::WaveformMode::UI,
       Blight::ContentType::Color,
       Blight::UpdateMode::PartialUpdate,
