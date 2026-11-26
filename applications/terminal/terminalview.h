@@ -44,23 +44,12 @@ signals:
   void titleChanged(const QString& title);
 
 private:
-  void updateSize();
   void openPty();
   QByteArray keyToBytes(QKeyEvent* event);
   void render();
   void renderDirtyCells();
   void renderCursor();
-  void renderRowToPainter(
-    QPainter& painter,
-    GhosttyRenderStateRowIterator rowIter,
-    GhosttyRenderStateRowCells cells,
-    uint16_t y,
-    const GhosttyColorRgb& fg,
-    const GhosttyColorRgb& bg,
-    qreal charWidth,
-    qreal charHeight
-  );
-  void renderCellToPainter(
+  void renderCell(
     QPainter& painter,
     int x,
     int y,

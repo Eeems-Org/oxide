@@ -160,33 +160,10 @@ TerminalView::geometryChange(
 ) {
   QQuickPaintedItem::geometryChange(newGeometry, oldGeometry);
   auto size = newGeometry.size().toSize();
-  if (size.isEmpty()) {
-    return;
-  }
-  updateSize();
-  m_drawn = QImage(
-    QSize(m_cols * m_charWidth, m_rows * m_charHeight),
-    QImage::Format_ARGB32_Premultiplied
-  );
-  m_drawn.fill(Qt::black);
-  renderAllCells();
-  renderCursor();
-  update();
-}
-
-void
-TerminalView::keyPressEvent(QKeyEvent* event) {
-  QByteArray data = keyToBytes(event);
-  if (!data.isEmpty() && m_masterFd >= 0) {
-    // TODO properly handle errors and continuing writing partial data
-    ::write(m_masterFd, data.constData(), data.size());
-  }
-  event->accept();
-}
-
-void
-TerminalView::updateSize() {
-  if (m_charWidth <= 0 || m_charHeight <= 0 || window() == nullptr) {
+  if (
+    size.isEmpty() || m_charWidth <= 0 || m_charHeight <= 0 ||
+    window() == nullptr
+  ) {
     return;
   }
   auto* contentItem = window()->contentItem();
@@ -233,6 +210,24 @@ TerminalView::updateSize() {
     ws.ws_col = static_cast<unsigned short>(m_cols);
     ioctl(m_masterFd, TIOCSWINSZ, &ws);
   }
+  m_drawn = QImage(
+    QSize(m_cols * m_charWidth, m_rows * m_charHeight),
+    QImage::Format_ARGB32_Premultiplied
+  );
+  m_drawn.fill(Qt::black);
+  renderAllCells();
+  renderCursor();
+  update();
+}
+
+void
+TerminalView::keyPressEvent(QKeyEvent* event) {
+  QByteArray data = keyToBytes(event);
+  if (!data.isEmpty() && m_masterFd >= 0) {
+    // TODO properly handle errors and continuing writing partial data
+    ::write(m_masterFd, data.constData(), data.size());
+  }
+  event->accept();
 }
 
 void
@@ -297,9 +292,7 @@ TerminalView::renderAllCells() {
         cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_UTF8, &gbuf
       );
       std::string text(reinterpret_cast<const char*>(gbuf.ptr), gbuf.len);
-      renderCellToPainter(
-        painter, x, y, style, text, fg, bg, m_charWidth, m_charHeight
-      );
+      renderCell(painter, x, y, style, text, fg, bg, m_charWidth, m_charHeight);
       size_t cacheIdx = y * m_cols + x;
       if (cacheIdx < m_cellCache.size()) {
         m_cellCache[cacheIdx].style = style;
@@ -394,7 +387,7 @@ TerminalView::renderDirtyCells() {
              style.underline_color.value.palette) ||
           cached.text != text
         ) {
-          renderCellToPainter(
+          renderCell(
             painter, cx, y, style, text, fg, bg, m_charWidth, m_charHeight
           );
           m_pending += QRect(
@@ -534,43 +527,7 @@ TerminalView::render() {
 }
 
 void
-TerminalView::renderRowToPainter(
-  QPainter& painter,
-  GhosttyRenderStateRowIterator rowIter,
-  GhosttyRenderStateRowCells cells,
-  uint16_t y,
-  const GhosttyColorRgb& fg,
-  const GhosttyColorRgb& bg,
-  qreal charWidth,
-  qreal charHeight
-) {
-  ghostty_render_state_row_get(
-    rowIter, GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, &cells
-  );
-  int x = 0;
-  while (ghostty_render_state_row_cells_next(cells)) {
-    GhosttyStyle style = {};
-    ghostty_render_state_row_cells_get(
-      cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE, &style
-    );
-    char buf[256];
-    GhosttyBuffer gbuf;
-    gbuf.ptr = reinterpret_cast<uint8_t*>(buf);
-    gbuf.cap = sizeof(buf) - 1;
-    gbuf.len = 0;
-    ghostty_render_state_row_cells_get(
-      cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_UTF8, &gbuf
-    );
-    std::string text(reinterpret_cast<const char*>(gbuf.ptr), gbuf.len);
-    renderCellToPainter(
-      painter, x, y, style, text, fg, bg, charWidth, charHeight
-    );
-    x++;
-  }
-}
-
-void
-TerminalView::renderCellToPainter(
+TerminalView::renderCell(
   QPainter& painter,
   int x,
   int y,
