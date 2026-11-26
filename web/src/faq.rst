@@ -190,3 +190,34 @@ In order to clear a default application you just need to set it to a `"/"` path:
 .. code:: bash
 
   rot apps call setDefaultApplication 'QString:"terminal"' 'QDBusObjectPath:"/"'
+
+Can I change the default application for a file type?
+=====================================================
+
+Yes, you can use ``xdg-mime`` to set the default application for a MIME type in Oxide 3.4 onwards:
+
+.. code:: bash
+
+  xdg-mime default <application.desktop> <mimetype>
+
+For example, to set the text viewer as the default for plain text files:
+
+.. code:: bash
+
+  xdg-mime default codes.eeems.text.oxide text/plain
+
+To query the current default application for a MIME type:
+
+.. code:: bash
+
+  xdg-mime query default $type
+
+To clear a default application for a MIME type:
+
+.. code:: bash
+
+  rot apps call setDefaultApplication QString:"$type\" 'QDBusObjectPath:"/"'
+
+This will revert to whatever applications are configured for the MIME type in the application registration.
+
+
