@@ -17,6 +17,10 @@ applications.files = codes.eeems.text.oxide
 applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 
+icons.path = $$ICONS_INSTALL_PATH
+icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/file.png
+INSTALLS += icons
+
 SOURCES += \
     main.cpp \
     lazylinemodel.cpp

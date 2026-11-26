@@ -109,7 +109,7 @@ openFileWithMime(const QString& filePath) {
     qDebug() << "No application found for MIME type:" << mimeType;
     return EXIT_FAILURE;
   }
-  return launchOxideApp("codes.eeems.chooser", {mimeType, filePath});
+  return launchOxideApp("codes.eeems.openwith", {mimeType, filePath});
 }
 
 int

@@ -1,0 +1,24 @@
+{
+    "displayName": "Image Viewer",
+    "description": "View image files",
+    "bin": "/home/root/.vellum/share/oxide/libexec/codes.eeems.image",
+    "icon": "oxide:image-48",
+    "type": "foreground",
+    "mimeTypes": [
+        "image/png",
+        "image/jpeg",
+        "image/gif",
+        "image/bmp",
+        "image/webp",
+        "image/tiff",
+        "image/svg+xml",
+        "image/x-ico"
+    ],
+    "permissions": [],
+    "flags": [
+        "nopreload",
+        "forking",
+        "topbar",
+        "hidden.launcher"
+    ]
+}

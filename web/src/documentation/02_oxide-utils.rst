@@ -61,6 +61,11 @@ Examples:
   xdg-open 'oxide:editor?arg=file1.txt&arg=file2.txt'
 
 
+xdg-mime
+========
+
+https://man.archlinux.org/man/xdg-mime.1
+
 xdg-settings
 ============
 

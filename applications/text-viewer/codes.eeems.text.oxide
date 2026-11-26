@@ -2,7 +2,7 @@
     "displayName": "Text Viewer",
     "description": "View text files",
     "bin": "/home/root/.vellum/share/oxide/libexec/codes.eeems.text",
-    "icon": "oxide:textviewer-48",
+    "icon": "oxide:file-48",
     "type": "foreground",
     "mimeTypes": [
         "text/plain",
@@ -21,6 +21,7 @@
     "flags": [
         "nopreload",
         "forking",
-        "topbar"
+        "topbar",
+        "hidden.launcher"
     ]
 }

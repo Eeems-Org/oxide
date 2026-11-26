@@ -1,5 +1,4 @@
-#ifndef TERMINALVIEW_H
-#define TERMINALVIEW_H
+#pragma once
 
 #include <QImage>
 #include <QPainter>
@@ -107,5 +106,3 @@ private:
   int m_lastCursorX = -1;
   int m_lastCursorY = -1;
 };
-
-#endif

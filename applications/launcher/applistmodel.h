@@ -71,7 +71,10 @@ public:
       auto name = it.key();
       auto path = it.value().value<QDBusObjectPath>().path();
       Application app(serviceName, path, bus, parent);
-      if (app.hidden() || app.transient()) {
+      if (
+        app.hidden() || app.flags().contains("hidden.launcher") ||
+        app.transient()
+      ) {
         continue;
       }
       visibleNames.insert(name);

@@ -39,7 +39,7 @@ main(int argc, char* argv[]) {
 
   QStringList args = parser.positionalArguments();
   if (args.isEmpty()) {
-    qDebug() << "Usage: textviewer <file>";
+    qDebug() << "Usage: codes.eeems.text <file>";
     return EXIT_FAILURE;
   }
 

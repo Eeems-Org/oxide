@@ -129,7 +129,7 @@ public:
     for (auto item : runningApplications) {
       auto path = item.value<QDBusObjectPath>().path();
       Application app(OXIDE_SERVICE, path, bus, this);
-      if (app.hidden()) {
+      if (app.hidden() || app.flags().contains("hidden.switcher")) {
         continue;
       }
       auto name = app.name();

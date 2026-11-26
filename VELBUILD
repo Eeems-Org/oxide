@@ -110,6 +110,8 @@ package() {
     # "Open with" application
     install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/share/oxide/libexec \
         home/root/.vellum/share/oxide/libexec/codes.eeems.openwith
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/codes.eeems.openwith.oxide
     # Keyd configuration
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
         home/root/.config/keyd/oxide.conf
@@ -317,6 +319,13 @@ oxide_extra() {
             home/root/.vellum/share/oxide/libexec/codes.eeems.text
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
             home/root/.local/share/applications/codes.eeems.text.oxide
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
+            home/root/.local/share/icons/oxide/48x48/apps/file.png
+        # Image viewer
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/oxide/libexec \
+            home/root/.vellum/share/oxide/libexec/codes.eeems.image
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
+            home/root/.local/share/applications/codes.eeems.image.oxide
     }
 }
 

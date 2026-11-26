@@ -1,21 +1,38 @@
 #include <liboxide.h>
 #include <liboxide/applications.h>
+#include <liboxide/eventfilter.h>
+#include <liboxide/oxideqml.h>
+#include <signal.h>
 
 #include <QCommandLineParser>
 #include <QDBusConnection>
 #include <QDebug>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QMimeDatabase>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QUuid>
-#include <string>
+#include <QtQuick>
 
+#include "controller.h"
+
+using namespace Oxide;
 using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
+using namespace Oxide::QML;
 using namespace codes::eeems::oxide1;
+
+void
+sigHandler(int signal) {
+  ::signal(signal, SIG_DFL);
+  qApp->quit();
+}
 
 int
 main(int argc, char* argv[]) {
-  QCoreApplication app(argc, argv);
+  deviceSettings.setupQtEnvironment();
+  QGuiApplication app(argc, argv);
   sentry_init("openwith", argv);
   app.setOrganizationName("Eeems");
   app.setOrganizationDomain(OXIDE_SERVICE);
@@ -32,7 +49,7 @@ main(int argc, char* argv[]) {
 
   QStringList args = parser.positionalArguments();
   if (args.size() != 2) {
-    qDebug() << "Usage: chooser <mimetype> <filepath>";
+    qDebug() << "Usage: openwith <mimetype> <filepath>";
     return EXIT_FAILURE;
   }
 
@@ -48,100 +65,44 @@ main(int argc, char* argv[]) {
   }
   Apps apps(OXIDE_SERVICE, path.path(), bus);
 
-  // Find applications that handle this MIME type
   QList<QDBusObjectPath> candidates = apps.applicationsForMimeType(mimeType);
   if (candidates.isEmpty()) {
     qDebug() << "No applications found for MIME type:" << mimeType;
     return EXIT_FAILURE;
   }
 
-  if (candidates.size() == 1) {
-    // Only one candidate, launch it directly
-    Application chosen(OXIDE_SERVICE, candidates.first().path(), bus);
-    QStringList launchArgs = {filePath};
-    if (!chosen.forking()) {
-      chosen.launchWithArgs(launchArgs).waitForFinished();
-      return EXIT_SUCCESS;
-    }
-    // Register transient clone
-    QVariantMap properties;
-    properties["name"] = QUuid::createUuid().toString(QUuid::Id128);
-    properties["bin"] = chosen.bin();
-    properties["displayName"] = chosen.displayName();
-    properties["description"] = chosen.description();
-    properties["type"] = (int)ApplicationType::Background;
-    properties["icon"] = chosen.icon();
-    properties["workingDirectory"] = chosen.workingDirectory();
-    properties["user"] = chosen.user();
-    properties["group"] = chosen.group();
-    properties["environment"] = chosen.environment();
-    properties["permissions"] = chosen.permissions();
-    properties["directories"] = chosen.directories();
-    properties["onPause"] = chosen.onPause();
-    properties["onResume"] = chosen.onResume();
-    properties["onStop"] = chosen.onStop();
-    QStringList cloneFlags = chosen.flags();
-    if (!cloneFlags.contains("transient")) {
-      cloneFlags.prepend("transient");
-    }
-    cloneFlags.removeAll("forking");
-    properties["flags"] = cloneFlags;
-    QDBusObjectPath clonePath = apps.registerApplication(properties);
-    if (clonePath.path() == "/") {
-      qDebug() << "Failed to register transient instance";
-      return EXIT_FAILURE;
-    }
-    Application clone(OXIDE_SERVICE, clonePath.path(), bus);
-    clone.launchWithArgs(launchArgs).waitForFinished();
-    return EXIT_SUCCESS;
-  }
-
-  // Multiple candidates - show chooser dialog
-  // For now, just pick the first one and log a message
-  // TODO: Implement actual UI dialog
-  qDebug() << "Multiple applications found for" << mimeType
-           << "- launching first one";
-  qDebug() << "Candidates:";
+  QVariantList candidateList;
   for (auto& c : candidates) {
     Application a(OXIDE_SERVICE, c.path(), bus);
-    qDebug() << "  " << a.displayName() << "(" << c.path() << ")";
+    QVariantMap app;
+    app["path"] = c.path();
+    app["displayName"] = a.displayName();
+    app["icon"] = a.icon();
+    candidateList.append(app);
   }
 
-  Application chosen(OXIDE_SERVICE, candidates.first().path(), bus);
-  QStringList launchArgs = {filePath};
-  if (!chosen.forking()) {
-    chosen.launchWithArgs(launchArgs).waitForFinished();
-    return EXIT_SUCCESS;
-  }
-  // Register transient clone
-  QVariantMap properties;
-  properties["name"] = QUuid::createUuid().toString(QUuid::Id128);
-  properties["bin"] = chosen.bin();
-  properties["displayName"] = chosen.displayName();
-  properties["description"] = chosen.description();
-  properties["type"] = (int)ApplicationType::Background;
-  properties["icon"] = chosen.icon();
-  properties["workingDirectory"] = chosen.workingDirectory();
-  properties["user"] = chosen.user();
-  properties["group"] = chosen.group();
-  properties["environment"] = chosen.environment();
-  properties["permissions"] = chosen.permissions();
-  properties["directories"] = chosen.directories();
-  properties["onPause"] = chosen.onPause();
-  properties["onResume"] = chosen.onResume();
-  properties["onStop"] = chosen.onStop();
-  QStringList cloneFlags = chosen.flags();
-  if (!cloneFlags.contains("transient")) {
-    cloneFlags.prepend("transient");
-  }
-  cloneFlags.removeAll("forking");
-  properties["flags"] = cloneFlags;
-  QDBusObjectPath clonePath = apps.registerApplication(properties);
-  if (clonePath.path() == "/") {
-    qDebug() << "Failed to register transient instance";
-    return EXIT_FAILURE;
-  }
-  Application clone(OXIDE_SERVICE, clonePath.path(), bus);
-  clone.launchWithArgs(launchArgs).waitForFinished();
-  return EXIT_SUCCESS;
+  Controller controller(&apps);
+
+  QQmlApplicationEngine engine;
+  registerQML(&engine);
+  QQmlContext* context = engine.rootContext();
+  context->setContextProperty("candidates", candidateList);
+  context->setContextProperty("mimeType", mimeType);
+  context->setContextProperty("filePath", filePath);
+  context->setContextProperty("chooser", &controller);
+
+  signal(SIGINT, sigHandler);
+  signal(SIGSEGV, sigHandler);
+  signal(SIGTERM, sigHandler);
+
+  QTimer::singleShot(0, [&app, &engine] {
+    QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
+    if (root == nullptr) {
+      qDebug() << "Nothing to display";
+      qApp->exit(EXIT_FAILURE);
+      return;
+    }
+    root->installEventFilter(new EventFilter(&app));
+  });
+  return app.exec();
 }
