@@ -184,3 +184,9 @@ The settings application is expected to support an argument with a settings cate
 - ``gestures``
 - ``wifi``
 - ``notifications``
+
+In order to clear a default application you just need to set it to a `"/"` path:
+
+.. code:: bash
+
+  rot apps call setDefaultApplication 'QString:"terminal"' 'QDBusObjectPath:"/"'

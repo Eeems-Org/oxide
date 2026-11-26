@@ -3,6 +3,18 @@
     "description": "System top bar",
     "bin": "/home/root/.vellum/bin/stain",
     "type": "background",
-    "flags": ["hidden", "nopreload", "noannounce", "privileged", "autoStart"],
-    "permissions": ["apps", "wifi", "power", "notification", "system"]
+    "flags": [
+        "hidden",
+        "nopreload",
+        "noannounce",
+        "privileged",
+        "autoStart"
+    ],
+    "permissions": [
+        "apps",
+        "wifi",
+        "power",
+        "notification",
+        "system"
+    ]
 }

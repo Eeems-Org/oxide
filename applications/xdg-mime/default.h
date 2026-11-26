@@ -48,7 +48,6 @@ class DefaultCommand : ICommand {
     }
     for (const QString& mimeType : mimeTypes) {
       apps.setDefaultApplication(mimeType, appPath);
-      qDebug() << "Set default for" << mimeType << "to" << appName;
     }
     return EXIT_SUCCESS;
   }
