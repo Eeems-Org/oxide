@@ -170,13 +170,15 @@ TerminalView::geometryChange(
   if (contentItem == nullptr) {
     return;
   }
+  QPointF sceneTopLeft = mapToScene(QPointF(0, 0));
+  QPointF sceneTopRight = mapToScene(QPointF(width(), 0));
   int cols, rows;
   if (
-    qFuzzyCompare(contentItem->rotation(), 90.0) ||
-    qFuzzyCompare(contentItem->rotation(), 270.0)
+    qAbs(sceneTopRight.y() - sceneTopLeft.y()) >
+    qAbs(sceneTopRight.x() - sceneTopLeft.x())
   ) {
-    cols = static_cast<int>(height() / m_charHeight);
-    rows = static_cast<int>(width() / m_charWidth);
+    cols = static_cast<int>(height() / m_charWidth);
+    rows = static_cast<int>(width() / m_charHeight);
   } else {
     cols = static_cast<int>(width() / m_charWidth);
     rows = static_cast<int>(height() / m_charHeight);
@@ -322,6 +324,9 @@ TerminalView::renderDirtyCells() {
     reinterpret_cast<GhosttyRenderStateRowIterator>(m_rowIter);
   GhosttyRenderStateRowCells cells =
     reinterpret_cast<GhosttyRenderStateRowCells>(m_cells);
+  ghostty_render_state_get(
+    renderState, GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, &rowIter
+  );
   GhosttyColorRgb fg = {200, 200, 200};
   GhosttyColorRgb bg = {0, 0, 0};
   ghostty_render_state_get(
@@ -520,7 +525,7 @@ TerminalView::render() {
       break;
     case GHOSTTY_RENDER_STATE_DIRTY_FULL:
     default:
-      renderDirtyCells();
+      renderAllCells();
       break;
   }
   renderCursor();
@@ -731,16 +736,19 @@ TerminalView::applyPending() {
   m_lastPaint.reset();
   QPainter windowPainter(&windowImage);
   windowPainter.setFont(m_font);
-  qreal rotation = contentItem->rotation();
-  QRectF sceneRect = mapRectToScene(boundingRect());
-  QTransform transform;
-  qreal centerX = sceneRect.center().x();
-  qreal centerY = sceneRect.center().y();
-  transform.translate(centerX, centerY);
-  transform.rotate(rotation);
-  transform.translate(-centerX, -centerY);
-  windowPainter.setTransform(transform, true);
-  windowPainter.drawImage(sceneRect, m_drawn);
+  QPointF topLeft = mapToScene(QPointF(0, 0));
+  QPointF topRight = mapToScene(QPointF(1, 0));
+  QPointF bottomLeft = mapToScene(QPointF(0, 1));
+  QTransform sceneTransform;
+  sceneTransform.translate(topLeft.x(), topLeft.y());
+  sceneTransform.rotate(qRadiansToDegrees(
+    qAtan2(topRight.y() - topLeft.y(), topRight.x() - topLeft.x())
+  ));
+  sceneTransform.scale(
+    QLineF(topLeft, topRight).length(), QLineF(topLeft, bottomLeft).length()
+  );
+  windowPainter.setTransform(sceneTransform, true);
+  windowPainter.drawImage(boundingRect(), m_drawn);
   windowPainter.end();
   qDebug() << "repaint" << m_pending;
   QRegion pending = m_pending;
@@ -748,7 +756,7 @@ TerminalView::applyPending() {
   for (const QRect& rect : pending) {
     Oxide::QML::repaint(
       window,
-      rect,
+      sceneTransform.mapRect(rect),
       Blight::WaveformMode::UI,
       Blight::ContentType::Color,
       Blight::UpdateMode::PartialUpdate,
