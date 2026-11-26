@@ -294,7 +294,8 @@ TerminalView::renderAllCells() {
     }
     y++;
   }
-  m_pending += QRect(0, 0, m_cols * m_charWidth, m_rows * m_charHeight);
+  m_pending +=
+    QRectF(0, 0, m_cols * m_charWidth, m_rows * m_charHeight).toRect();
   m_rowIter = rowIter;
   m_cells = cells;
   ghostty_render_state_clean(renderState);
@@ -385,9 +386,11 @@ TerminalView::renderDirtyCells() {
           renderCell(
             painter, cx, y, style, text, fg, bg, m_charWidth, m_charHeight
           );
-          m_pending += QRect(
-            cx * m_charWidth, y * m_charHeight, m_charWidth, m_charHeight
-          );
+          m_pending +=
+            QRectF(
+              cx * m_charWidth, y * m_charHeight, m_charWidth, m_charHeight
+            )
+              .toRect();
           changedCells++;
         }
       }
@@ -445,12 +448,13 @@ TerminalView::renderCursor() {
            cy != static_cast<uint16_t>(m_lastCursorY))
         ) {
           renderCellAtPosition(painter, m_lastCursorX, m_lastCursorY, fg, bg);
-          m_pending += QRect(
-            m_lastCursorX * m_charWidth,
-            m_lastCursorY * m_charHeight,
-            m_charWidth,
-            m_charHeight
-          );
+          m_pending += QRectF(
+                         m_lastCursorX * m_charWidth,
+                         m_lastCursorY * m_charHeight,
+                         m_charWidth,
+                         m_charHeight
+          )
+                         .toRect();
         }
         if (cursorVisible) {
           painter.fillRect(
@@ -459,9 +463,11 @@ TerminalView::renderCursor() {
             ),
             QColor(fg.r, fg.g, fg.b)
           );
-          m_pending += QRect(
-            cx * m_charWidth, cy * m_charHeight, m_charWidth, m_charHeight
-          );
+          m_pending +=
+            QRectF(
+              cx * m_charWidth, cy * m_charHeight, m_charWidth, m_charHeight
+            )
+              .toRect();
         }
         m_lastCursorX = static_cast<int>(cx);
         m_lastCursorY = static_cast<int>(cy);
@@ -469,24 +475,26 @@ TerminalView::renderCursor() {
     } else if (m_lastCursorX >= 0 && m_lastCursorY >= 0) {
       // Clear the previous cursor
       renderCellAtPosition(painter, m_lastCursorX, m_lastCursorY, fg, bg);
-      m_pending += QRect(
-        m_lastCursorX * m_charWidth,
-        m_lastCursorY * m_charHeight,
-        m_charWidth,
-        m_charHeight
-      );
+      m_pending += QRectF(
+                     m_lastCursorX * m_charWidth,
+                     m_lastCursorY * m_charHeight,
+                     m_charWidth,
+                     m_charHeight
+      )
+                     .toRect();
       m_lastCursorX = -1;
       m_lastCursorY = -1;
     }
   } else if (m_lastCursorX >= 0 && m_lastCursorY >= 0) {
     // Clear the previous cursor
     renderCellAtPosition(painter, m_lastCursorX, m_lastCursorY, fg, bg);
-    m_pending += QRect(
-      m_lastCursorX * m_charWidth,
-      m_lastCursorY * m_charHeight,
-      m_charWidth,
-      m_charHeight
-    );
+    m_pending += QRectF(
+                   m_lastCursorX * m_charWidth,
+                   m_lastCursorY * m_charHeight,
+                   m_charWidth,
+                   m_charHeight
+    )
+                   .toRect();
     m_lastCursorX = -1;
     m_lastCursorY = -1;
   }
