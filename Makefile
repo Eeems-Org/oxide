@@ -10,6 +10,7 @@ BUILD=$(CURDIR)/.build
 BUILDNAME?=oxide
 TOOLCHAIN?=5.8.203
 PODMAN?=podman
+
 ifneq ($(filter debug,$(FEATURES)),)
 CONFIG += CONFIG+="debug"
 endif
@@ -163,7 +164,7 @@ build-amd64: release
 
 .PHONY: _build-%
 _build-%: $(DIST)
-	$(PODMAN) run \
+	podman run \
 		--env BUILDNAME=oxide-$* \
 		--rm \
 		--volume=$(CURDIR):/src \
@@ -195,7 +196,8 @@ $(BUILD)/package/oxide.tar.gz: $(OBJ) $(BUILD)/package
 	tar \
 		--exclude='$(CURDIR)/.git' \
 		--exclude='$(CURDIR)/dist' \
-		--exclude='$(CURDIR)/shared/libghostty-vt/src/.zig-cache' \
+		--exclude='shared/libghostty-vt/src/.zig-cache' \
+		--exclude='shared/libghostty-vt/src/zig-pkg' \
 		--exclude='$(BUILD)' \
 		--exclude='$(DIST)' \
 		-czvf $(BUILD)/package/oxide.tar.gz \

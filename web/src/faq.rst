@@ -151,3 +151,73 @@ Yes, you can disable specific gestures with the following commands:
   rot system call setSwipeEnabled 'int:3' 'bool:false'
   # Disable swipe from top of the screen
   rot system call setSwipeEnabled 'int:4' 'bool:false'
+
+Can I change the default applications?
+======================================
+
+Yes, you can change the default applications in Oxide 3.2 onwards with the following commands:
+
+.. code:: bash
+
+  rot apps call setDefaultApplication QString:\"$type\" QDBusObjectPath:\"/codes/eeems/oxide1/apps/$identifier\"
+
+You can use the following to get the current default application values, it will return ``"/"`` if there is no value, and Oxide will use it's internal defaults:
+
+.. code:: bash
+
+  rot apps call defaultApplication QString:\"$type\"
+
+The type can be anything, but oxide makes use of the following types:
+
+- ``launcher``
+- ``lockscreen``
+- ``task-switcher``
+- ``process-manager``
+- ``settings``
+- ``terminal``
+
+The settings application is expected to support an argument with a settings category name. Oxide uses the following settings categories:
+
+- ``general``
+- ``display``
+- ``power``
+- ``gestures``
+- ``wifi``
+- ``notifications``
+
+In order to clear a default application you just need to set it to a `"/"` path:
+
+.. code:: bash
+
+  rot apps call setDefaultApplication 'QString:"terminal"' 'QDBusObjectPath:"/"'
+
+Can I change the default application for a file type?
+=====================================================
+
+Yes, you can use ``xdg-mime`` to set the default application for a MIME type in Oxide 3.4 onwards:
+
+.. code:: bash
+
+  xdg-mime default <application.desktop> <mimetype>
+
+For example, to set the text viewer as the default for plain text files:
+
+.. code:: bash
+
+  xdg-mime default codes.eeems.text.oxide text/plain
+
+To query the current default application for a MIME type:
+
+.. code:: bash
+
+  xdg-mime query default $type
+
+To clear a default application for a MIME type:
+
+.. code:: bash
+
+  rot apps call setDefaultApplication QString:"$type\" 'QDBusObjectPath:"/"'
+
+This will revert to whatever applications are configured for the MIME type in the application registration.
+
+

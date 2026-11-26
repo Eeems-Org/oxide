@@ -58,7 +58,9 @@ Optional string array
 
 An array of flags for the application.
 
-- ``"hidden"``: Do not display this application to the user.
+- ``"hidden"``: Do not display this application to the user in the launcher or task switcher.
+- ``"hidden.launcher"``: Do not display this application in the launcher (but show in task switcher).
+- ``"hidden.switcher"``: Do not display this application in the task switcher (but show in launcher).
 - ``"autoStart"``: Start this application automatically when tarnish starts up. Should only be used on applications with a type of ``"backgroundable"`` or ``"background"``.
 - ``"system"``: This is a system application and cannot be removed by the user. This is set by default as applications using an application registration file are intended to be removed by a package manager.
 - ``"nopreload"``: Do not automatically add any of the preload libraries to ``LD_PRELOAD`` when running this application.
@@ -67,6 +69,7 @@ An array of flags for the application.
 - ``"exclusive"``: Application is to be run in exclusive mode. This means that the compositor will not be sending input to the application, or handling displaying anything to the screen while this application is in the foreground.
 - ``"noannounce"``: Do not announce when this application is being started
 - ``"forking"``: Allow this application to be launched multiple times from the launcher. Each launch from the launcher creates a fresh independent instance. The task switcher will show all running instances.
+- ``privileged``: This application is to be given system privileges with the compositor.
 
 displayName
 -----------
@@ -137,6 +140,13 @@ environment
 Optional string map
 
 Extra environment variables to set before running the application.
+
+mimeTypes
+---------
+
+Optional string array
+
+List of MIME types this application can handle. When a file with a matching MIME type is opened, this application will be offered as an option. See the `IANA Media Types registry <https://www.iana.org/assignments/media-types/media-types.xhtml>`_ for a complete list of standard MIME types.
 
 events
 ------

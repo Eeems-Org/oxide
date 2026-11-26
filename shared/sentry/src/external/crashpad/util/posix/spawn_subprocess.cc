@@ -219,8 +219,7 @@ bool SpawnSubprocess(const std::vector<std::string>& argv,
                                 attr_p,
                                 argv_for_spawn,
                                 envp_for_spawn)) != 0) {
-      PLOG(FATAL) << (use_path ? "posix_spawnp" : "posix_spawn") << " "
-                  << argv_for_spawn[0];
+      _exit(errno);
     }
 
     // _exit() instead of exit(), because fork() was called.
@@ -253,8 +252,9 @@ bool SpawnSubprocess(const std::vector<std::string>& argv,
     LOG(WARNING) << base::StringPrintf(
         "intermediate process: unknown termination 0x%x", status);
   } else if (WEXITSTATUS(status) != EXIT_SUCCESS) {
-    LOG(WARNING) << "intermediate process exited with code "
-                 << WEXITSTATUS(status);
+    const int exit_status = WEXITSTATUS(status);
+      LOG(ERROR) << base::StringPrintf("failed to spawn %s: %s (%d)",
+        argv_c[0], strerror(exit_status), exit_status);
   }
 
   return true;

@@ -1,7 +1,0 @@
-{
-    "displayName": "Process Manager",
-    "description": "List and kill running processes",
-    "icon": "oxide:erode-48",
-    "bin": "/home/root/.vellum/bin/erode",
-    "flags": ["nopreload"]
-}

@@ -1,0 +1,27 @@
+{
+    "displayName": "Text Viewer",
+    "description": "View text files",
+    "bin": "/home/root/.vellum/share/oxide/libexec/codes.eeems.text",
+    "icon": "oxide:file-48",
+    "type": "foreground",
+    "mimeTypes": [
+        "text/plain",
+        "text/x-log",
+        "text/x-config",
+        "text/x-makefile",
+        "text/x-csrc",
+        "text/x-c++src",
+        "text/x-python",
+        "text/x-shellscript",
+        "application/json",
+        "application/xml",
+        "text/csv",
+        "text/markdown"
+    ],
+    "flags": [
+        "nopreload",
+        "forking",
+        "topbar",
+        "hidden.launcher"
+    ]
+}

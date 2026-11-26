@@ -15,6 +15,20 @@
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
+#include <libblight.h>
+#include <libblight/debug.h>
+#include <libblight/system.h>
+
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <dlfcn.h>
+#include <fcntl.h>
+#include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -835,7 +849,8 @@ validate_swapbuffers(void* func) {
 }
 
 /*!
- * \brief Runtime pointers to real QPainter methods (resolved once via dlsym).
+ * \brief Runtime pointers to real QPainter methods (resolved once via
+ * dlsym).
  */
 struct QPainterFuncs {
   void (*constructor)(void*, void*);
@@ -924,7 +939,8 @@ repaint(
 }
 
 /*!
- * \brief Dump the framebuffer, frameBuffer, and previousBuffer to /tmp/*.raw
+ * \brief Dump the framebuffer, frameBuffer, and previousBuffer to
+ * /tmp/*.raw
  */
 void
 dump_buffers() {
@@ -972,12 +988,6 @@ update_buffers(const Qt::QRectLayout& rect) {
   void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
   if (!epframebuffer) {
     _DEBUG("update_buffers: epframebufferInstance not set yet, skipping");
-    return;
-  }
-  auto* previousBuffer =
-    static_cast<char*>(epframebuffer) + previousBufferOffset();
-  if (previousBuffer == nullptr) {
-    _DEBUG("update_buffers: previousBuffer not set yet, skipping");
     return;
   }
   auto* renderTarget = *reinterpret_cast<char**>(
@@ -1303,9 +1313,8 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
   if (!Client::isFbEnabled()) {
     static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
       RTLD_NEXT,
-      "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlMo"
-      "de"
-      "E"
+      "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControl"
+      "ModeE"
     ));
     if (!func) {
       _CRIT(
@@ -1490,7 +1499,8 @@ hook_check_candidate() {
     _DEBUG("swapBuffers candidate function at %p", func_swapBuffers_qregion);
     if (!validate_swapbuffers(func_swapBuffers_qregion)) {
       _DEBUG(
-        "validate_swapbuffers(%p) FAILED for QRegion candidate %p, vtable=%p",
+        "validate_swapbuffers(%p) FAILED for QRegion candidate %p, "
+        "vtable=%p",
         func_swapBuffers_qregion,
         candidate,
         vtable

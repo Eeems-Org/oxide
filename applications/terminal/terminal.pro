@@ -21,9 +21,13 @@ include(../../qmake/common.pri)
 target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
-applications.files = ../../assets/opt/usr/share/applications/codes.eeems.wither.oxide
+applications.files = codes.eeems.wither.oxide
 applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
+
+icons.path = $$ICONS_INSTALL_PATH
+icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/wither.png
+INSTALLS += icons
 
 
 RESOURCES += \

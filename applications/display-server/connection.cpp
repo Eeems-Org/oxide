@@ -648,7 +648,7 @@ Connection::readSocket() {
             }
           }
         }
-        unsigned int ack_size = ack_size =
+        unsigned int ack_size =
           list.size() * sizeof(decltype(list)::value_type);
         Blight::data_t ack_data = (Blight::data_t)malloc(ack_size);
         memcpy(ack_data, list.data(), ack_size);

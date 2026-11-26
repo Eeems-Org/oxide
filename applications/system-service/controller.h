@@ -66,6 +66,16 @@ public:
     return instance;
   }
   bool enabled = true; // Used to disable sending input when suspending
+
+  ~Controller() {
+    for (auto& monitor : m_switchMonitors) {
+      delete monitor.notifier;
+      if (monitor.fd >= 0) {
+        ::close(monitor.fd);
+      }
+    }
+  }
+
   Q_INVOKABLE void screenshot() { screenAPI->screenshot(); }
   Q_INVOKABLE void taskSwitcher() { appsAPI->openTaskSwitcher(); }
   Q_INVOKABLE void processManager() { appsAPI->openTaskManager(); }
@@ -179,12 +189,15 @@ public:
   void setFrontlightBrightness(int brightness) {
     frontlightAPI->setBrightnessNoPermissionCheck(brightness);
   }
-  bool shouldResume() {
+  QObject* rootObject() {
     auto* engine = dbusService->engine();
     if (engine == nullptr) {
-      return true;
+      return nullptr;
     }
-    auto* rootObject = engine->rootObjects().value(0);
+    return engine->rootObjects().value(0);
+  }
+  bool shouldResume() {
+    auto* rootObject = this->rootObject();
     if (rootObject == nullptr) {
       return true;
     }
@@ -198,13 +211,10 @@ public:
     }
     return true;
   }
-
-  ~Controller() {
-    for (auto& monitor : m_switchMonitors) {
-      delete monitor.notifier;
-      if (monitor.fd >= 0) {
-        ::close(monitor.fd);
-      }
+  void showPowerMenu() {
+    auto* rootObject = this->rootObject();
+    if (rootObject != nullptr) {
+      QMetaObject::invokeMethod(rootObject, "showPowerMenu");
     }
   }
 

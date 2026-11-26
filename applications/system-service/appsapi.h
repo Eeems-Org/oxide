@@ -13,10 +13,12 @@
 #include <QTimer>
 #include <QUuid>
 
+#include <QReadWriteLock>
+
 #include "apibase.h"
 #include "application.h"
 
-#define OXIDE_SETTINGS_VERSION 1
+#define OXIDE_SETTINGS_VERSION 2
 
 #define appsAPI AppsAPI::singleton()
 
@@ -95,10 +97,17 @@ public:
   void connectSignals(Application* app, int signal);
   void disconnectSignals(Application* app, int signal);
   Q_INVOKABLE bool previousApplication();
+  Q_INVOKABLE QList<QDBusObjectPath> applicationsForMimeType(
+    const QString& mimeType
+  );
   bool previousApplicationNoSecurityCheck();
   void forceRecordPreviousApplication();
   void recordPreviousApplication();
   void removeFromPreviousApplications(QString name);
+  Application* getDefaultApplication(const QString& type);
+  bool onLockscreen();
+  bool onTaskSwitcher();
+  bool onDefault();
 
 signals:
   void applicationRegistered(QDBusObjectPath);
@@ -111,24 +120,25 @@ signals:
 
 public slots:
   QT_DEPRECATED void leftHeld();
-  void openDefaultApplication();
+  QT_DEPRECATED void openDefaultApplication();
   QT_DEPRECATED void homeHeld();
-  void openTaskManager();
-  void openLockScreen();
-  void openTaskSwitcher();
-  void openTerminal();
+  QT_DEPRECATED void openTaskManager();
+  QT_DEPRECATED void openLockScreen();
+  QT_DEPRECATED void openTaskSwitcher();
+  QT_DEPRECATED void openTerminal();
+  void openSettings(const QString& category);
+  QDBusObjectPath application();
+  QDBusObjectPath defaultApplication(const QString& type);
+  void setDefaultApplication(const QString& type, const QDBusObjectPath& path);
 
 private:
   bool m_stopping;
   bool m_starting;
   bool m_enabled;
-  QMap<QString, Application*> applications;
+  QReadWriteLock m_appsLock{QReadWriteLock::Recursive};
+  QMap<QString, QPointer<Application>> applications;
   QStringList previousApplications;
   QSettings settings;
-  QDBusObjectPath m_startupApplication;
-  QDBusObjectPath m_lockscreenApplication;
-  QDBusObjectPath m_processManagerApplication;
-  QDBusObjectPath m_taskSwitcherApplication;
   bool m_sleeping;
   Application* resumeApp = nullptr;
   QString getPath(QString name);
@@ -147,5 +157,6 @@ private:
   static void migrate(QSettings* settings, int fromVersion);
   bool locked();
   void ensureForegroundApp();
+  Application* getDefaultApplication();
 };
 #endif // APPSAPI_H

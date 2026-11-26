@@ -306,6 +306,7 @@ SystemAPI::SystemAPI(QObject* parent)
   : APIBase(parent)
   , suspendTimer(this)
   , lockTimer(this)
+  , activityTimer(this)
   , settings(this)
   , sleepInhibitors()
   , powerOffInhibitors()
@@ -394,7 +395,9 @@ SystemAPI::SystemAPI(QObject* parent)
                 sharedSettings.setValue(
                   "enabled", settings.value("enabled", true)
                 );
-                sharedSettings.setValue("length", settings.value("length", 30));
+                sharedSettings.setValue(
+                  "length", settings.value("length", 170)
+                );
               }
               sharedSettings.endArray();
             }
@@ -517,6 +520,28 @@ SystemAPI::SystemAPI(QObject* parent)
       O_INFO("System API ready to use");
     }
   );
+  activityTimer.setSingleShot(true);
+  connect(&activityTimer, &QTimer::timeout, this, [this]() {
+    auto active = suspendTimer.isActive();
+    suspendTimer.stop();
+    if (autoSleep() && powerAPI->m_chargerState != PowerAPI::ChargerConnected) {
+      if (!active) {
+        O_DEBUG("Suspend timer re-enabled due to activity");
+      }
+      suspendTimer.start(autoSleep() * 60 * 1000);
+    } else if (active) {
+      O_DEBUG("Suspend timer disabled");
+    }
+    active = lockTimer.isActive();
+    if (autoLock()) {
+      if (!active) {
+        O_DEBUG("Lock timer re-enabled due to activity");
+      }
+      lockTimer.start(autoLock() * 60 * 1000);
+    } else if (active) {
+      O_DEBUG("Lock timer disabled");
+    }
+  });
 }
 
 void
@@ -568,7 +593,11 @@ SystemAPI::setAutoLock(int _autoLock) {
   }
   O_INFO("Auto Lock" << _autoLock);
   sharedSettings.set_autoLock(_autoLock);
-  lockTimer.setInterval(_autoLock * 60 * 1000);
+  if (_autoLock) {
+    lockTimer.setInterval(_autoLock * 60 * 1000);
+  } else {
+    lockTimer.stop();
+  }
   sharedSettings.sync();
   emit autoLockChanged(_autoLock);
 }
@@ -815,6 +844,9 @@ SystemAPI::getSwipeLength(SwipeDirection direction) {
 
 void
 SystemAPI::suspend() {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (sleepInhibited()) {
     O_INFO("Unable to suspend. Action is currently inhibited.");
     return;
@@ -838,6 +870,9 @@ SystemAPI::powerOff() {
 
 void
 SystemAPI::reboot() {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (powerOffInhibited()) {
     O_INFO("Unable to reboot. Action is currently inhibited.");
     return;
@@ -849,29 +884,21 @@ SystemAPI::reboot() {
 }
 void
 SystemAPI::activity() {
-  auto active = suspendTimer.isActive();
-  suspendTimer.stop();
-  if (autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected) {
-    if (!active) {
-      O_DEBUG("Suspend timer re-enabled due to activity");
-    }
-    suspendTimer.start(autoSleep() * 60 * 1000);
-  } else if (active) {
-    O_DEBUG("Suspend timer disabled");
+  if (activityTimer.isActive()) {
+    return;
   }
-  active = lockTimer.isActive();
-  if (autoLock()) {
-    if (!active) {
-      O_DEBUG("Lock timer re-enabled due to activity");
-    }
-    lockTimer.start(autoLock() * 60 * 1000);
-  } else if (active) {
-    O_DEBUG("Lock timer disabled");
+  activityTimer.start(1000);
+  if (suspendTimer.isActive()) {
+    suspendTimer.stop();
+    O_DEBUG("Suspend timer stopped due to activity");
   }
 }
 
 void
 SystemAPI::inhibitSleep(QDBusMessage message) {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (!sleepInhibited()) {
     emit sleepInhibitedChanged(true);
   }
@@ -889,6 +916,9 @@ SystemAPI::inhibitSleep(QDBusMessage message) {
 
 void
 SystemAPI::uninhibitSleep(QDBusMessage message) {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (!sleepInhibited()) {
     return;
   }
@@ -913,6 +943,9 @@ SystemAPI::uninhibitSleep(QDBusMessage message) {
 
 void
 SystemAPI::inhibitPowerOff(QDBusMessage message) {
+  if (!hasPermission("system")) {
+    return;
+  }
   if (!powerOffInhibited()) {
     emit powerOffInhibitedChanged(true);
   }
@@ -929,6 +962,10 @@ SystemAPI::inhibitPowerOff(QDBusMessage message) {
 
 void
 SystemAPI::uninhibitPowerOff(QDBusMessage message) {
+  Q_UNUSED(message);
+  if (!hasPermission("system")) {
+    return;
+  }
   if (!powerOffInhibited()) {
     return;
   }
@@ -941,8 +978,21 @@ SystemAPI::uninhibitPowerOff(QDBusMessage message) {
 
 void
 SystemAPI::reload(QDBusMessage message) {
+  Q_UNUSED(message);
+  if (!hasPermission("system")) {
+    return;
+  }
   O_INFO("Reloading overlays");
   dbusService->reload();
+}
+
+void
+SystemAPI::showPowerMenu(QDBusMessage message) {
+  Q_UNUSED(message);
+  if (!hasPermission("system")) {
+    return;
+  }
+  Controller::singleton()->showPowerMenu();
 }
 
 void

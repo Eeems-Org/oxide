@@ -3,6 +3,7 @@
 #include <liboxide/dbus.h>
 
 #include <QObject>
+#include <QUrl>
 
 using namespace codes::eeems::oxide1;
 
@@ -31,6 +32,14 @@ public:
 
   Q_INVOKABLE void execute();
   Q_INVOKABLE void stop();
+  void update(
+    const QString& path,
+    const QString& displayName,
+    const QString& desc,
+    const QString& call,
+    bool running,
+    const QString& imgFile
+  );
 
 signals:
   void nameChanged(QString);
@@ -55,8 +64,12 @@ private slots:
     emit displayNameChanged(displayName);
   }
   void onIconChanged(QString path) {
-    _imgFile = path;
-    emit imgFileChanged(path);
+    setProperty(
+      "imgFile",
+      (!path.isEmpty() && QFile(path).exists())
+        ? QUrl::fromLocalFile(path).toString(QUrl::FullyEncoded)
+        : "qrc:/img/icon.png"
+    );
   }
 
 private:

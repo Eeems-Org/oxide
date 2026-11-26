@@ -199,6 +199,7 @@ class ExceptionHandlerServer {
   Delegate* delegate_;
   ScopedFileHandle pollfd_;
   std::atomic<bool> keep_running_;
+  pid_t owner_process_id_;
   InitializationStateDcheck initialized_;
 };
 

@@ -24,6 +24,7 @@ SOURCES += \
     devicesettings.cpp \
     event_device.cpp \
     eventfilter.cpp \
+    ipc.cpp \
     json.cpp \
     liboxide.cpp \
     oxide_sentry.cpp \
@@ -47,6 +48,7 @@ HEADERS += \
     devicesettings.h \
     event_device.h \
     eventfilter.h \
+    ipc.h \
     liboxide_global.h \
     liboxide.h \
     meta.h \

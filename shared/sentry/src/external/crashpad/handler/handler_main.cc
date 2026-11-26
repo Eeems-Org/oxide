@@ -128,6 +128,8 @@ void Usage(const base::FilePath& me) {
 #if BUILDFLAG(IS_APPLE)
       // clang-format off
 "      --handshake-fd=FD       establish communication with the client over FD\n"
+"      --client-pid=PID\n"
+"                              process ID allowed to send runtime controls\n"
   // clang-format on
 #endif  // BUILDFLAG(IS_APPLE)
 #if BUILDFLAG(IS_WIN)
@@ -245,6 +247,7 @@ struct Options {
 #if BUILDFLAG(IS_APPLE)
   std::string mach_service;
   int handshake_fd;
+  pid_t client_pid;
   bool reset_own_crash_exception_port_to_system_default;
 #elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
   VMAddress exception_information_address;
@@ -651,6 +654,7 @@ int HandlerMain(int argc,
     kOptionDatabase,
 #if BUILDFLAG(IS_APPLE)
     kOptionHandshakeFD,
+    kOptionClientPID,
 #endif  // BUILDFLAG(IS_APPLE)
 #if BUILDFLAG(IS_WIN)
     kOptionInitialClientData,
@@ -719,6 +723,7 @@ int HandlerMain(int argc,
     {"database", required_argument, nullptr, kOptionDatabase},
 #if BUILDFLAG(IS_APPLE)
     {"handshake-fd", required_argument, nullptr, kOptionHandshakeFD},
+    {"client-pid", required_argument, nullptr, kOptionClientPID},
 #endif  // BUILDFLAG(IS_APPLE)
 #if BUILDFLAG(IS_WIN)
     {"initial-client-data",
@@ -812,6 +817,7 @@ int HandlerMain(int argc,
   Options options = {};
 #if BUILDFLAG(IS_APPLE)
   options.handshake_fd = -1;
+  options.client_pid = -1;
 #endif
   options.identify_client_via_url = true;
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
@@ -860,6 +866,17 @@ int HandlerMain(int argc,
                                  "--handshake-fd requires a file descriptor");
           return ExitFailure();
         }
+        break;
+      }
+      case kOptionClientPID: {
+        int client_pid;
+        if (!StringToNumber(optarg, &client_pid) ||
+            client_pid <= 0) {
+          ToolSupport::UsageHint(
+              me, "--client-pid requires a positive process ID");
+          return ExitFailure();
+        }
+        options.client_pid = client_pid;
         break;
       }
       case kOptionMachService: {
@@ -1050,6 +1067,10 @@ int HandlerMain(int argc,
   if (options.handshake_fd >= 0 && !options.mach_service.empty()) {
     ToolSupport::UsageHint(
         me, "--handshake-fd and --mach-service are incompatible");
+    return ExitFailure();
+  }
+  if (options.handshake_fd >= 0 && options.client_pid <= 0) {
+    ToolSupport::UsageHint(me, "--client-pid is required with --handshake-fd");
     return ExitFailure();
   }
 #elif BUILDFLAG(IS_WIN)
@@ -1263,8 +1284,9 @@ int HandlerMain(int argc,
     return ExitFailure();
   }
 
-  ExceptionHandlerServer exception_handler_server(
-      std::move(receive_right), !options.mach_service.empty());
+  ExceptionHandlerServer exception_handler_server(std::move(receive_right),
+                                                  !options.mach_service.empty(),
+                                                  options.client_pid);
   base::AutoReset<ExceptionHandlerServer*> reset_g_exception_handler_server(
       &g_exception_handler_server, &exception_handler_server);
 

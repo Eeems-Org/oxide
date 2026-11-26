@@ -10,21 +10,18 @@
 
 using namespace codes::eeems::oxide1;
 
-const QList<QString> SystemFlags{
-  "system",
-  "transient",
-};
+const QList<QString> SystemFlags{"system", "transient", "privileged"};
 const QList<QString> Flags{
   "autoStart",
   "hidden",
   "forking",
   "noannounce",
   "nosavescreen",
-  "system",
   "nopreload",
   "nopreload.sysfs",
   "nopreload.compositor",
-  "exclusive"
+  "exclusive",
+  "topbar"
 };
 const QList<QString> DeprecatedFlags{"chroot", "nosplash"};
 
@@ -350,6 +347,7 @@ namespace Oxide::Applications {
       }
     } else
       shouldExit isFile("workingDirectory", ErrorLevel::Error, false);
+    shouldExit isArray("mimeTypes", ErrorLevel::Warning, false);
     shouldExit isString("displayName", false);
     shouldExit isString("description", false);
     shouldExit if (isString("user", false)) {
@@ -541,6 +539,15 @@ namespace Oxide::Applications {
       }
       properties.insert("environment", envMap);
     }
+    if (app.contains("mimeTypes")) {
+      QStringList mimeTypes;
+      for (auto mime : app["mimeTypes"].toArray()) {
+        if (mime.isString()) {
+          mimeTypes.append(mime.toString());
+        }
+      }
+      properties.insert("mimeTypes", mimeTypes);
+    }
     return properties;
   }
   QJsonObject getRegistration(const char* path) {
@@ -630,24 +637,40 @@ namespace Oxide::Applications {
   }
   bool addToTarnishCache(const QString& name, const QJsonObject& app) {
     if (app.isEmpty()) {
+      O_WARNING("Empty registration object.");
       return false;
     }
-    if (!_validateRegistration(name, app, true).isEmpty()) {
+    auto errors = _validateRegistration(name, app, true);
+    if (
+      std::any_of(
+        errors.constBegin(), errors.constEnd(), [](const ValidationError& e) {
+          return e.level == ErrorLevel::Error ||
+                 e.level == ErrorLevel::Critical;
+        }
+      )
+    ) {
+      O_WARNING("Validation failed.");
       return false;
     }
     auto bus = QDBusConnection::systemBus();
     General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
     QDBusObjectPath path = api.requestAPI("apps");
     if (path.path() == "/") {
+      O_WARNING("Could not get apps API.");
       return false;
     }
     Apps apps(OXIDE_SERVICE, path.path(), bus);
     auto properties = registrationToMap(app, name);
     if (properties.isEmpty()) {
+      O_WARNING("Empty properties.");
       return false;
     }
     path = apps.registerApplication(properties);
-    return path.path() != "/";
+    if (path.path() != "/") {
+      return true;
+    }
+    O_WARNING("Failed to register.");
+    return false;
   }
   QString iconDirPath(int size, const QString& theme, const QString& context) {
     return QString(OXIDE_ICONS_DIRECTORY "/%1/%2x%2/%3")
