@@ -170,19 +170,8 @@ TerminalView::geometryChange(
   if (contentItem == nullptr) {
     return;
   }
-  QPointF sceneTopLeft = mapToScene(QPointF(0, 0));
-  QPointF sceneTopRight = mapToScene(QPointF(width(), 0));
-  int cols, rows;
-  if (
-    qAbs(sceneTopRight.y() - sceneTopLeft.y()) >
-    qAbs(sceneTopRight.x() - sceneTopLeft.x())
-  ) {
-    cols = static_cast<int>(height() / m_charWidth);
-    rows = static_cast<int>(width() / m_charHeight);
-  } else {
-    cols = static_cast<int>(width() / m_charWidth);
-    rows = static_cast<int>(height() / m_charHeight);
-  }
+  int cols = static_cast<int>(width() / m_charWidth);
+  int rows = static_cast<int>(height() / m_charHeight);
   if (cols < 2) {
     cols = 2;
   }
@@ -217,6 +206,7 @@ TerminalView::geometryChange(
     QImage::Format_ARGB32_Premultiplied
   );
   m_drawn.fill(Qt::black);
+  m_pending = QRegion();
   renderAllCells();
   renderCursor();
   update();
@@ -735,8 +725,6 @@ TerminalView::applyPending() {
   }
 
   m_lastPaint.reset();
-  QPainter painter(&windowImage);
-  painter.setFont(m_font);
   QPointF topLeft = mapToScene(QPointF(0, 0));
   QPointF topRight = mapToScene(QPointF(1, 0));
   QPointF bottomLeft = mapToScene(QPointF(0, 1));
@@ -748,16 +736,25 @@ TerminalView::applyPending() {
   sceneTransform.scale(
     QLineF(topLeft, topRight).length(), QLineF(topLeft, bottomLeft).length()
   );
+  QPainter painter(&windowImage);
+  painter.setFont(m_font);
   painter.setTransform(sceneTransform, true);
   painter.drawImage(boundingRect(), m_drawn);
   painter.end();
   qDebug() << "repaint" << m_pending;
   QRegion pending = m_pending;
   m_pending = QRegion();
+  qreal scaleX = width() / qreal(m_drawn.width());
+  qreal scaleY = height() / qreal(m_drawn.height());
   for (const QRect& rect : pending) {
     Oxide::QML::repaint(
       window,
-      sceneTransform.mapRect(rect),
+      sceneTransform.mapRect(QRectF(
+        rect.x() * scaleX,
+        rect.y() * scaleY,
+        rect.width() * scaleX,
+        rect.height() * scaleY
+      )),
       Blight::WaveformMode::UI,
       Blight::ContentType::Color,
       Blight::UpdateMode::PartialUpdate,
