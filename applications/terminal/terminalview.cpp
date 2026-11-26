@@ -723,8 +723,20 @@ TerminalView::applyPending() {
   if (windowImage.isNull()) {
     return;
   }
-
   m_lastPaint.reset();
+
+  QRegion pending = m_pending;
+  m_pending = QRegion();
+
+  QRect boundingRect = pending.boundingRect();
+  QRectF sourceRect(
+    boundingRect.x(),
+    boundingRect.y(),
+    boundingRect.width(),
+    boundingRect.height()
+  );
+  QPainter painter(&windowImage);
+  painter.setFont(m_font);
   QPointF topLeft = mapToScene(QPointF(0, 0));
   QPointF topRight = mapToScene(QPointF(1, 0));
   QPointF bottomLeft = mapToScene(QPointF(0, 1));
@@ -736,14 +748,9 @@ TerminalView::applyPending() {
   sceneTransform.scale(
     QLineF(topLeft, topRight).length(), QLineF(topLeft, bottomLeft).length()
   );
-  QPainter painter(&windowImage);
-  painter.setFont(m_font);
   painter.setTransform(sceneTransform, true);
-  painter.drawImage(boundingRect(), m_drawn);
-  painter.end();
-  qDebug() << "repaint" << m_pending;
-  QRegion pending = m_pending;
-  m_pending = QRegion();
+  painter.drawImage(sourceRect, m_drawn, sourceRect);
+
   qreal scaleX = width() / qreal(m_drawn.width());
   qreal scaleY = height() / qreal(m_drawn.height());
   for (const QRect& rect : pending) {
