@@ -637,24 +637,32 @@ namespace Oxide::Applications {
   }
   bool addToTarnishCache(const QString& name, const QJsonObject& app) {
     if (app.isEmpty()) {
+      O_WARNING("Empty registration object.");
       return false;
     }
     if (!_validateRegistration(name, app, true).isEmpty()) {
+      O_WARNING("Validation failed.");
       return false;
     }
     auto bus = QDBusConnection::systemBus();
     General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
     QDBusObjectPath path = api.requestAPI("apps");
     if (path.path() == "/") {
+      O_WARNING("Could not get apps API.");
       return false;
     }
     Apps apps(OXIDE_SERVICE, path.path(), bus);
     auto properties = registrationToMap(app, name);
     if (properties.isEmpty()) {
+      O_WARNING("Empty properties.");
       return false;
     }
     path = apps.registerApplication(properties);
-    return path.path() != "/";
+    if (path.path() != "/") {
+      return true;
+    }
+    O_WARNING("Failed to register.");
+    return false;
   }
   QString iconDirPath(int size, const QString& theme, const QString& context) {
     return QString(OXIDE_ICONS_DIRECTORY "/%1/%2x%2/%3")
