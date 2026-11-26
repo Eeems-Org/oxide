@@ -758,7 +758,7 @@ TerminalView::applyPending() {
   );
   painter.setTransform(sceneTransform, true);
   painter.drawImage(sourceRect, m_drawn, sourceRect);
-
+  O_DEBUG("repaint" << pending);
   for (const QRect& rect : pending) {
     Oxide::QML::repaint(
       window,
