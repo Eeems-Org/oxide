@@ -501,9 +501,8 @@ TerminalView::renderCursor() {
 
   if (
     m_cursorPainted == cursorVisible &&
-    ((hasViewport && cx == static_cast<uint16_t>(m_lastCursorX) &&
-      cy == static_cast<uint16_t>(m_lastCursorY)) ||
-     (!hasViewport && m_lastCursorX < 0 && m_lastCursorY < 0))
+    cx == static_cast<uint16_t>(m_lastCursorX) &&
+    cy == static_cast<uint16_t>(m_lastCursorY)
   ) {
     return;
   }
