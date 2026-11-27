@@ -703,8 +703,15 @@ TerminalView::renderCell(
 
 GhosttyColorRgb
 TerminalView::paletteIndexToRgb(uint8_t index) {
-  // Standard 256-color palette
   if (index < 16) {
+#ifdef __arm__
+    // Monochrome-friendly grayscale palette for e-ink/arm devices
+    static const uint8_t gray[16] = {
+      0, 16, 32, 48, 64, 80, 96, 112, 8, 24, 40, 56, 72, 88, 104, 120
+    };
+    uint8_t v = gray[index];
+    return {v, v, v};
+#else
     // 16 base colors
     static const GhosttyColorRgb base[16] = {
       {0,   0,   0  }, // 0: black
@@ -725,6 +732,7 @@ TerminalView::paletteIndexToRgb(uint8_t index) {
       {255, 255, 255}  // 15: bright white
     };
     return base[index];
+#endif
   } else if (index < 232) {
     // 216-color cube (6x6x6)
     uint8_t idx = index - 16;
@@ -855,7 +863,15 @@ TerminalView::openPty() {
     if (home && home[0]) {
       chdir(home);
     }
-    setenv("TERM", "xterm-256color", 1);
+    setenv(
+      "TERM",
+      "xterm"
+#ifndef __arm__
+      "-256color"
+#endif
+      ,
+      1
+    );
     execlp(shell, shell, "-l", nullptr);
     _exit(127);
   }
