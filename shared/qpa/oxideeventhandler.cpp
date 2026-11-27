@@ -312,7 +312,9 @@ OxideEventHandler::OxideEventHandler(
   , m_keymap{0}
   , m_keymap_size{0}
   , m_keycompose{0}
-  , m_keycompose_size{0} {
+  , m_keycompose_size{0}
+  , m_do_compose{true}
+  , m_no_zap{false} {
   parseKeyParams(parameters);
   parseTouchParams(
     QString(deviceSettings.getTouchEnvSetting()).split(QLatin1Char(':'))
@@ -1160,6 +1162,7 @@ OxideEventHandler::unloadKeymap() {
   m_keycompose = s_keycompose_default;
   m_keycompose_size =
     sizeof(s_keycompose_default) / sizeof(s_keycompose_default[0]);
+  m_do_compose = true;
 }
 
 bool
