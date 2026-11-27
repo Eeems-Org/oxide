@@ -400,7 +400,7 @@ OxideEventHandler::processKeyboardEvent(
         map_plain = m;
       }
       quint16 testmods = keyboardData->m_modifiers;
-      testmods &= ~KeyboardMap::ModMeta;
+      testmods &= ~Modifiers::ModMeta;
       if (testmods & (KeyboardMap::ModShiftL | KeyboardMap::ModShiftR)) {
         testmods |= KeyboardMap::ModShift;
         testmods &= ~(KeyboardMap::ModShiftL | KeyboardMap::ModShiftR);
