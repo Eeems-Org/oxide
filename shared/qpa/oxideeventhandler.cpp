@@ -391,7 +391,7 @@ OxideEventHandler::processKeyboardEvent(
   bool first_press = pressed && !autorepeat;
   const KeyboardMap::Mapping* map_plain = 0;
   const KeyboardMap::Mapping* map_withmod = 0;
-  quint8 modifiers = keyboardData->m_modifiers;
+  quint16 modifiers = keyboardData->m_modifiers;
 
   for (int i = 0; i < m_keymap_size && !(map_plain && map_withmod); ++i) {
     const KeyboardMap::Mapping* m = m_keymap + i;
@@ -399,7 +399,7 @@ OxideEventHandler::processKeyboardEvent(
       if (m->modifiers == 0) {
         map_plain = m;
       }
-      quint8 testmods = keyboardData->m_modifiers;
+      quint16 testmods = keyboardData->m_modifiers;
       if (testmods & (KeyboardMap::ModShiftL | KeyboardMap::ModShiftR)) {
         testmods |= KeyboardMap::ModShift;
         testmods &= ~(KeyboardMap::ModShiftL | KeyboardMap::ModShiftR);
