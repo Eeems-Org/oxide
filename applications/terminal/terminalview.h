@@ -16,7 +16,10 @@
 struct CachedCell {
   GhosttyStyle style = {};
   std::string text;
+  GhosttyColorRgb bgColor = {};
 };
+
+class QQuickWindow;
 
 class TerminalView : public QQuickPaintedItem {
   Q_OBJECT
@@ -61,15 +64,13 @@ private:
     qreal charHeight
   );
   GhosttyColorRgb paletteIndexToRgb(uint8_t index);
-  void renderCellAtPosition(
+  void applyPending();
+  void renderAllCells();
+  void clearPreviousCursor(
     QPainter& painter,
-    int x,
-    int y,
     const GhosttyColorRgb& fg,
     const GhosttyColorRgb& bg
   );
-  void applyPending();
-  void renderAllCells();
 
   QString m_title;
   void* m_terminal = nullptr;
@@ -97,4 +98,5 @@ private:
   QTimer* m_paintTimer = nullptr;
   int m_lastCursorX = -1;
   int m_lastCursorY = -1;
+  bool m_cursorPainted = false;
 };

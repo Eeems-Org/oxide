@@ -131,6 +131,7 @@ _install-%:
 		fi
 		vellum --interactive=no update
 		vellum --interactive=no add lockscreen_hook@oxide launcherctl-oxide@oxide oxide-tests@oxide oxide-extra@oxide oxide-xovi@oxide || vellum --interactive=no fix
+		vellum --interactive=no add lockscreen_hook@oxide launcherctl-oxide@oxide oxide-tests@oxide oxide-extra@oxide oxide-xovi@oxide
 		vellum --interactive=no upgrade || vellum --interactive=no fix
 		launcherctl stop-launcher
 		find /home/root/.local/share/tests/ -type f -executable | while read -r test;do $$test;done
