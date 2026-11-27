@@ -12,6 +12,7 @@ test_Threading::~test_Threading() {}
 void
 test_Threading::test_startThreadWithPriority() {
 #ifndef QT_HAS_THREAD_PRIORITY_SCHEDULING
+  auto priority = getNice();
   auto thread = new QThread();
   thread->setObjectName("TimeCriticalPriority");
   startThreadWithPriority(thread, QThread::TimeCriticalPriority);
@@ -52,7 +53,7 @@ test_Threading::test_startThreadWithPriority() {
   thread->setObjectName("InheritPriority");
   startThreadWithPriority(thread, QThread::InheritPriority);
   thread->moveToThread(thread);
-  dispatchToThread(thread, [this] { QCOMPARE(getNice(), 0); });
+  dispatchToThread(thread, [this, priority] { QCOMPARE(getNice(), priority); });
   thread->quit();
   thread->wait();
   thread->deleteLater();
