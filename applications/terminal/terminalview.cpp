@@ -216,6 +216,7 @@ TerminalView::geometryChange(
 
 void
 TerminalView::keyPressEvent(QKeyEvent* event) {
+  qDebug() << event;
   QByteArray data = keyToBytes(event);
   if (!data.isEmpty() && m_masterFd >= 0) {
     // TODO properly handle errors and continuing writing partial data
@@ -335,6 +336,7 @@ TerminalView::renderAllCells() {
     QRectF(0, 0, m_cols * m_charWidth, m_rows * m_charHeight).toAlignedRect();
   m_rowIter = rowIter;
   m_cells = cells;
+  m_cursorPainted = false;
   ghostty_render_state_clean(renderState);
 }
 

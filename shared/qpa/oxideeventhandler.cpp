@@ -398,6 +398,14 @@ OxideEventHandler::processKeyboardEvent(
         map_plain = m;
       }
       quint8 testmods = keyboardData->m_modifiers;
+      if (testmods & (KeyboardMap::ModShiftL | KeyboardMap::ModShiftR)) {
+        testmods |= KeyboardMap::ModShift;
+        testmods &= ~(KeyboardMap::ModShiftL | KeyboardMap::ModShiftR);
+      }
+      if (testmods & (KeyboardMap::ModCtrlL | KeyboardMap::ModCtrlR)) {
+        testmods |= KeyboardMap::ModControl;
+        testmods &= ~(KeyboardMap::ModCtrlL | KeyboardMap::ModCtrlR);
+      }
       if (
         keyboardData->m_locks[0] /*CapsLock*/
         && (m->flags & KeyboardMap::IsLetter)
