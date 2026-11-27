@@ -427,7 +427,16 @@ OxideEventHandler::processKeyboardEvent(
   ) {
     modifiers ^= KeyboardMap::ModShift;
   }
-  const KeyboardMap::Mapping* it = map_withmod ? map_withmod : map_plain;
+  const KeyboardMap::Mapping* it;
+  if (map_withmod && (map_withmod->flags & KeyboardMap::IsLetter)) {
+    it = map_withmod;
+  } else if (
+    map_withmod && map_plain && map_withmod->qtcode != map_plain->qtcode
+  ) {
+    it = map_plain;
+  } else {
+    it = map_withmod ? map_withmod : map_plain;
+  }
   // we couldn't even find a plain mapping
   if (!it) {
     O_WARNING("No mapping for keycode found:" << keycode);
