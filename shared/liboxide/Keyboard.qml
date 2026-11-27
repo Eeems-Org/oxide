@@ -576,6 +576,7 @@ function isTextInput(item) {
                     }
                 }
                 KeyboardKey {
+                    clip: false
                     size: 1.25
                     text: "Alt"
                     key: Qt.Key_Alt
@@ -606,6 +607,7 @@ function isTextInput(item) {
                     size: 0.25
                 }
                 KeyboardKey {
+                    clip: false
                     size: 1.25
                     text: "Fn"
                     key: Qt.Key_Alt
