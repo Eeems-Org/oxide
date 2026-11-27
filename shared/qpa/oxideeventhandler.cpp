@@ -313,8 +313,8 @@ OxideEventHandler::OxideEventHandler(
   , m_keymap_size{0}
   , m_keycompose{0}
   , m_keycompose_size{0}
-  , m_do_compose{true}
-  , m_no_zap{false} {
+  , m_no_zap{false}
+  , m_do_compose{true} {
   parseKeyParams(parameters);
   parseTouchParams(
     QString(deviceSettings.getTouchEnvSetting()).split(QLatin1Char(':'))
