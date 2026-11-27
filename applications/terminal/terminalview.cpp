@@ -183,7 +183,7 @@ TerminalView::geometryChange(
   if (cols == m_cols && rows == m_rows) {
     return;
   }
-  qDebug() << "New size" << rows << cols;
+  O_DEBUG("New size" << rows << cols);
   m_cols = cols;
   m_rows = rows;
   m_cellCache.resize(m_cols * m_rows);
@@ -216,7 +216,7 @@ TerminalView::geometryChange(
 
 void
 TerminalView::keyPressEvent(QKeyEvent* event) {
-  qDebug() << event;
+  O_DEBUG(event);
   QByteArray data = keyToBytes(event);
   if (!data.isEmpty() && m_masterFd >= 0) {
     // TODO properly handle errors and continuing writing partial data
