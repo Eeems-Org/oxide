@@ -431,7 +431,7 @@ OxideEventHandler::processKeyboardEvent(
   if (map_withmod && (map_withmod->flags & KeyboardMap::IsLetter)) {
     it = map_withmod;
   } else if (
-    map_withmod && map_plain && map_withmod->unicode == 0 &&
+    map_withmod && map_plain && map_withmod->unicode == 0xffff &&
     map_withmod->qtcode != map_plain->qtcode
   ) {
     it = map_plain;
