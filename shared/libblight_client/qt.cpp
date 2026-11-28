@@ -828,16 +828,22 @@ validate_swapbuffers(void* func) {
   // Check arm32 prologue for the swapBuffers(QRegion) variant:
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
   if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
-    // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
-    if (data[1] == 0xE24DD044) {
-      return true;
-    }
-    // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x4c
-    if (compareOSVersion(3, 28, 0, 0) >= 0 && data[1] == 0xE24DD04C) {
+    // Try the QRegion pattern: STMDB SP!,{...,LR} / CPY R4,R2 or CPY R4,R3
+    if (compareOSVersion(3, 29, 0, 0) >= 0) {
+      if (data[1] == 0xE1A04002 || data[1] == 0xE1A04003) {
+        return true;
+      }
+    } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x4c
+      if (data[1] == 0xE24DD04C) {
+        return true;
+      }
+    } else if (data[1] == 0xE24DD044) {
+      // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
       return true;
     }
     _WARN(
-      "swapBuffers: STMDB at pos 0 but second not sub sp,#0x44, "
+      "swapBuffers: STMDB at pos 0 but second not a known pattern, "
       "got 0x%08x",
       data[1]
     );
@@ -1150,7 +1156,7 @@ hook_swapBuffers_xochitl_legacy(
  * \param flags Update flags
  */
 void
-hook_swapBuffers_xochitl(
+hook_swapBuffers_xochitl_3_28(
   void* this_ptr,
   const void* region,
   const void* contentMap_screenModeMap,
@@ -1197,6 +1203,77 @@ hook_swapBuffers_xochitl(
       (flags & Blight::UpdateMode::PenUpdate) != 0
     ) {
       // TODO handle pen updates separately like xochitl does
+      send_ghost_control(
+        (flags & Blight::UpdateMode::AnimationUpdate)
+          ? Blight::GhostControlMode::BlinkLater
+          : Blight::GhostControlMode::BlinkNow
+      );
+    }
+  }
+  dump_buffers();
+}
+
+void
+hook_swapBuffers_xochitl_3_29(
+  void* this_ptr,
+  const void* region,
+  const void* contentMap_screenModeMap,
+  int flags
+) {
+  _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...) (xochitl 3.29)");
+  if (contentMap_screenModeMap == nullptr) {
+    _DEBUG("swapBuffers: contentMap_screenModeMap is NULL");
+    return;
+  }
+  auto begin_fn = Qt::qregion_begin();
+  auto end_fn = Qt::qregion_end();
+  if (begin_fn == nullptr || end_fn == nullptr) {
+    _DEBUG("swapBuffers_QRegion: qregion_begin/end is NULL");
+    return;
+  }
+  auto dit = begin_fn(region);
+  auto dend = end_fn(region);
+  if (!dit || !dend) {
+    return;
+  }
+  _DEBUG("swapBuffers_QRegion: region: %s", Qt::repr_qregion(region).c_str());
+  auto regions = static_cast<void* const*>(contentMap_screenModeMap);
+  auto slot_remap = reinterpret_cast<const int32_t*>(regions + 7);
+  auto updateMode = static_cast<Blight::UpdateMode>(flags);
+  for (; dit != dend; dit++) {
+    update_buffers(*dit);
+    for (int modeId = 6; modeId >= Blight::WaveformMode::UltraFast; modeId--) {
+      int slot = slot_remap[modeId];
+      auto* region = regions[slot];
+      if (region == nullptr || !Qt::region_rect_overlaps(dit, region)) {
+        continue;
+      }
+      Blight::ContentType contentType = Blight::ContentType::Color;
+      Blight::WaveformMode waveform;
+      if (modeId == 6) {
+        waveform = Blight::WaveformMode::Full;
+      } else {
+        waveform = (Blight::WaveformMode)modeId;
+        switch (waveform) {
+          case Blight::WaveformMode::UltraFast:
+          case Blight::WaveformMode::Fast:
+          case Blight::WaveformMode::UI:
+            contentType = Blight::ContentType::Monochrome;
+            break;
+          case Blight::WaveformMode::Animate:
+          case Blight::WaveformMode::Content:
+          case Blight::WaveformMode::Full:
+            contentType = Blight::ContentType::Color;
+            break;
+        }
+      }
+      repaint(dit, waveform, contentType, updateMode);
+      break;
+    }
+    if (
+      Client::isGhostControlEnabled() &&
+      (flags & Blight::UpdateMode::PenUpdate) != 0
+    ) {
       send_ghost_control(
         (flags & Blight::UpdateMode::AnimationUpdate)
           ? Blight::GhostControlMode::BlinkLater
@@ -1542,9 +1619,13 @@ hook_check_candidate() {
       func_swapBuffers_qregion
     );
     void* hookfunc;
-    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+    if (compareOSVersion(3, 29, 0, 0) >= 0) {
       hookfunc = Client::IS_XOCHITL
-                   ? reinterpret_cast<void*>(&hook_swapBuffers_xochitl)
+                   ? reinterpret_cast<void*>(&hook_swapBuffers_xochitl_3_29)
+                   : reinterpret_cast<void*>(&hook_swapBuffers_qsgepaper);
+    } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
+      hookfunc = Client::IS_XOCHITL
+                   ? reinterpret_cast<void*>(&hook_swapBuffers_xochitl_3_28)
                    : reinterpret_cast<void*>(&hook_swapBuffers_qsgepaper);
     } else {
       hookfunc =

@@ -13,7 +13,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <mutex>
 #include <dlfcn.h>
 #include <functional>
 #include <mutex>
@@ -24,12 +23,13 @@
     Each value maps to a hardware waveform slot that controls the
     speed-vs-quality trade-off for a region of the screen. */
 enum EPScreenMode {
-  Pen = 0,       //!< Pen/handwriting overlay (fast, low-artifact)
-  Mono = 1,      //!< Fast monochrome text update
-  Animation = 2, //!< Animation-optimized update (no ghost accumulation)
-  UI = 3,        //!< User interface (high quality grayscale)
-  Content = 4,   //!< General content (text, images, line art)
-  Sleep = 5,     //!< Sleep screen / persistent UI
+  Pen = 0,            //!< Pen/handwriting overlay (fast, low-artifact)
+  Mono = 1,           //!< Fast monochrome text update
+  Animation = 2,      //!< Animation-optimized update (no ghost accumulation)
+  UI = 3,             //!< User interface (high quality grayscale)
+  Content = 4,        //!< General content (text, images, line art)
+  Sleep = 5,          //!< Sleep screen / persistent UI
+  LastScreenMode = 6, //!< Last screen mode
 };
 
 /*! Content type hint for the framebuffer controller. */
@@ -516,7 +516,6 @@ public:
   /*! Open /dev/fb0 and set up the framebuffer controller. */
   void initialize(void);
 };
-
 
 /*!
  * \brief EPFramebuffer subclass matching the libqsgepaper
