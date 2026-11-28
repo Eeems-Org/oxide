@@ -459,8 +459,8 @@ swapBuffersOffset() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
-      offset = 0x54; // vtable entry 21
+    if (compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = 0x3c; // vtable entry 15
     } else {
       offset = 0x5c; // vtable entry 23
     }
@@ -489,7 +489,7 @@ syncAfterUpdateOffset() {
   } else {
 #if defined(__arm__)
     if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
-      offset = 0x5c; // vtable entry 23
+      offset = 0x40; // vtable entry 16
     } else {
       offset = 0x60; // vtable entry 24
     }
@@ -517,11 +517,7 @@ qtMetacallOffset() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
-      offset = 0x00; // vtable entry 0
-    } else {
-      offset = 0x08; // vtable entry 2
-    }
+    offset = 0x08; // vtable entry 2
 #elif defined(__aarch64__)
     offset = 0x10; // vtable entry 2
 #else
@@ -547,12 +543,12 @@ ghostControlOffset() {
   } else {
 #if defined(__arm__)
     if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
-      offset = 0x5c; // vtable entry 23
+      offset = 0x38; // vtable entry 14
     } else {
       offset = 0x58; // vtable entry 22
     }
 #elif defined(__aarch64__)
-    offset = 0xb0; // vtable entry
+    offset = 0xb0; // vtable entry 22
 #else
     _CRIT("Unsupported architecture");
     std::exit(EXIT_FAILURE);
@@ -830,7 +826,7 @@ validate_swapbuffers(void* func) {
   if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
     // Try the QRegion pattern: STMDB SP!,{...,LR} / CPY R4,R2 or CPY R4,R3
     if (compareOSVersion(3, 29, 0, 0) >= 0) {
-      if (data[1] == 0xE1A04002 || data[1] == 0xE1A04003) {
+      if (data[1] == 0xE24DD008) {
         return true;
       }
     } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
