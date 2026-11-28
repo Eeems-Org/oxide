@@ -351,13 +351,17 @@ frameBufferOffset() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+    if (compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = 0x58;
+    } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
       offset = Client::IS_XOCHITL ? 0x58 : 0x50;
     } else {
       offset = Client::IS_XOCHITL ? 0x50 : 0x60;
     }
 #elif defined(__aarch64__)
-    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+    if (compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = Client::IS_XOCHITL ? 0xb8 : 0x98;
+    } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
       offset = Client::IS_XOCHITL ? 0xb8 : 0x88;
     } else {
       offset = 0xa8;
@@ -383,13 +387,17 @@ previousBufferOffset() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+    if (compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = 0x68;
+    } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
       offset = Client::IS_XOCHITL ? 0x68 : 0x60;
     } else {
       offset = Client::IS_XOCHITL ? 0x60 : 0x70;
     }
 #elif defined(__aarch64__)
-    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+    if (compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = Client::IS_XOCHITL ? 0x98 : 0xb8;
+    } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
       offset = Client::IS_XOCHITL ? 0x98 : 0xa8;
     } else {
       offset = Client::IS_XOCHITL ? 0x88 : 0xc8;
@@ -415,13 +423,17 @@ renderTargetOffset() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+    if (compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = 0x64;
+    } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
       offset = Client::IS_XOCHITL ? 0x64 : 0x5c;
     } else {
       offset = Client::IS_XOCHITL ? 0x5c : 0x6c;
     }
 #elif defined(__aarch64__)
-    if (compareOSVersion(3, 28, 0, 0) >= 0) {
+    if (compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = 0xb0;
+    } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
       offset = Client::IS_XOCHITL ? 0xb0 : 0xa0;
     } else {
       offset = Client::IS_XOCHITL ? 0xa0 : 0xc0;
@@ -447,7 +459,11 @@ swapBuffersOffset() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    offset = 0x5c; // vtable entry 23
+    if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = 0x54; // vtable entry 21
+    } else {
+      offset = 0x5c; // vtable entry 23
+    }
 #elif defined(__aarch64__)
     offset = 0xb8; // vtable entry 23
 #else
@@ -472,7 +488,11 @@ syncAfterUpdateOffset() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    offset = 0x60; // vtable entry 24
+    if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = 0x5c; // vtable entry 23
+    } else {
+      offset = 0x60; // vtable entry 24
+    }
 #elif defined(__aarch64__)
     offset = 0xc0; // vtable entry 24
 #else
@@ -497,7 +517,11 @@ qtMetacallOffset() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    offset = 0x08; // vtable entry 2
+    if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = 0x00; // vtable entry 0
+    } else {
+      offset = 0x08; // vtable entry 2
+    }
 #elif defined(__aarch64__)
     offset = 0x10; // vtable entry 2
 #else
@@ -522,7 +546,11 @@ ghostControlOffset() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    offset = 0x58; // vtable entry 22
+    if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
+      offset = 0x5c; // vtable entry 23
+    } else {
+      offset = 0x58; // vtable entry 22
+    }
 #elif defined(__aarch64__)
     offset = 0xb0; // vtable entry
 #else
