@@ -11,19 +11,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <dlfcn.h>
-#include <fcntl.h>
-#include <filesystem>
-#include <fstream>
-#include <libblight.h>
-#include <libblight/debug.h>
-#include <libblight/system.h>
-
-#include <algorithm>
-#include <atomic>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -460,7 +447,7 @@ swapBuffersOffset() {
   } else {
 #if defined(__arm__)
     if (compareOSVersion(3, 29, 0, 0) >= 0) {
-      offset = 0x3c; // vtable entry 15
+      offset = 0x5c; // vtable entry 23
     } else {
       offset = 0x5c; // vtable entry 23
     }
@@ -489,7 +476,7 @@ syncAfterUpdateOffset() {
   } else {
 #if defined(__arm__)
     if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
-      offset = 0x40; // vtable entry 16
+      offset = 0x60; // vtable entry 24
     } else {
       offset = 0x60; // vtable entry 24
     }
@@ -543,7 +530,7 @@ ghostControlOffset() {
   } else {
 #if defined(__arm__)
     if (Client::IS_XOCHITL && compareOSVersion(3, 29, 0, 0) >= 0) {
-      offset = 0x38; // vtable entry 14
+      offset = 0x58; // vtable entry 22
     } else {
       offset = 0x58; // vtable entry 22
     }
@@ -824,12 +811,7 @@ validate_swapbuffers(void* func) {
   // Check arm32 prologue for the swapBuffers(QRegion) variant:
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
   if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
-    // Try the QRegion pattern: STMDB SP!,{...,LR} / CPY R4,R2 or CPY R4,R3
-    if (compareOSVersion(3, 29, 0, 0) >= 0) {
-      if (data[1] == 0xE24DD008) {
-        return true;
-      }
-    } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
+    if (compareOSVersion(3, 28, 0, 0) >= 0) {
       // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x4c
       if (data[1] == 0xE24DD04C) {
         return true;
