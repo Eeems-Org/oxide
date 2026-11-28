@@ -13,8 +13,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
 #include <dlfcn.h>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <tuple>
 
@@ -514,69 +516,7 @@ public:
   /*! Open /dev/fb0 and set up the framebuffer controller. */
   void initialize(void);
 };
-static int
-compareOSVersion(
-  int targetMajor,
-  int targetMinor,
-  int targetPatch,
-  int targetBuild
-) {
-  static long long actualVersion = 0;
-  if (!actualVersion) {
-    int actualMajor = 0;
-    int actualMinor = 0;
-    int actualPatch = 0;
-    int actualBuild = 0;
-    FILE* pipe = popen(
-      "sh -c 'set -a; . /etc/os-release >/dev/null 2>&1; "
-      "printf %s \"$IMG_VERSION\"'",
-      "r"
-    );
-    if (pipe == nullptr) {
-      return -1;
-    }
-    char buffer[128];
-    std::size_t length = fread(buffer, 1, sizeof(buffer) - 1, pipe);
-    int status = pclose(pipe);
-    if (status != 0 || length == 0) {
-      return -1;
-    }
-    std::string value(buffer, length);
-    int count = sscanf(
-      value.c_str(),
-      "%d.%d.%d.%d",
-      &actualMajor,
-      &actualMinor,
-      &actualPatch,
-      &actualBuild
-    );
-    if (count < 1) {
-      actualMajor = 0;
-    }
-    if (count < 2) {
-      actualMinor = 0;
-    }
-    if (count < 3) {
-      actualPatch = 0;
-    }
-    if (count < 4) {
-      actualBuild = 0;
-    }
-    actualVersion = ((long long)actualMajor * 1000LL * 1000LL * 1000LL) +
-                    (actualMinor * 1000LL * 1000LL) + (actualPatch * 1000LL) +
-                    actualBuild;
-  }
-  long long targetVersion =
-    ((long long)targetMajor * 1000LL * 1000LL * 1000LL) +
-    (targetMinor * 1000LL * 1000LL) + (targetPatch * 1000LL) + targetBuild;
-  if (actualVersion > targetVersion) {
-    return 1;
-  }
-  if (actualVersion < targetVersion) {
-    return -1;
-  }
-  return 0;
-}
+
 
 /*!
  * \brief EPFramebuffer subclass matching the libqsgepaper
@@ -603,6 +543,73 @@ compareOSVersion(
 class EPFramebufferFusion : public EPFramebufferSwtcon {
 public:
   EPFramebufferFusion();
+
+  static inline int compareOSVersion(
+    int targetMajor,
+    int targetMinor,
+    int targetPatch,
+    int targetBuild
+  ) {
+    static long long actualVersion = 0;
+    static std::mutex versionMutex;
+    std::lock_guard<std::mutex> versionLock(versionMutex);
+    if (!actualVersion) {
+      int actualMajor = 0;
+      int actualMinor = 0;
+      int actualPatch = 0;
+      int actualBuild = 0;
+      FILE* pipe = popen(
+        "sh -c 'set -a; . /etc/os-release >/dev/null 2>&1; "
+        "printf %s \"$IMG_VERSION\"'",
+        "r"
+      );
+      if (pipe == nullptr) {
+        qFatal("EPFramebuffer: /etc/os-release IMG_VERSION missing");
+        std::exit(EXIT_FAILURE);
+      }
+      char buffer[128];
+      std::size_t length = fread(buffer, 1, sizeof(buffer) - 1, pipe);
+      int status = pclose(pipe);
+      if (status != 0 || length == 0) {
+        qFatal("EPFramebuffer: /etc/os-release failed to read IMG_VERSION");
+        std::exit(EXIT_FAILURE);
+      }
+      std::string value(buffer, length);
+      int count = sscanf(
+        value.c_str(),
+        "%d.%d.%d.%d",
+        &actualMajor,
+        &actualMinor,
+        &actualPatch,
+        &actualBuild
+      );
+      if (count < 1) {
+        actualMajor = 0;
+      }
+      if (count < 2) {
+        actualMinor = 0;
+      }
+      if (count < 3) {
+        actualPatch = 0;
+      }
+      if (count < 4) {
+        actualBuild = 0;
+      }
+      actualVersion = ((long long)actualMajor * 1000LL * 1000LL * 1000LL) +
+                      (actualMinor * 1000LL * 1000LL) + (actualPatch * 1000LL) +
+                      actualBuild;
+    }
+    long long targetVersion =
+      ((long long)targetMajor * 1000LL * 1000LL * 1000LL) +
+      (targetMinor * 1000LL * 1000LL) + (targetPatch * 1000LL) + targetBuild;
+    if (actualVersion > targetVersion) {
+      return 1;
+    }
+    if (actualVersion < targetVersion) {
+      return -1;
+    }
+    return 0;
+  }
 
   inline QImage* frameBuffer() {
     static const int offset = []() {
