@@ -9,48 +9,27 @@
 #include <QSize>
 #include <QtGlobal>
 
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <dlfcn.h>
 #include <functional>
+#include <mutex>
+#include <string>
 #include <tuple>
-
-#if defined(__arm__)
-#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0)
-#define EPFR_SIZE 0xb8
-#define EPFR_OFFSET_PREVIOUSBUFFER 0x70
-#define EPFR_OFFSET_FRAMEBUFFER 0x60
-#define EPFR_OFFSET_RENDERTARGET 0x6c
-#else
-#define EPFR_SIZE 0xb8
-#define EPFR_OFFSET_PREVIOUSBUFFER 0x60
-#define EPFR_OFFSET_FRAMEBUFFER 0x50
-#define EPFR_OFFSET_RENDERTARGET 0x5c
-#endif
-#elif defined(__aarch64__)
-#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0)
-#define EPFR_SIZE 0x110
-#define EPFR_OFFSET_PREVIOUSBUFFER 0xc8
-#define EPFR_OFFSET_FRAMEBUFFER 0xa8
-#define EPFR_OFFSET_RENDERTARGET 0xc0
-#else
-#define EPFR_SIZE 0x110
-#define EPFR_OFFSET_PREVIOUSBUFFER 0xa8
-#define EPFR_OFFSET_FRAMEBUFFER 0x88
-#define EPFR_OFFSET_RENDERTARGET 0xa0
-#endif
-#else
-#error "Unsupported architecture"
-#endif
 
 /*! Display modes for the framebuffer controller.
     Each value maps to a hardware waveform slot that controls the
     speed-vs-quality trade-off for a region of the screen. */
 enum EPScreenMode {
-  Pen = 0,       //!< Pen/handwriting overlay (fast, low-artifact)
-  Mono = 1,      //!< Fast monochrome text update
-  Animation = 2, //!< Animation-optimized update (no ghost accumulation)
-  UI = 3,        //!< User interface (high quality grayscale)
-  Content = 4,   //!< General content (text, images, line art)
-  Sleep = 5,     //!< Sleep screen / persistent UI
+  Pen = 0,            //!< Pen/handwriting overlay (fast, low-artifact)
+  Mono = 1,           //!< Fast monochrome text update
+  Animation = 2,      //!< Animation-optimized update (no ghost accumulation)
+  UI = 3,             //!< User interface (high quality grayscale)
+  Content = 4,        //!< General content (text, images, line art)
+  Sleep = 5,          //!< Sleep screen / persistent UI
+  LastScreenMode = 6, //!< Last screen mode
 };
 
 /*! Content type hint for the framebuffer controller. */
@@ -338,7 +317,7 @@ public:
    * \param flags          Update flags.
    *
    * Example usage:
-   * auto size = instance->frameBuffer.size();
+   * auto size = instance->frameBuffer()->size();
    * EPScreenModeMap screenModeMap(size, {});
    * screenModeMap.setModeForRegion(QRegion(rect), screenMode);
    * EPFramebuffer::instance()->swapBuffers(
@@ -564,29 +543,139 @@ class EPFramebufferFusion : public EPFramebufferSwtcon {
 public:
   EPFramebufferFusion();
 
-private:
-  char OPAQUE_A[EPFR_OFFSET_FRAMEBUFFER];
+  static inline int compareOSVersion(
+    int targetMajor,
+    int targetMinor,
+    int targetPatch,
+    int targetBuild
+  ) {
+    static long long actualVersion = 0;
+    static std::mutex versionMutex;
+    std::lock_guard<std::mutex> versionLock(versionMutex);
+    if (!actualVersion) {
+      int actualMajor = 0;
+      int actualMinor = 0;
+      int actualPatch = 0;
+      int actualBuild = 0;
+      FILE* pipe = popen(
+        "sh -c 'set -a; . /etc/os-release >/dev/null 2>&1; "
+        "printf %s \"$IMG_VERSION\"'",
+        "r"
+      );
+      if (pipe == nullptr) {
+        qFatal("EPFramebuffer: /etc/os-release IMG_VERSION missing");
+        std::exit(EXIT_FAILURE);
+      }
+      char buffer[128];
+      std::size_t length = fread(buffer, 1, sizeof(buffer) - 1, pipe);
+      int status = pclose(pipe);
+      if (status != 0 || length == 0) {
+        qFatal("EPFramebuffer: /etc/os-release failed to read IMG_VERSION");
+        std::exit(EXIT_FAILURE);
+      }
+      std::string value(buffer, length);
+      int count = sscanf(
+        value.c_str(),
+        "%d.%d.%d.%d",
+        &actualMajor,
+        &actualMinor,
+        &actualPatch,
+        &actualBuild
+      );
+      if (count < 1) {
+        actualMajor = 0;
+      }
+      if (count < 2) {
+        actualMinor = 0;
+      }
+      if (count < 3) {
+        actualPatch = 0;
+      }
+      if (count < 4) {
+        actualBuild = 0;
+      }
+      actualVersion = ((long long)actualMajor * 1000LL * 1000LL * 1000LL) +
+                      (actualMinor * 1000LL * 1000LL) + (actualPatch * 1000LL) +
+                      actualBuild;
+    }
+    long long targetVersion =
+      ((long long)targetMajor * 1000LL * 1000LL * 1000LL) +
+      (targetMinor * 1000LL * 1000LL) + (targetPatch * 1000LL) + targetBuild;
+    if (actualVersion > targetVersion) {
+      return 1;
+    }
+    if (actualVersion < targetVersion) {
+      return -1;
+    }
+    return 0;
+  }
 
-public:
-  /*! Buffer containing the next frame */
-  QImage frameBuffer;
+  inline QImage* frameBuffer() {
+    static const int offset = []() {
+#if defined(__aarch64__)
+      if (compareOSVersion(3, 29, 0, 0) >= 0) {
+        return 0x98;
+      } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
+        return 0x88;
+      } else {
+        return 0xa8;
+      }
+#else
+      if (compareOSVersion(3, 29, 0, 0) >= 0) {
+        return 0x58;
+      } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
+        return 0x50;
+      } else {
+        return 0x60;
+      }
+#endif
+    }();
+    return reinterpret_cast<QImage*>(reinterpret_cast<char*>(this) + offset);
+  }
 
-private:
-  char OPAQUE_B
-    [EPFR_OFFSET_RENDERTARGET - EPFR_OFFSET_FRAMEBUFFER - sizeof(QImage)];
+  inline QImage* previousBuffer() {
+    static const int offset = []() {
+#if defined(__aarch64__)
+      if (compareOSVersion(3, 29, 0, 0) >= 0) {
+        return 0xb8;
+      } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
+        return 0xa8;
+      } else {
+        return 0xc8;
+      }
+#else
+      if (compareOSVersion(3, 29, 0, 0) >= 0) {
+        return 0x68;
+      } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
+        return 0x60;
+      } else {
+        return 0x70;
+      }
+#endif
+    }();
+    return reinterpret_cast<QImage*>(reinterpret_cast<char*>(this) + offset);
+  }
 
-public:
-  /*! Pointer to the QImage that serves as the render target. */
-  QImage* renderTarget;
-
-private:
-  char OPAQUE_C
-    [EPFR_OFFSET_PREVIOUSBUFFER - EPFR_OFFSET_RENDERTARGET - sizeof(QImage*)];
-
-public:
-  /*! Buffer containing the previous frame */
-  QImage previousBuffer;
-
-private:
-  char OPAQUE_D[EPFR_SIZE - EPFR_OFFSET_PREVIOUSBUFFER - sizeof(QImage)];
+  inline QImage** renderTarget() {
+    static const int offset = []() {
+#if defined(__aarch64__)
+      if (compareOSVersion(3, 29, 0, 0) >= 0) {
+        return 0xb0;
+      } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
+        return 0xa0;
+      } else {
+        return 0xc0;
+      }
+#else
+      if (compareOSVersion(3, 29, 0, 0) >= 0) {
+        return 0x64;
+      } else if (compareOSVersion(3, 28, 0, 0) >= 0) {
+        return 0x5c;
+      } else {
+        return 0x6c;
+      }
+#endif
+    }();
+    return reinterpret_cast<QImage**>(reinterpret_cast<char*>(this) + offset);
+  }
 };

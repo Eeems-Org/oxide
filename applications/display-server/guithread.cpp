@@ -387,9 +387,9 @@ GUIThread::sendUpdate(
     mapMode(waveform),
     (EPFramebuffer::UpdateFlag)mode
   );
-  QPainter(&instance->previousBuffer)
-    .drawImage(rect, instance->frameBuffer, rect);
-  QPainter(&m_frameBufferImage).drawImage(rect, instance->frameBuffer, rect);
+  QPainter(instance->previousBuffer())
+    .drawImage(rect, *instance->frameBuffer(), rect);
+  QPainter(&m_frameBufferImage).drawImage(rect, *instance->frameBuffer(), rect);
 }
 
 void
@@ -443,9 +443,9 @@ QImage*
 GUIThread::getFrameBuffer() {
   auto* instance = EPFramebuffer::instance();
 #ifdef __arm__
-  return instance->renderTarget;
+  return *instance->renderTarget();
 #else
-  return &instance->frameBuffer;
+  return instance->frameBuffer();
 #endif
 }
 #endif

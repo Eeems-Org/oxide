@@ -177,7 +177,7 @@ oxide_display() {
     depends="
     liboxide=$pkgver-r$pkgrel
     remarkable-os>=3.28.0.172
-    remarkable-os<3.29
+    remarkable-os<3.29.1
     "
 
     package() {
