@@ -312,7 +312,9 @@ OxideEventHandler::OxideEventHandler(
   , m_keymap{0}
   , m_keymap_size{0}
   , m_keycompose{0}
-  , m_keycompose_size{0} {
+  , m_keycompose_size{0}
+  , m_no_zap{false}
+  , m_do_compose{true} {
   parseKeyParams(parameters);
   parseTouchParams(
     QString(deviceSettings.getTouchEnvSetting()).split(QLatin1Char(':'))
@@ -389,7 +391,7 @@ OxideEventHandler::processKeyboardEvent(
   bool first_press = pressed && !autorepeat;
   const KeyboardMap::Mapping* map_plain = 0;
   const KeyboardMap::Mapping* map_withmod = 0;
-  quint8 modifiers = keyboardData->m_modifiers;
+  quint16 modifiers = keyboardData->m_modifiers;
 
   for (int i = 0; i < m_keymap_size && !(map_plain && map_withmod); ++i) {
     const KeyboardMap::Mapping* m = m_keymap + i;
@@ -397,7 +399,16 @@ OxideEventHandler::processKeyboardEvent(
       if (m->modifiers == 0) {
         map_plain = m;
       }
-      quint8 testmods = keyboardData->m_modifiers;
+      quint16 testmods = keyboardData->m_modifiers;
+      testmods &= ~Modifiers::ModMeta;
+      if (testmods & (KeyboardMap::ModShiftL | KeyboardMap::ModShiftR)) {
+        testmods |= KeyboardMap::ModShift;
+        testmods &= ~(KeyboardMap::ModShiftL | KeyboardMap::ModShiftR);
+      }
+      if (testmods & (KeyboardMap::ModCtrlL | KeyboardMap::ModCtrlR)) {
+        testmods |= KeyboardMap::ModControl;
+        testmods &= ~(KeyboardMap::ModCtrlL | KeyboardMap::ModCtrlR);
+      }
       if (
         keyboardData->m_locks[0] /*CapsLock*/
         && (m->flags & KeyboardMap::IsLetter)
@@ -416,7 +427,17 @@ OxideEventHandler::processKeyboardEvent(
   ) {
     modifiers ^= KeyboardMap::ModShift;
   }
-  const KeyboardMap::Mapping* it = map_withmod ? map_withmod : map_plain;
+  const KeyboardMap::Mapping* it;
+  if (map_withmod && (map_withmod->flags & KeyboardMap::IsLetter)) {
+    it = map_withmod;
+  } else if (
+    map_withmod && map_plain && map_withmod->unicode == 0xffff &&
+    map_withmod->qtcode != map_plain->qtcode
+  ) {
+    it = map_plain;
+  } else {
+    it = map_withmod ? map_withmod : map_plain;
+  }
   // we couldn't even find a plain mapping
   if (!it) {
     O_WARNING("No mapping for keycode found:" << keycode);
@@ -1152,6 +1173,7 @@ OxideEventHandler::unloadKeymap() {
   m_keycompose = s_keycompose_default;
   m_keycompose_size =
     sizeof(s_keycompose_default) / sizeof(s_keycompose_default[0]);
+  m_do_compose = true;
 }
 
 bool

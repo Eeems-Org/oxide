@@ -52,6 +52,7 @@ function isTextInput(item) {
     property bool hasFn: false
     property int columns: 15
     property int rows: 6
+    property bool allowUnicode: ["reMarkable 1", "reMarkable 2"].indexOf(Oxide.deviceName) === -1
     property int basesize: qwerty.width / columns
     width: parent.width
     height: basesize * rows
@@ -451,8 +452,8 @@ function isTextInput(item) {
                 spacing: 0
                 Layout.fillWidth: true
                 KeyboardKey {
-                    font.pixelSize: 32
-                    text: "⇧"
+                    font.pixelSize: keyboard.allowUnicode ? 32 : undefined
+                    text: keyboard.allowUnicode ? "⇧" : "Shift"
                     key: Qt.Key_Shift
                     size: 2
                     checkable: true
@@ -564,7 +565,7 @@ function isTextInput(item) {
                 }
                 KeyboardKey {
                     size: 1.25
-                    text: "❖"
+                    text: keyboard.allowUnicode ? "❖" : "Meta"
                     key: Qt.Key_Meta
                     checkable: true
                     keyboard: keyboard
@@ -576,6 +577,7 @@ function isTextInput(item) {
                     }
                 }
                 KeyboardKey {
+                    clip: false
                     size: 1.25
                     text: "Alt"
                     key: Qt.Key_Alt
@@ -606,6 +608,7 @@ function isTextInput(item) {
                     size: 0.25
                 }
                 KeyboardKey {
+                    clip: false
                     size: 1.25
                     text: "Fn"
                     key: Qt.Key_Alt
